@@ -37,9 +37,8 @@ lettres dont la date entre en conflit avec leur contenu sont reprises ou écart�
 
 **2. Essayer le fine-tuning, et en mesurer les limites.** Un Mistral-7B a été affiné (QLoRA), d'abord par
 pré-entraînement continu sur le corpus, puis par instruction, avec des exemples où Napoléon refuse les
-anachronismes. Le modèle prend bien la voix de l'Empereur, mais les évaluations
-(`eval_results.md`, `eval_base_results.md`, `compare_pretrain_results.md`) montrent qu'**une voix n'est
-pas une source** : sans affinage, le modèle de base attribue le Code civil à Jean-Jacques Rousseau ;
+anachronismes. Le modèle prend bien la voix de l'Empereur, mais les évaluations montrent qu'**une voix
+n'est pas une source** : sans affinage, le modèle de base attribue le Code civil à Jean-Jacques Rousseau ;
 affiné, il répond avec style mais sans pouvoir dire d'où vient ce qu'il affirme.
 
 **3. Faire parler les archives elles-mêmes, dans l'ordre du temps.** D'où le choix final : un RAG sur les
@@ -90,9 +89,8 @@ Tout le reste découle de ce choix :
 
 ```
 web/            Interface (Vite) + relais Node/Express (port 3002) — voix Azure, avatar three.js
-pipeline/       API Flask (port 5001), archiviste, narrateur, et scripts de construction du corpus/RAG
+pipeline/       API Flask (port 5001), archiviste (napoleon_archivist.py), narrateur (napoleon_agent.py)
 data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings) — via Git LFS
-finetune/       Expériences de fine-tuning (optionnel)
 ```
 
 ## Installation
@@ -157,9 +155,9 @@ Bibliothèque nationale de France et consultées sur [Gallica](https://gallica.b
 - `napoleon_memoirs.sqlite` : **4 238 passages** de mémoires, consultés par l'archiviste quand le regard
   de l'exilé éclaire le récit.
 
-Chaque lettre de la *Correspondance* renvoie à la page correspondante du tome sur Gallica. Le corpus brut
-et les jeux d'entraînement ne sont pas inclus : les scripts de `pipeline/` montrent comment ils ont été
-produits.
+Chaque lettre de la *Correspondance* renvoie à la page correspondante du tome sur Gallica. Le dépôt ne
+contient que ce qui fait tourner l'application : le corpus brut, les scripts d'extraction et de nettoyage
+et les expériences de fine-tuning ne sont pas inclus.
 
 ## Licence
 
