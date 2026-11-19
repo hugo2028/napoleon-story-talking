@@ -11,10 +11,12 @@ Spanish, Italian, German and Portuguese.*
 
 ## Démo
 
-**Premier échange** — Napoléon accueille le visiteur sur son île et ouvre la conversation sur une lettre
-tirée au hasard : celle du 27 janvier 1812 à son frère, roi de Westphalie.
+**En français** — Napoléon accueille le visiteur sur son île et ouvre la conversation sur une lettre
+tirée au hasard : le 14 avril 1806, au prince Eugène, à Milan. Le visiteur choisit d'en savoir plus, et
+le récit suit la vie de famille à la cour de Milan, des conseils à Eugène jusqu'à la lettre du 3 juin
+1806 à la princesse Augusta.
 
-https://github.com/user-attachments/assets/b3e7795e-da2e-4289-b31b-4a6c19584048
+https://github.com/user-attachments/assets/22e0ff95-b3ee-4123-b69f-fea35fa892fd
 
 **In English** — the conversation opens on a letter drawn at random (20 February 1799, to the commander
 of the fort of El-Arish) and follows it into the capture of El-Arish and the march on Jaffa, with the
