@@ -87,4 +87,6 @@ comment ils ont été produits.
 
 ## Licence
 
-À définir.
+Le code est distribué sous licence [MIT](LICENSE). Les textes historiques des bases RAG proviennent de
+Gallica (BnF) et restent soumis à ses conditions de réutilisation. Le modèle 3D de Napoléon visible dans
+les vidéos n'est pas couvert par cette licence et n'est pas distribué.
