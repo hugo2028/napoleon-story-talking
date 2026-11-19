@@ -1,0 +1,21 @@
+{
+  "name": "napoleon-avatar",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"node server.js\" \"vite\"",
+    "build": "vite build",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "microsoft-cognitiveservices-speech-sdk": "^1.37.0",
+    "openai": "^4.47.0",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "concurrently": "^8.2.2"
+  }
+}

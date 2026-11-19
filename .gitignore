@@ -1,0 +1,49 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+.env
+.env.*
+!.env.example
+*.pem
+
+web/.env
+web/.env.*
+web/node_modules/
+web/dist/
+
+# data/ reste local, sauf les deux bases RAG (versionnées via Git LFS)
+data/*
+!data/rag/
+data/rag/*
+!data/rag/napoleon_clean.sqlite
+!data/rag/napoleon_memoirs.sqlite
+shards/logs/
+*.log
+
+napoleon-corpus/datasets/sft/batch/responses/
+napoleon-corpus/datasets/sft/batch/requests/
+napoleon-corpus/datasets/sft/batch/manifests/
+
+napoleon-corpus/napoleon.db
+napoleon-corpus/sources/pdfs/
+napoleon-corpus/sources/texts/
+
+# Modèles 3D et rendus : non distribués (fournissez votre propre avatar, voir README)
+web/avatar/
+*.glb
+*.gltf
+*.fbx
+*.blend
+*.blend1
+
+# Vidéos de démo (hébergées hors du dépôt)
+*.webm
+*.mp4
+*.mov
+
+# Corpus source et scripts de lots (non publiés)
+napoleon-corpus/
+shards/
