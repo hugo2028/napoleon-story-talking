@@ -10,7 +10,14 @@ Spanish, Italian, German and Portuguese.*
 
 ## Démo
 
-<!-- Glissez-déposez les vidéos de démo dans l'éditeur GitHub de ce README pour les héberger ici. -->
+**En français** — premier échange : Napoléon ouvre la conversation sur une lettre tirée au hasard.
+
+https://github.com/user-attachments/assets/b3e7795e-da2e-4289-b31b-4a6c19584048
+
+**In English** — a full conversation: the campaign in Egypt and Syria, told from his letters, with the
+episode, chapter and letters shown on screen and the Gallica sources attached to each answer.
+
+https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 
 ## Ce que fait l'application
 
