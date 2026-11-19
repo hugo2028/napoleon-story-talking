@@ -1,11 +1,12 @@
 # Napoléon — l'Empereur raconte sa vie, lettre après lettre
 
-Un avatar conversationnel de Napoléon Bonaparte, exilé à Sainte-Hélène, qui répond à vos questions
-en s'appuyant **uniquement sur sa correspondance réelle** : chaque réponse est construite à partir de
-lettres authentiques, citées mot pour mot et reliées à leur source sur Gallica (BnF).
+Un avatar conversationnel de Napoléon Bonaparte, exilé à Sainte-Hélène, qui **revit sa vie au présent,
+lettre après lettre, dans l'ordre où il l'a écrite**. Chaque réponse est construite à partir de sa
+correspondance datée, citée mot pour mot et reliée à sa source sur Gallica (BnF).
 
-*A conversational Napoleon avatar grounded in his actual letters. Every answer is built from authentic
-correspondence, quoted verbatim and linked to its Gallica (BnF) source. Available in French, English,
+*A conversational Napoleon avatar who relives his life in the present tense, letter by letter, in the
+order he wrote them. Every answer is built from his dated correspondence, quoted verbatim and linked to
+its Gallica (BnF) source. Available in French, English,
 Spanish, Italian, German and Portuguese.*
 
 ## Démo
@@ -41,35 +42,49 @@ anachronismes. Le modèle prend bien la voix de l'Empereur, mais les évaluation
 pas une source** : sans affinage, le modèle de base attribue le Code civil à Jean-Jacques Rousseau ;
 affiné, il répond avec style mais sans pouvoir dire d'où vient ce qu'il affirme.
 
-**3. Faire parler les archives elles-mêmes.** D'où le choix final : un RAG sur les lettres, dont chaque
-passage est daté, classé (lettre, ordre, bulletin, proclamation, rapport d'un tiers) et marqué selon la
-fiabilité de sa date, et un **agent** qui enquête dans ces archives avant que Napoléon ne prenne la parole.
+**3. Faire parler les archives elles-mêmes, dans l'ordre du temps.** D'où le choix final : un RAG sur les
+lettres, dont chaque passage est daté, classé (lettre, ordre, bulletin, proclamation, rapport d'un tiers)
+et marqué selon la fiabilité de sa date, et un **agent** qui enquête dans ces archives et les déroule
+chronologiquement avant que Napoléon ne prenne la parole.
 
-## Une approche nouvelle
+## Une approche nouvelle : revivre l'histoire au présent
 
-- **L'enquête et la parole sont séparées.** Un *archiviste* autonome (agent à outils, `gpt-4.1`) cherche,
-  lit et choisit les lettres : recherche sémantique, recherche par mots exacts, exploration d'une
-  période, mémoires. Un *narrateur* (`gpt-4.1-mini`) ne fait que raconter ce qu'on lui sert. Il ne peut
-  rien affirmer que les lettres ne disent pas.
-- **Aucune citation inventée.** Les phrases citées sont choisies par un appel dédié, puis retrouvées
-  par algorithme dans le texte de la lettre et restituées à l'identique. Une citation introuvable est
-  rejetée.
-- **Un récit à embranchements, unique à chaque fois.** L'archiviste construit un plan en *moments*, chacun
-  avec deux variantes, par exemple deux lettres ou deux regards sur le même passage. Le visiteur choisit
-  et l'autre chemin est abandonné : deux conversations sur Austerlitz ne se ressemblent pas.
-- **Le hasard des archives comme porte d'entrée.** Plutôt qu'un menu de grands épisodes, la conversation
-  s'ouvre sur une lettre tirée au sort, comme si Napoléon venait de la relire. Le hasard peut rouvrir la
-  voie quand le visiteur veut « autre chose ».
-- **Le jugement laissé à l'agent, pas des règles en dur.** Le choix des lettres, des citations et du moment
-  où tirer au hasard relève de l'agent, guidé par des consignes plutôt que par des seuils. Le code ne
-  vérifie que ce qui est vérifiable : l'exactitude des citations et la cohérence des lettres avec le plan.
-- **Une transparence complète.** Chaque réplique est accompagnée de ses lettres et d'un lien vers la page
-  de l'édition sur Gallica. À l'écran, l'épisode, la période, le chapitre et les lettres racontées
-  suivent le récit.
-- **Une présence incarnée, dans six langues.** Napoléon parle depuis Sainte-Hélène, revit ses lettres au
-  présent et choisit ses gestes. La voix Azure pilote la synchronisation labiale (visèmes). Le corpus
-  reste en français, et la conversation se tient en français, anglais, espagnol, italien, allemand ou
-  portugais.
+**L'idée centrale : des sources datées, prises dans l'ordre chronologique, pour un récit immersif au
+présent.**
+
+Des mémoires ou un livre d'histoire racontent après coup. L'auteur sait déjà comment tout finit : il
+résume, réordonne, justifie, et le lecteur reçoit un passé déjà interprété. Une lettre, elle, est écrite
+*dans* le moment, avec ce que Napoléon sait ce jour-là, ses ordres, ses inquiétudes et ses espoirs,
+sans connaître la suite.
+
+Ce projet s'appuie donc sur la correspondance comme sur une **ligne du temps** : chaque lettre est datée,
+située et placée dans l'ordre chronologique. Le récit peut alors avancer comme les événements eux-mêmes,
+date après date. Napoléon ne se souvient pas, il revit : « Le 17 février 1799, devant El-Arich, j'écris
+au général Dugua… ». Le visiteur traverse les jours au rythme où ils ont été vécus, et l'issue reste
+ouverte. Les mémoires ne servent qu'en contrepoint, quand le regard de l'exilé de Sainte-Hélène apporte
+quelque chose au moment raconté.
+
+Tout le reste découle de ce choix :
+
+- **La date comme matériau.** Chaque passage est daté, y compris les dates du calendrier républicain,
+  et marqué selon la fiabilité de sa date. Les lettres dont la date contredit le contenu sont écartées :
+  sans chronologie sûre, pas de récit au présent.
+- **Un archiviste qui suit le fil du temps.** Un agent autonome (`gpt-4.1`) situe l'épisode dans la
+  chronologie, explore la période et choisit les lettres. Il bâtit ensuite un plan en *moments*
+  successifs, du premier ordre aux conséquences. Chaque moment a deux variantes, par exemple deux lettres
+  ou deux regards sur le même jour. Le visiteur choisit et l'autre chemin est abandonné : chaque
+  conversation suit un chemin unique dans le temps.
+- **Un narrateur qui raconte sans rien ajouter.** Le narrateur (`gpt-4.1-mini`) revit les lettres
+  servies, ancrées par leur date dite à voix haute, sans développer au-delà de ce qu'elles disent.
+- **Des citations exactes.** Les phrases citées sont retrouvées par algorithme dans le texte de la lettre
+  et restituées à l'identique : le visiteur entend les mots écrits ce jour-là.
+- **Le hasard des archives comme porte d'entrée.** La conversation s'ouvre sur une lettre tirée au sort,
+  comme si Napoléon venait de la relire, et l'on plonge dans le jour où elle a été écrite.
+- **Le temps rendu visible.** À l'écran, l'épisode, la période, le chapitre et les dates des lettres
+  racontées avancent avec le récit. Chaque réplique renvoie à la page de l'édition sur Gallica.
+- **Une présence incarnée, dans six langues.** La voix Azure pilote la synchronisation labiale et
+  Napoléon choisit ses gestes. Le corpus reste en français, et la conversation se tient en français,
+  anglais, espagnol, italien, allemand ou portugais.
 
 ## Architecture
 
