@@ -9,16 +9,9 @@ Bibliothèque nationale de France (BnF).
 
 ## Demo
 
-**In French**: Napoleon welcomes the visitor to his island and opens the conversation on a letter drawn
-at random, written on 14 April 1806 to Prince Eugène in Milan. The visitor asks to hear more, and the
-story follows family life at the court of Milan, from Napoleon's advice to Eugène to his letter of
-3 June 1806 to Princess Augusta.
-
-https://github.com/user-attachments/assets/22e0ff95-b3ee-4123-b69f-fea35fa892fd
-
-**In English**: the conversation opens on a letter drawn at random (20 February 1799, to the commander
-of the fort of El-Arish) and follows it into the capture of El-Arish and the march on Jaffa. The episode,
-chapter and letters are shown on screen, and the Gallica sources are attached to each answer.
+The conversation opens on a letter drawn at random (20 February 1799, to the commander of the fort of
+El-Arish) and follows it into the capture of El-Arish and the march on Jaffa. The episode, chapter and
+letters are shown on screen, and the Gallica sources are attached to each answer.
 
 https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 
