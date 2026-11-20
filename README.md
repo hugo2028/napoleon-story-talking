@@ -8,18 +8,12 @@ correspondance datée, citée mot pour mot et reliée à sa source sur Gallica (
 
 ## Démo
 
-**En français** — Napoléon accueille le visiteur sur son île et ouvre la conversation sur une lettre
-tirée au hasard : le 14 avril 1806, au prince Eugène, à Milan. Le visiteur choisit d'en savoir plus, et
-le récit suit la vie de famille à la cour de Milan, des conseils à Eugène jusqu'à la lettre du 3 juin
-1806 à la princesse Augusta.
+Napoléon accueille le visiteur sur son île et ouvre la conversation sur une lettre tirée au hasard : le
+14 avril 1806, au prince Eugène, à Milan. Le visiteur choisit d'en savoir plus, et le récit suit la vie de
+famille à la cour de Milan, des conseils à Eugène jusqu'à la lettre du 3 juin 1806 à la princesse
+Augusta.
 
 https://github.com/user-attachments/assets/22e0ff95-b3ee-4123-b69f-fea35fa892fd
-
-**In English** — the conversation opens on a letter drawn at random (20 February 1799, to the commander
-of the fort of El-Arish) and follows it into the capture of El-Arish and the march on Jaffa, with the
-episode, chapter and letters shown on screen and the Gallica sources attached to each answer.
-
-https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 
 ## La démarche
 
