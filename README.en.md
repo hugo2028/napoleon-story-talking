@@ -27,13 +27,14 @@ https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 The project started from a simple question: can Napoleon be made to speak **without putting a single
 word in his mouth that he did not write**? It went through three stages.
 
-**1. Building the corpus.** Napoleon's writings were extracted from the editions digitised by Gallica,
-with one extractor per type of document: the 32 volumes of the *Correspondance*, the bulletins of the
-Grande Armée, the proclamations, the letters to Joséphine, his early writings, the campaign narratives
-and memoirs. Each letter becomes a unit with its date (including French Republican calendar dates), its
+**1. Building the corpus.** Napoleon's writings were extracted from editions digitised by Gallica and
+by Project Gutenberg, with one extractor per type of document: the 32 volumes of the *Correspondance*,
+the bulletins of the Grande Armée, the proclamations, the letters to Joséphine, his early writings, the
+campaign narratives and the *Œuvres de Napoléon Bonaparte*. Each letter becomes a unit with its date (including French Republican calendar dates), its
 place and its recipient: **52,000 passages, 7.9 million words**. A deliberately conservative LLM
 cleaning pass fixes OCR errors and rejects unusable passages, and letters whose date conflicts with
-their content are either recovered or set aside.
+their content are either recovered or set aside. The full detail (exact sources, choices, cleaning, dates, limits)
+is in **[docs/CORPUS.en.md](docs/CORPUS.en.md)**.
 
 **2. Trying fine-tuning, and finding its limits.** A Mistral-7B model was fine-tuned (QLoRA), first with
 continued pre-training on the corpus, then with instruction tuning, including examples in which Napoleon
@@ -60,8 +61,8 @@ This project therefore treats the correspondence as a **timeline**: every letter
 placed in chronological order. The story can then move forward the way events did, date after date.
 Napoleon does not remember, he relives: "On 17 February 1799, before El-Arish, I write to General
 Dugua…". The visitor moves through the days at the pace they were lived, and the outcome stays open.
-The memoirs are used only as a counterpoint, when the exile's view from Saint Helena adds something to
-the moment being told.
+Texts written after the fact (the *Œuvres de Napoléon Bonaparte*) are used only as a counterpoint,
+when they add something to the moment being told.
 
 Everything else follows from that choice:
 
@@ -92,7 +93,8 @@ web/            Interface (Vite) + Node/Express relay (port 3002): voice, three.
 pipeline/       Flask API (port 5001), archivist (napoleon_archivist.py), narrator (napoleon_agent.py),
                 universal OpenAI-compatible connector (llm_connector.py)
 scripts/        download_data.py: downloads the RAG databases from the GitHub Release
-data/rag/       RAG SQLite databases (letters + memoirs, with embeddings), not versioned
+data/rag/       RAG SQLite databases (letters + Œuvres, with embeddings), not versioned
+docs/           CORPUS.en.md: how the corpus was built, in detail
 ```
 
 ## Installation
@@ -153,17 +155,20 @@ browser's voice.
 
 ## Data sources
 
-All texts come from 19th-century editions in the public domain, digitised by the Bibliothèque nationale
-de France and accessed on [Gallica](https://gallica.bnf.fr):
+All texts come from 19th- and early 20th-century editions in the public domain: 50 volumes or
+pamphlets digitised by the Bibliothèque nationale de France on [Gallica](https://gallica.bnf.fr), and 6
+books transcribed and proofread by [Project Gutenberg](https://www.gutenberg.org) volunteers (*Œuvres de
+Napoléon Bonaparte* and *Tendresses impériales*). The exact list of editions, with their identifiers, is in
+**[docs/CORPUS.en.md](docs/CORPUS.en.md)**.
 
 | Source | Corpus passages | Words |
 |---|---:|---:|
 | *Correspondance de Napoléon Iᵉʳ*, 32 volumes, and additional correspondence (navy, unpublished letters…) | 42,102 | 6.5 M |
-| Memoirs | 4,922 | 0.66 M |
+| *Œuvres de Napoléon Bonaparte*, Panckoucke edition, 5 volumes (Gutenberg) | 4,922 | 0.66 M |
 | Bulletins of the Grande Armée | 3,080 | 0.56 M |
-| Narratives of the Italian campaign | 1,543 | 0.19 M |
+| *Campagnes d'Italie, d'Égypte et de Syrie*, 3 volumes | 1,543 | 0.19 M |
 | Proclamations | 125 | 15,000 |
-| Letters to Joséphine (*Tendresses impériales*) | 111 | 12,000 |
+| Letters to Joséphine (*Tendresses impériales*, Gutenberg) | 111 | 12,000 |
 | Early writings (*Le Souper de Beaucaire*…) | 106 | 14,000 |
 
 The two databases used by the app are published in the
@@ -172,8 +177,8 @@ downloaded into `data/rag/` by `scripts/download_data.py`:
 
 - `napoleon_clean.sqlite`: **25,843 passages**, dated and classified, including 21,358 letters, 1,973
   orders, 1,356 bulletins and 162 proclamations, with their embeddings;
-- `napoleon_memoirs.sqlite`: **4,238 memoir passages**, consulted by the archivist when the exile's
-  view sheds light on the story.
+- `napoleon_memoirs.sqlite`: **4,238 passages** from the *Œuvres de Napoléon Bonaparte*, which the
+  archivist consults as a counterpoint to the story.
 
 Each letter from the *Correspondance* links to the matching page of its volume on Gallica. The repository
 contains only what runs the app: the raw corpus, the extraction and cleaning scripts and the fine-tuning

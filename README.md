@@ -26,13 +26,14 @@ https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 Le projet est parti d'une question simple : peut-on faire parler Napoléon **sans lui prêter un seul mot
 qu'il n'a pas écrit** ? Il est passé par trois étapes.
 
-**1. Constituer le corpus.** Les écrits de Napoléon ont été extraits des éditions numérisées par Gallica,
-avec un extracteur par type de document : les 32 tomes de la *Correspondance*, les bulletins de la
-Grande Armée, les proclamations, les lettres à Joséphine, les écrits de jeunesse, les récits de campagne
-et des mémoires. Chaque lettre devient une unité, avec sa date (y compris les dates du calendrier
+**1. Constituer le corpus.** Les écrits de Napoléon ont été extraits d'éditions numérisées par Gallica
+et par le Projet Gutenberg, avec un extracteur par type de document : les 32 tomes de la
+*Correspondance*, les bulletins de la Grande Armée, les proclamations, les lettres à Joséphine, les écrits
+de jeunesse, les récits de campagne et les *Œuvres de Napoléon Bonaparte*. Chaque lettre devient une unité, avec sa date (y compris les dates du calendrier
 républicain), son lieu et son destinataire : **52 000 passages, 7,9 millions de mots**. Un nettoyage par
 LLM, volontairement conservateur, corrige les erreurs d'OCR et rejette les passages inexploitables ; les
-lettres dont la date entre en conflit avec leur contenu sont reprises ou écartées.
+lettres dont la date entre en conflit avec leur contenu sont reprises ou écartées. Le détail complet
+(sources exactes, choix, nettoyage, dates, limites) est dans **[docs/CORPUS.md](docs/CORPUS.md)**.
 
 **2. Essayer le fine-tuning, et en mesurer les limites.** Un Mistral-7B a été affiné (QLoRA), d'abord par
 pré-entraînement continu sur le corpus, puis par instruction, avec des exemples où Napoléon refuse les
@@ -59,8 +60,8 @@ Ce projet s'appuie donc sur la correspondance comme sur une **ligne du temps** :
 située et placée dans l'ordre chronologique. Le récit peut alors avancer comme les événements eux-mêmes,
 date après date. Napoléon ne se souvient pas, il revit : « Le 17 février 1799, devant El-Arich, j'écris
 au général Dugua… ». Le visiteur traverse les jours au rythme où ils ont été vécus, et l'issue reste
-ouverte. Les mémoires ne servent qu'en contrepoint, quand le regard de l'exilé de Sainte-Hélène apporte
-quelque chose au moment raconté.
+ouverte. Les textes écrits après coup (les *Œuvres de Napoléon Bonaparte*) ne servent qu'en
+contrepoint, quand ils apportent quelque chose au moment raconté.
 
 Tout le reste découle de ce choix :
 
@@ -91,7 +92,8 @@ web/            Interface (Vite) + relais Node/Express (port 3002) — voix, ava
 pipeline/       API Flask (port 5001), archiviste (napoleon_archivist.py), narrateur (napoleon_agent.py),
                 connecteur universel compatible OpenAI (llm_connector.py)
 scripts/        download_data.py : télécharge les bases RAG depuis la Release GitHub
-data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings), non versionnées
+data/rag/       Bases SQLite du RAG (lettres + Œuvres, avec embeddings), non versionnées
+docs/           CORPUS.md : constitution détaillée du corpus
 ```
 
 ## Installation
@@ -153,17 +155,20 @@ Azure, l'avatar parle avec la voix du navigateur.
 
 ## Sources des données
 
-Tous les textes viennent d'éditions du XIXᵉ siècle, dans le domaine public, numérisées par la
-Bibliothèque nationale de France et consultées sur [Gallica](https://gallica.bnf.fr) :
+Tous les textes viennent d'éditions du XIXᵉ et du début du XXᵉ siècle, dans le domaine public :
+50 volumes ou opuscules numérisés par la Bibliothèque nationale de France sur
+[Gallica](https://gallica.bnf.fr), et 6 livres transcrits et relus par les bénévoles du
+[Projet Gutenberg](https://www.gutenberg.org) (*Œuvres de Napoléon Bonaparte* et *Tendresses impériales*).
+La liste exacte des éditions, avec leurs identifiants, est dans **[docs/CORPUS.md](docs/CORPUS.md)**.
 
 | Source | Passages du corpus | Mots |
 |---|---:|---:|
 | *Correspondance de Napoléon Iᵉʳ*, 32 tomes, et correspondances complémentaires (marine, lettres inédites…) | 42 102 | 6,5 M |
-| Mémoires | 4 922 | 0,66 M |
+| *Œuvres de Napoléon Bonaparte*, éd. Panckoucke, 5 tomes (Gutenberg) | 4 922 | 0,66 M |
 | Bulletins de la Grande Armée | 3 080 | 0,56 M |
-| Récits de la campagne d'Italie | 1 543 | 0,19 M |
+| *Campagnes d'Italie, d'Égypte et de Syrie*, 3 tomes | 1 543 | 0,19 M |
 | Proclamations | 125 | 15 000 |
-| Lettres à Joséphine (*Tendresses impériales*) | 111 | 12 000 |
+| Lettres à Joséphine (*Tendresses impériales*, Gutenberg) | 111 | 12 000 |
 | Écrits de jeunesse (*Le Souper de Beaucaire*…) | 106 | 14 000 |
 
 Les deux bases utilisées par l'application sont publiées dans la Release
@@ -172,8 +177,8 @@ dans `data/rag/` par `scripts/download_data.py` :
 
 - `napoleon_clean.sqlite` : **25 843 passages** datés et classés, dont 21 358 lettres, 1 973 ordres,
   1 356 bulletins et 162 proclamations, avec leurs embeddings ;
-- `napoleon_memoirs.sqlite` : **4 238 passages** de mémoires, consultés par l'archiviste quand le regard
-  de l'exilé éclaire le récit.
+- `napoleon_memoirs.sqlite` : **4 238 passages** des *Œuvres de Napoléon Bonaparte*, que l'archiviste
+  consulte en contrepoint du récit.
 
 Chaque lettre de la *Correspondance* renvoie à la page correspondante du tome sur Gallica. Le dépôt ne
 contient que ce qui fait tourner l'application : le corpus brut, les scripts d'extraction et de nettoyage
