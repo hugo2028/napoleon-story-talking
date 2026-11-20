@@ -25,6 +25,7 @@ from difflib import SequenceMatcher
 import numpy as np
 
 from napoleon_agent import cosine_sim, embed_question, fetch_chunks
+from llm_connector import parse_json_object
 
 AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1")
 MAX_AGENT_STEPS = int(os.getenv("AGENT_MAX_STEPS", "14"))
@@ -268,8 +269,9 @@ def _norm_end(d: str | None) -> str | None:
 
 class Archivist:
     def __init__(self, client, conn, emb_matrix, chunk_ids, m_conn, m_matrix, m_ids, events,
-                 model: str = AGENT_MODEL):
-        self.client = client
+                 model: str = AGENT_MODEL, embed_client=None):
+        self.client = client              # modèle de l'agent (connecteur universel, compatible OpenAI)
+        self.embed_client = embed_client  # embeddings OpenAI, optionnels (recherche sémantique)
         self.conn = conn
         self.emb = emb_matrix
         self.ids = np.array(chunk_ids)
@@ -319,7 +321,7 @@ class Archivist:
             resp = self.client.chat.completions.create(
                 model=self.model, temperature=0.3, response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": CITATION_PROMPT}, {"role": "user", "content": demande}])
-            cands = json.loads(resp.choices[0].message.content or "{}").get("citations") or []
+            cands = parse_json_object(resp.choices[0].message.content).get("citations") or []
         except Exception as exc:
             print(f"[CITATIONS] échec : {exc}")
             return []
@@ -379,7 +381,10 @@ class Archivist:
 
     def t_rechercher(self, state, requete, date_debut=None, date_fin=None, seuil_min=0.0, limite=20):
         limite = max(1, min(50, int(limite or 20)))
-        q = embed_question(self.client, requete)
+        if self.embed_client is None:
+            return {"erreur": "recherche sémantique indisponible (aucune clé d'embeddings OpenAI configurée) : "
+                              "cherche avec rechercher_mots (lieux, personnes, mots exacts) et explorer_periode."}
+        q = embed_question(self.embed_client, requete)
         sims = cosine_sim(q, self.emb)
         allowed = self._ids_in_period(date_debut, date_fin)
         if allowed is not None:
@@ -445,7 +450,9 @@ class Archivist:
         if self.m_emb is None:
             return {"erreur": "mémoires indisponibles"}
         limite = max(1, min(8, int(limite or 4)))
-        sims = cosine_sim(embed_question(self.client, requete), self.m_emb)
+        if self.embed_client is None:
+            return self._memoires_par_mots(requete, limite)
+        sims = cosine_sim(embed_question(self.embed_client, requete), self.m_emb)
         order = np.argsort(-sims)[:limite]
         out = []
         for i in order:
@@ -455,6 +462,17 @@ class Archivist:
                 out.append({"id": cid, "score": round(float(sims[i]), 3), "titre": (row[0] or "")[:80],
                             "texte": (row[1] or "")[:400]})
         return out
+
+    def _memoires_par_mots(self, requete: str, limite: int) -> list[dict]:
+        """Repli sans embeddings : passages des mémoires contenant le plus de mots de la requête."""
+        mots = [m for m in re.findall(r"\w+", requete.lower()) if len(m) > 3][:6]
+        if not mots:
+            return []
+        score = " + ".join("(instr(lower(text), ?) > 0)" for _ in mots)
+        rows = self.m_conn.execute(
+            f"SELECT id, title, text, {score} AS s FROM chunks WHERE s > 0 ORDER BY s DESC LIMIT ?",
+            (*mots, limite)).fetchall()
+        return [{"id": r[0], "score": r[3], "titre": (r[1] or "")[:80], "texte": (r[2] or "")[:400]} for r in rows]
 
     def t_fixer_plan(self, state, sujet, chapitres, periode_debut=None, periode_fin=None):
         meta = self._meta([int(i) for ch in chapitres for i in ch.get("lettres", [])])

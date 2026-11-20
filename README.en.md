@@ -81,22 +81,28 @@ Everything else follows from that choice:
   Napoleon had just been rereading it, and plunges into the day it was written.
 - **Time made visible.** On screen, the episode, period, chapter and dates of the letters being told
   move forward with the story. Each answer links to the page of the edition on Gallica.
-- **An embodied presence, in six languages.** The Azure voice drives the lip-sync, and Napoleon chooses
-  his gestures. The corpus stays in French, and the conversation can be held in French, English,
+- **An embodied presence, in six languages.** Napoleon speaks and chooses his gestures. With Azure
+  Speech, his voice is neural and drives the lip-sync; without Azure, he speaks with the browser's voice. The corpus stays in French, and the conversation can be held in French, English,
   Spanish, Italian, German or Portuguese.
 
 ## Architecture
 
 ```
-web/            Interface (Vite) + Node/Express relay (port 3002): Azure voice, three.js avatar
-pipeline/       Flask API (port 5001), archivist (napoleon_archivist.py), narrator (napoleon_agent.py)
+web/            Interface (Vite) + Node/Express relay (port 3002): voice, three.js avatar or 2D medallion
+pipeline/       Flask API (port 5001), archivist (napoleon_archivist.py), narrator (napoleon_agent.py),
+                universal OpenAI-compatible connector (llm_connector.py)
 scripts/        download_data.py: downloads the RAG databases from the GitHub Release
 data/rag/       RAG SQLite databases (letters + memoirs, with embeddings), not versioned
 ```
 
 ## Installation
 
-Requirements: Python 3.11+, Node.js 18+, an OpenAI API key and an Azure Speech resource.
+| | What you need | Without it |
+|---|---|---|
+| **Required** | Python 3.11+, Node.js 18+ and **a language model** reachable through an OpenAI-compatible API: OpenAI, Anthropic, Mistral, Google Gemini, OpenRouter, Groq, or **Ollama**, free and local | — |
+| Optional | An **OpenAI** key for semantic search, if your provider is not OpenAI | the archivist searches by keyword |
+| Optional | An **Azure Speech** resource (free F0 tier): neural voice and lip-sync | the browser's built-in voice, free (Edge "Natural" voices sound best) |
+| Optional | A **3D avatar** `web/avatar/avatar.glb` (see below) | an animated 2D medallion |
 
 ```bash
 git clone https://github.com/hugo2028/napoleon-story-talking.git
@@ -114,10 +120,15 @@ python pipeline/napoleon_api.py
 cd web && npm run dev
 ```
 
-Then open <http://localhost:5174>. On first launch, the **⚙ Settings** panel opens: choose the language and
-enter your OpenAI key, your Azure Speech key and its region (Azure's free F0 tier is enough for personal
-use). The keys are checked with OpenAI and Azure, then saved to the local `.env` file, and never leave
-your computer. You can also fill them in `.env` directly, starting from `.env.example`.
+Then open <http://localhost:5174>. On first launch, the **⚙ Settings** panel opens:
+
+1. choose the language;
+2. choose the provider and enter its key: the list of models is read from its API, and you pick one for
+   the archivist (it must support tool calling) and one for the narrator;
+3. if you like, add an OpenAI key for semantic search and an Azure Speech key for the voice.
+
+The keys are checked with each service, then saved to the local `.env` file: they never leave your
+computer. You can also fill in `.env` by hand, starting from `.env.example`.
 
 ## The 3D avatar
 

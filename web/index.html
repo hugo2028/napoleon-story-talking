@@ -192,10 +192,13 @@
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
     }
 
+    /* L'attribut hidden l'emporte sur les display: flex/grid des composants */
+    [hidden] { display: none !important; }
+
     /* ── Paramètres ─────────────────────────────────────────────────── */
     #settings-dialog {
       margin: auto;   /* la remise à zéro globale des marges annule le centrage natif */
-      width: min(440px, calc(100vw - 32px));
+      width: min(540px, calc(100vw - 32px));
       max-height: calc(100vh - 32px);
       padding: 0;
       background: var(--surface2);
@@ -326,6 +329,60 @@
     }
 
     .key-field input:focus { outline: none; border-color: var(--gold-dim); }
+
+    .badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 7px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: none;
+      color: var(--text-dim);
+      vertical-align: 1px;
+    }
+
+    .badge.required { color: var(--gold); border-color: var(--gold-dim); }
+
+    .key-field select {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+    }
+
+    .key-field select option { background: var(--surface2); }
+    .key-field select:focus { outline: none; border-color: var(--gold-dim); }
+
+    .model-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    @media (max-width: 480px) {
+      .model-row { grid-template-columns: 1fr; }
+    }
+
+    .settings-inline {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+    }
+
+    .settings-inline a { color: var(--gold); }
+
+    #settings-dialog .settings-section + .settings-section {
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
 
     .settings-actions {
       display: flex;
@@ -735,12 +792,45 @@
       </section>
 
       <section class="settings-section">
-        <h4 data-i18n="keysTitle">Clés API</h4>
-        <p class="settings-note" data-i18n="keysIntro"></p>
+        <h4><span data-i18n="agentTitle">Modèle de l'agent</span> <span class="badge required" data-i18n="required">requis</span></h4>
+        <p class="settings-note" data-i18n="agentIntro"></p>
         <label class="key-field">
-          <span><span data-i18n="openaiKey">Clé OpenAI</span><span class="key-state" id="openai-state"></span></span>
-          <input type="password" id="openai-key" autocomplete="off" spellcheck="false" />
+          <span data-i18n="provider">Fournisseur</span>
+          <select id="llm-provider"></select>
         </label>
+        <label class="key-field" id="llm-url-field">
+          <span data-i18n="baseUrl">URL de l'API</span>
+          <input type="url" id="llm-base-url" autocomplete="off" spellcheck="false" placeholder="https://…/v1" />
+        </label>
+        <label class="key-field" id="llm-key-field">
+          <span><span data-i18n="apiKey">Clé API</span><span class="key-state" id="llm-state"></span></span>
+          <input type="password" id="llm-key" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="model-row">
+          <label class="key-field">
+            <span data-i18n="agentModel">Modèle de l'archiviste</span>
+            <select id="agent-model"></select>
+          </label>
+          <label class="key-field">
+            <span data-i18n="narratorModel">Modèle du narrateur</span>
+            <select id="narrator-model"></select>
+          </label>
+        </div>
+        <div class="settings-inline">
+          <button type="button" id="llm-load-models" class="chat-action" data-i18n="refreshModels">↻ Actualiser la liste</button>
+          <a id="llm-key-link" href="#" target="_blank" rel="noopener" data-i18n="getKey"></a>
+        </div>
+        <p class="settings-note" data-i18n="modelHint"></p>
+        <label class="key-field" id="embedding-field">
+          <span><span data-i18n="embeddingKey">Clé OpenAI pour la recherche sémantique</span> <span class="badge" data-i18n="optional">optionnel</span><span class="key-state" id="embedding-state"></span></span>
+          <input type="password" id="embedding-key" autocomplete="off" spellcheck="false" />
+          <span class="settings-note" data-i18n="embeddingHint"></span>
+        </label>
+      </section>
+
+      <section class="settings-section">
+        <h4><span data-i18n="voiceTitle">Voix Azure Speech</span> <span class="badge" data-i18n="optional">optionnel</span></h4>
+        <p class="settings-note" data-i18n="voiceIntro"></p>
         <label class="key-field">
           <span><span data-i18n="azureKey">Clé Azure Speech</span><span class="key-state" id="azure-state"></span></span>
           <input type="password" id="azure-key" autocomplete="off" spellcheck="false" />
@@ -750,9 +840,13 @@
           <input type="text" id="azure-region" autocomplete="off" spellcheck="false" placeholder="francecentral" />
         </label>
         <p class="settings-note">
-          <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" data-i18n="getOpenaiKey"></a> ·
           <a href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices" target="_blank" rel="noopener" data-i18n="getAzureKey"></a>
         </p>
+      </section>
+
+      <section class="settings-section">
+        <h4><span data-i18n="avatarTitle">Avatar 3D</span> <span class="badge" data-i18n="optional">optionnel</span></h4>
+        <p class="settings-note" id="avatar-note"></p>
       </section>
 
       <div class="settings-actions">

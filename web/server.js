@@ -71,26 +71,42 @@ app.get('/api/speech-config', (req, res) => {
   })
 })
 
-// État des clés (sans jamais les renvoyer) : l'interface ouvre « Paramètres » s'il en manque une.
+// État de la configuration (sans jamais renvoyer les clés) : l'interface ouvre « Paramètres »
+// si aucun modèle n'est configuré. Azure Speech est optionnel (voix du navigateur sinon).
 app.get('/api/config-status', async (req, res) => {
-  let openai = false
+  let agent = { llm: false }
   let api = true
   try {
-    const r = await fetch(`${NAPOLEON_API}/config/status`)
-    openai = Boolean((await r.json()).openai)
+    agent = await (await fetch(`${NAPOLEON_API}/config/status`)).json()
   } catch {
     api = false
   }
-  res.json({ openai, azure: azureConfigured(), azureRegion: process.env.AZURE_SPEECH_REGION || '', api })
+  res.json({ ...agent, azure: azureConfigured(), azureRegion: process.env.AZURE_SPEECH_REGION || '', api })
 })
 
-// Enregistre les clés saisies dans « Paramètres » (machine locale uniquement), après vérification.
+// Modèles proposés par un fournisseur (liste de choix dans « Paramètres »).
+app.post('/api/config/models', async (req, res) => {
+  if (!isLocal(req)) return res.status(403).json({ error: 'forbidden' })
+  try {
+    const r = await fetch(`${NAPOLEON_API}/config/models`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base_url: req.body.baseUrl || '', api_key: req.body.apiKey || '' }),
+    })
+    res.status(r.status).json(await r.json())
+  } catch {
+    res.status(502).json({ error: 'api_unreachable' })
+  }
+})
+
+// Enregistre la configuration saisie dans « Paramètres » (machine locale uniquement), après vérification.
 app.post('/api/config', async (req, res) => {
   if (!isLocal(req)) return res.status(403).json({ error: 'forbidden' })
-  const openaiKey   = (req.body.openaiKey || '').trim()
-  const azureKey    = (req.body.azureKey || '').trim()
-  const azureRegion = (req.body.azureRegion || '').trim().toLowerCase()
+  const b = req.body || {}
+  const azureKey    = (b.azureKey || '').trim()
+  const azureRegion = (b.azureRegion || '').trim().toLowerCase()
 
+  // Voix Azure (optionnelle)
   if (azureKey || azureRegion) {
     const key = azureKey || process.env.AZURE_SPEECH_KEY || ''
     const region = azureRegion || process.env.AZURE_SPEECH_REGION || ''
@@ -99,21 +115,30 @@ app.post('/api/config', async (req, res) => {
     upsertEnv({ AZURE_SPEECH_KEY: key, AZURE_SPEECH_REGION: region })
   }
 
-  if (openaiKey) {
+  // Partie agent : fournisseur, clé, modèles, clé d'embeddings (vérifiés par l'API Python)
+  if (b.agent) {
+    const a = b.agent
     try {
       const r = await fetch(`${NAPOLEON_API}/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ openai_key: openaiKey }),
+        body: JSON.stringify({
+          base_url: a.baseUrl || '', api_key: (a.apiKey || '').trim(),
+          model: a.model || '', agent_model: a.agentModel || '',
+          ...(a.embeddingKey !== undefined ? { embedding_key: (a.embeddingKey || '').trim() } : {}),
+        }),
       })
       const data = await r.json()
-      if (!r.ok) return res.status(400).json({ error: data.error || 'invalid_openai_key' })
+      if (!r.ok) return res.status(400).json({ error: data.error || 'invalid_llm' })
+      const vars = { LLM_BASE_URL: data.base_url, LLM_MODEL: data.model, AGENT_MODEL: data.agent_model }
+      if ((a.apiKey || '').trim()) vars.LLM_API_KEY = a.apiKey.trim()
+      if ((a.embeddingKey || '').trim()) vars.EMBEDDING_API_KEY = a.embeddingKey.trim()
+      upsertEnv(vars)
     } catch {
       return res.status(502).json({ error: 'api_unreachable' })
     }
-    upsertEnv({ LLM_API_KEY: openaiKey })
   }
-  res.json({ ok: true, azure: azureConfigured() })
+  res.json({ ok: true })
 })
 
 // ElevenLabs TTS proxy — évite d'exposer la clé API au frontend

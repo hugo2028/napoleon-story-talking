@@ -3,6 +3,8 @@ import { PortraitAvatar } from './portraitAvatar.js'
 import { SpeechSynth, stripPauses } from './speechSynth.js'
 import { LANGS, t, getLang, getLangInfo, setLang, applyStaticTexts } from './i18n.js'
 import { DemoRecorder, recordingSupported } from './recorder.js'
+import { BrowserSpeech } from './browserSpeech.js'
+import { PROVIDERS, providerFromUrl } from './providers.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const avatarCanvas = document.getElementById('avatar-canvas')
@@ -30,11 +32,23 @@ const settingsClose    = document.getElementById('settings-close')
 const settingsSave     = document.getElementById('settings-save')
 const settingsMessage  = document.getElementById('settings-message')
 const langGrid         = document.getElementById('lang-grid')
-const openaiKeyInput   = document.getElementById('openai-key')
-const azureKeyInput    = document.getElementById('azure-key')
-const azureRegionInput = document.getElementById('azure-region')
-const openaiState      = document.getElementById('openai-state')
-const azureState       = document.getElementById('azure-state')
+const providerSelect     = document.getElementById('llm-provider')
+const baseUrlInput       = document.getElementById('llm-base-url')
+const llmUrlField        = document.getElementById('llm-url-field')
+const llmKeyField        = document.getElementById('llm-key-field')
+const llmKeyInput        = document.getElementById('llm-key')
+const llmState           = document.getElementById('llm-state')
+const llmKeyLink         = document.getElementById('llm-key-link')
+const agentModelInput    = document.getElementById('agent-model')
+const narratorModelInput = document.getElementById('narrator-model')
+const loadModelsBtn      = document.getElementById('llm-load-models')
+const embeddingField     = document.getElementById('embedding-field')
+const embeddingKeyInput  = document.getElementById('embedding-key')
+const embeddingState     = document.getElementById('embedding-state')
+const azureKeyInput      = document.getElementById('azure-key')
+const azureRegionInput   = document.getElementById('azure-region')
+const azureState         = document.getElementById('azure-state')
+const avatarNote         = document.getElementById('avatar-note')
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let avatar   = null
@@ -58,10 +72,11 @@ async function init() {
   updateControls()
 
   try {
-    if (await avatarModelAvailable()) {
+    hasAvatarModel = await avatarModelAvailable()
+    if (hasAvatarModel) {
       avatar = await AvatarPlayer.create(avatarCanvas)
     } else {
-      // Pas de modèle 3D (dépôt public) : médaillon 2D, tout le reste fonctionne pareil
+      // Pas de modèle 3D (optionnel) : médaillon 2D, tout le reste fonctionne pareil
       console.info('[Avatar] web/avatar/avatar.glb absent — portrait 2D de repli')
       avatar = await PortraitAvatar.create(avatarCanvas)
     }
@@ -72,45 +87,47 @@ async function init() {
   }
 
   const status = await refreshConfigStatus()
-  if (status.azure) await initSpeech()
+  await initSpeech()
   ready = true
   if (!status.api) setStatus(t('apiUnreachable'), false)
-  else if (!status.openai || !status.azure) {
+  else if (!status.llm) {
     setStatus(t('missingKeys'), false)
     openSettings()
-  } else if (synth) setReady()
+  } else setReady()
   updateControls()
 }
 
-/** (Re)crée la synthèse vocale Azure — au démarrage ou après la saisie d'une clé. */
+/** Voix : Azure Speech si configurée (voix neuronale + lèvres synchronisées), sinon voix du navigateur. */
 async function initSpeech() {
+  synth?.stop()
+  synth = null
   try {
-    synth?.stop()
-    synth = await SpeechSynth.create(getLangInfo())
-    synth.onViseme = (id)    => avatar?.setViseme(id)
-    synth.onAction = (anim)  => avatar?.switchAnimation(anim)
-    synth.onStart  = () => { speaking = true;  avatar?.startTalking() }
-    synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); setReady() }
-    return true
+    if (configStatus.azure) synth = await SpeechSynth.create(getLangInfo())
   } catch (err) {
-    console.error('[Speech] Erreur init TTS:', err)
-    synth = null
-    setStatus(t('ttsUnavailable') + (err.message || err), false)
-    return false
+    console.warn('[Speech] Azure indisponible, voix du navigateur :', err)
   }
+  if (!synth && BrowserSpeech.supported()) {
+    try { synth = await BrowserSpeech.create(getLangInfo()) } catch (err) { console.warn('[Speech]', err) }
+  }
+  if (!synth) return false
+  synth.onViseme = (id)    => avatar?.setViseme(id)
+  synth.onAction = (anim)  => avatar?.switchAnimation(anim)
+  synth.onStart  = () => { speaking = true;  avatar?.startTalking() }
+  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); setReady() }
+  return true
 }
 
-// ── Paramètres : langue + clés API ───────────────────────────────────────────
-let configStatus = { openai: false, azure: false, azureRegion: '', api: false }
+// ── Paramètres : langue, modèle de l'agent, voix, avatar ─────────────────────
+let configStatus = { llm: false, azure: false, azureRegion: '', api: false, embeddings: false }
+let hasAvatarModel = false
 
 async function refreshConfigStatus() {
   try {
-    const res = await fetch('/api/config-status')
-    configStatus = await res.json()
+    configStatus = await (await fetch('/api/config-status')).json()
   } catch {
-    configStatus = { openai: false, azure: false, azureRegion: '', api: false }
+    configStatus = { llm: false, azure: false, azureRegion: '', api: false, embeddings: false }
   }
-  renderKeyFields()
+  renderSettingsFields(true)
   return configStatus
 }
 
@@ -125,9 +142,15 @@ function initSettings() {
     btn.addEventListener('click', () => chooseLanguage(code))
     langGrid.appendChild(btn)
   }
+  for (const [id, p] of Object.entries(PROVIDERS)) {
+    const opt = document.createElement('option')
+    opt.value = id
+    opt.textContent = id === 'custom' ? t('customProvider') : p.label
+    providerSelect.appendChild(opt)
+  }
   renderLangGrid()
   applyStaticTexts()
-  renderKeyFields()
+  renderSettingsFields(true)
 }
 
 function renderLangGrid() {
@@ -136,19 +159,88 @@ function renderLangGrid() {
   }
 }
 
-/** Champs de clés : jamais pré-remplis ; un champ vide conserve la clé déjà configurée. */
-function renderKeyFields() {
-  openaiKeyInput.placeholder = configStatus.openai ? t('keyConfigured') : 'sk-…'
+/** Remplit le formulaire depuis la configuration actuelle (jamais les clés : un champ vide les conserve). */
+function renderSettingsFields(fromStatus = false) {
+  if (fromStatus) {
+    const id = configStatus.base_url ? providerFromUrl(configStatus.base_url) : 'openai'
+    providerSelect.value = id
+    baseUrlInput.value = configStatus.base_url || PROVIDERS[id].baseUrl
+    if (!azureRegionInput.value) azureRegionInput.value = configStatus.azureRegion || ''
+    fillModelSelects([], configStatus.llm ? configStatus.agent_model : '', configStatus.llm ? configStatus.model : '')
+  }
+  const p = PROVIDERS[providerSelect.value]
+  const sameProvider = configStatus.llm && baseUrlInput.value.replace(/\/+$/, '') === configStatus.base_url
+  llmUrlField.hidden = providerSelect.value !== 'custom' && providerSelect.value !== 'ollama'
+  llmKeyField.hidden = Boolean(p.noKey)
+  llmKeyInput.placeholder = sameProvider && configStatus.has_key ? t('keyConfigured') : t('apiKeyPlaceholder')
+  llmState.textContent = sameProvider ? '✓' : ''
+  llmKeyLink.hidden = !p.keyUrl
+  llmKeyLink.href = p.keyUrl || '#'
+  // Avec OpenAI, la même clé sert aux embeddings : pas de champ séparé.
+  embeddingField.hidden = providerSelect.value === 'openai'
+  embeddingKeyInput.placeholder = configStatus.embeddings ? t('keyConfigured') : 'sk-…'
+  embeddingState.textContent = configStatus.embeddings ? '✓' : ''
   azureKeyInput.placeholder = configStatus.azure ? t('keyConfigured') : t('azureKeyPlaceholder')
-  if (!azureRegionInput.value) azureRegionInput.value = configStatus.azureRegion || ''
-  openaiState.textContent = configStatus.openai ? '✓' : ''
   azureState.textContent = configStatus.azure ? '✓' : ''
+  avatarNote.textContent = t(hasAvatarModel ? 'avatarFound' : 'avatarMissing')
+}
+
+/** Listes de modèles remplies depuis l'API du fournisseur ; le choix actuel reste sélectionné. */
+function fillModelSelects(models, agentChoice = agentModelInput.value, narratorChoice = narratorModelInput.value) {
+  for (const [select, choice] of [[agentModelInput, agentChoice], [narratorModelInput, narratorChoice]]) {
+    const ids = [...models]
+    if (choice && !ids.includes(choice)) ids.unshift(choice)
+    select.replaceChildren(...(ids.length
+      ? ids.map((m) => Object.assign(document.createElement('option'), { value: m, textContent: m }))
+      : [Object.assign(document.createElement('option'), { value: '', textContent: t('modelsNeedKey') })]))
+    select.value = choice || ids[0] || ''
+  }
+}
+
+let modelsRequest = 0
+async function loadModels(silent = false) {
+  const request = ++modelsRequest
+  if (!silent) showSettingsMessage(t('loadingModels'))
+  try {
+    const res = await fetch('/api/config/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseUrl: baseUrlInput.value.trim(), apiKey: llmKeyInput.value.trim() }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'invalid_llm')
+    if (request !== modelsRequest) return
+    fillModelSelects(data.models)
+    if (!silent) showSettingsMessage(t('modelsLoaded', data.models.length), 'ok')
+  } catch (err) {
+    if (request !== modelsRequest) return
+    if (!agentModelInput.value) fillModelSelects([])
+    if (!silent) showSettingsMessage(t(err.message === 'api_unreachable' ? 'apiUnreachable' : 'invalidLlm'), 'error')
+  }
+}
+
+providerSelect.addEventListener('change', () => {
+  baseUrlInput.value = PROVIDERS[providerSelect.value].baseUrl
+  llmKeyInput.value = ''
+  fillModelSelects([], '', '')
+  renderSettingsFields()
+  loadModels(true)
+})
+baseUrlInput.addEventListener('input', () => renderSettingsFields())
+baseUrlInput.addEventListener('change', () => loadModels(true))
+llmKeyInput.addEventListener('change', () => loadModels(true))
+loadModelsBtn.addEventListener('click', () => loadModels(false))
+
+function showSettingsMessage(text, kind = '') {
+  settingsMessage.className = 'settings-message' + (kind ? ` ${kind}` : '')
+  settingsMessage.textContent = text
 }
 
 function openSettings() {
-  settingsMessage.textContent = ''
-  renderKeyFields()
+  showSettingsMessage('')
+  renderSettingsFields(true)
   if (!settingsDialog.open) settingsDialog.showModal()
+  loadModels(true)
 }
 
 settingsBtn.addEventListener('click', openSettings)
@@ -156,19 +248,33 @@ settingsClose.addEventListener('click', () => settingsDialog.close())
 
 settingsForm.addEventListener('submit', async (e) => {
   e.preventDefault()
+  const baseUrl = baseUrlInput.value.trim().replace(/\/+$/, '')
+  if (!agentModelInput.value || !narratorModelInput.value) {
+    showSettingsMessage(t('chooseModels'), 'error')
+    return
+  }
+  const agentChanged = !configStatus.llm || baseUrl !== configStatus.base_url
+    || llmKeyInput.value.trim() || embeddingKeyInput.value.trim()
+    || agentModelInput.value.trim() !== configStatus.agent_model
+    || narratorModelInput.value.trim() !== configStatus.model
   const body = {
-    openaiKey: openaiKeyInput.value.trim(),
     azureKey: azureKeyInput.value.trim(),
-    azureRegion: azureRegionInput.value.trim() !== (configStatus.azureRegion || '') || azureKeyInput.value.trim()
+    azureRegion: azureKeyInput.value.trim() || azureRegionInput.value.trim() !== (configStatus.azureRegion || '')
       ? azureRegionInput.value.trim() : '',
   }
-  if (!body.openaiKey && !body.azureKey && !body.azureRegion) {
+  if (agentChanged) {
+    body.agent = {
+      baseUrl, apiKey: llmKeyInput.value.trim(),
+      agentModel: agentModelInput.value.trim(), model: narratorModelInput.value.trim(),
+      ...(embeddingKeyInput.value.trim() ? { embeddingKey: embeddingKeyInput.value.trim() } : {}),
+    }
+  }
+  if (!body.agent && !body.azureKey && !body.azureRegion) {
     settingsDialog.close()
     return
   }
   settingsSave.disabled = true
-  settingsMessage.className = 'settings-message'
-  settingsMessage.textContent = t('saving')
+  showSettingsMessage(t('saving'))
   try {
     const res = await fetch('/api/config', {
       method: 'POST',
@@ -177,20 +283,20 @@ settingsForm.addEventListener('submit', async (e) => {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'error')
-    openaiKeyInput.value = ''
+    llmKeyInput.value = ''
+    embeddingKeyInput.value = ''
     azureKeyInput.value = ''
     const status = await refreshConfigStatus()
-    if ((body.azureKey || body.azureRegion) && status.azure) await initSpeech()
-    settingsMessage.classList.add('ok')
-    settingsMessage.textContent = t('saved')
-    if (status.openai && status.azure && synth) setReady()
+    if (body.azureKey || body.azureRegion) await initSpeech()
+    showSettingsMessage(t('saved'), 'ok')
+    if (status.llm && synth) setReady()
   } catch (err) {
     const code = err.message
-    settingsMessage.classList.add('error')
-    settingsMessage.textContent = t(
-      code === 'invalid_openai_key' ? 'invalidOpenai'
-        : code === 'invalid_azure' ? 'invalidAzure'
-          : code === 'api_unreachable' ? 'apiUnreachable' : 'saveFailed')
+    showSettingsMessage(t(
+      code === 'invalid_llm' ? 'invalidLlm'
+        : code === 'invalid_embedding_key' ? 'invalidEmbedding'
+          : code === 'invalid_azure' ? 'invalidAzure'
+            : code === 'api_unreachable' ? 'apiUnreachable' : 'saveFailed'), 'error')
   } finally {
     settingsSave.disabled = false
   }
@@ -202,7 +308,7 @@ function chooseLanguage(code) {
   setLang(code)
   renderLangGrid()
   applyStaticTexts()
-  renderKeyFields()
+  renderSettingsFields()
   if (SHOW_RECORDER) renderRecordButton()
   synth?.setLanguage(getLangInfo())
   renderHistory()
@@ -345,8 +451,8 @@ async function respond(userText, showUser = true) {
     apiActions  = data.actions ?? []
     apiAnnotation = data.annotation ?? null
   } catch (err) {
-    speech = err.message === 'missing_openai_key' ? t('missingKeys') : t('commsDown')
-    if (err.message === 'missing_openai_key') openSettings()
+    speech = err.message === 'missing_llm' ? t('missingKeys') : t('commsDown')
+    if (err.message === 'missing_llm') openSettings()
     console.error('[Chat]', err)
   }
 

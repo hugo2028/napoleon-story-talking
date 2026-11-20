@@ -80,22 +80,29 @@ Tout le reste découle de ce choix :
   comme si Napoléon venait de la relire, et l'on plonge dans le jour où elle a été écrite.
 - **Le temps rendu visible.** À l'écran, l'épisode, la période, le chapitre et les dates des lettres
   racontées avancent avec le récit. Chaque réplique renvoie à la page de l'édition sur Gallica.
-- **Une présence incarnée, dans six langues.** La voix Azure pilote la synchronisation labiale et
-  Napoléon choisit ses gestes. Le corpus reste en français, et la conversation se tient en français,
+- **Une présence incarnée, dans six langues.** Napoléon parle et choisit ses gestes. Avec Azure Speech,
+  sa voix est neuronale et pilote la synchronisation labiale ; sans Azure, il parle avec la voix du
+  navigateur. Le corpus reste en français, et la conversation se tient en français,
   anglais, espagnol, italien, allemand ou portugais.
 
 ## Architecture
 
 ```
-web/            Interface (Vite) + relais Node/Express (port 3002) — voix Azure, avatar three.js
-pipeline/       API Flask (port 5001), archiviste (napoleon_archivist.py), narrateur (napoleon_agent.py)
+web/            Interface (Vite) + relais Node/Express (port 3002) — voix, avatar three.js ou médaillon 2D
+pipeline/       API Flask (port 5001), archiviste (napoleon_archivist.py), narrateur (napoleon_agent.py),
+                connecteur universel compatible OpenAI (llm_connector.py)
 scripts/        download_data.py : télécharge les bases RAG depuis la Release GitHub
 data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings), non versionnées
 ```
 
 ## Installation
 
-Prérequis : Python 3.11+, Node.js 18+, une clé OpenAI et une ressource Azure Speech.
+| | Ce qu'il faut | Sans |
+|---|---|---|
+| **Requis** | Python 3.11+, Node.js 18+ et **un modèle de langage** accessible par une API compatible OpenAI : OpenAI, Anthropic, Mistral, Google Gemini, OpenRouter, Groq, ou **Ollama**, gratuit et en local | — |
+| Optionnel | Une clé **OpenAI** pour la recherche sémantique, si le fournisseur choisi n'est pas OpenAI | l'archiviste cherche par mots-clés |
+| Optionnel | Une ressource **Azure Speech** (offre gratuite F0) : voix neuronale et lèvres synchronisées | la voix intégrée au navigateur, gratuite (les voix « Natural » d'Edge sont les meilleures) |
+| Optionnel | Un **avatar 3D** `web/avatar/avatar.glb` (voir plus bas) | un médaillon 2D animé |
 
 ```bash
 git clone https://github.com/hugo2028/napoleon-story-talking.git
@@ -113,11 +120,16 @@ python pipeline/napoleon_api.py
 cd web && npm run dev
 ```
 
-Puis ouvrez <http://localhost:5174>. Au premier lancement, le panneau **⚙ Paramètres** s'ouvre : choisissez
-la langue et saisissez votre clé OpenAI, votre clé Azure Speech et sa région (l'offre gratuite F0 d'Azure
-suffit pour un usage personnel). Les clés sont vérifiées auprès d'OpenAI et d'Azure, puis enregistrées
-dans le fichier `.env` local, et ne quittent pas votre ordinateur. Vous pouvez aussi les renseigner
-directement dans `.env` à partir de `.env.example`.
+Puis ouvrez <http://localhost:5174>. Au premier lancement, le panneau **⚙ Paramètres** s'ouvre :
+
+1. choisissez la langue ;
+2. choisissez le fournisseur et saisissez sa clé : la liste des modèles est lue sur son API, et vous
+   choisissez celui de l'archiviste (il doit gérer l'appel d'outils) et celui du narrateur ;
+3. si vous le souhaitez, ajoutez une clé OpenAI pour la recherche sémantique et une clé Azure Speech
+   pour la voix.
+
+Les clés sont vérifiées auprès de chaque service, puis enregistrées dans le fichier `.env` local : elles ne
+quittent pas votre ordinateur. Vous pouvez aussi remplir `.env` à la main à partir de `.env.example`.
 
 ## L'avatar 3D
 

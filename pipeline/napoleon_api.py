@@ -31,6 +31,7 @@ load_dotenv(ROOT / ".env")
 
 from flask import Flask, request, jsonify
 from openai import OpenAI
+from llm_connector import CompatClient, OPENAI_BASE_URL, is_openai, parse_json_object
 
 from napoleon_agent import (
     RAG_DB, MEMOIR_DB, EVENTS_FILE, SYSTEM_PROMPT, AVATAR_GESTURE_ANIMATIONS,
@@ -45,13 +46,22 @@ from napoleon_agent import (
 # Init au démarrage
 # ---------------------------------------------------------------------------
 
-openai_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
-# Sans clé, l'API démarre quand même : la clé peut être saisie dans « Paramètres » de l'interface.
-embed_client = OpenAI(api_key=openai_key) if openai_key else None
-chat_client  = embed_client
-model        = os.getenv("LLM_MODEL", "gpt-4.1-mini")
-if not openai_key:
-    print("Clé OpenAI absente : saisissez-la dans « Paramètres » de l'interface (ou LLM_API_KEY dans .env).")
+# Partie agent : connecteur universel (toute API compatible OpenAI) + choix des modèles.
+# Sans configuration, l'API démarre quand même : tout se règle dans « Paramètres » de l'interface.
+llm_base_url = os.getenv("LLM_BASE_URL") or OPENAI_BASE_URL
+llm_key      = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
+model        = os.getenv("LLM_MODEL", "gpt-4.1-mini")         # narrateur
+agent_model  = os.getenv("AGENT_MODEL", "gpt-4.1")            # archiviste
+# Embeddings OpenAI (recherche sémantique), optionnels : même clé si le fournisseur est OpenAI.
+embed_key    = os.getenv("EMBEDDING_API_KEY") or (llm_key if is_openai(llm_base_url) else None)
+
+_local_llm   = not is_openai(llm_base_url) and ("localhost" in llm_base_url or "127.0.0.1" in llm_base_url)
+chat_client  = CompatClient(llm_base_url, llm_key) if (llm_key or _local_llm) else None
+embed_client = OpenAI(api_key=embed_key) if embed_key else None
+if chat_client is None:
+    print("Aucun modèle configuré : choisissez-le dans « Paramètres » de l'interface (ou LLM_API_KEY dans .env).")
+if embed_client is None:
+    print("Pas de clé d'embeddings OpenAI : l'archiviste cherchera par mots-clés.")
 
 if not RAG_DB.exists():
     sys.exit(f"Base RAG introuvable : {RAG_DB}\n"
@@ -72,9 +82,10 @@ events_data = json.loads(EVENTS_FILE.read_text(encoding="utf-8"))
 
 # Mode de pilotage du récit : "autonome" (archiviste à outils) ou "classique" (pipeline historique)
 AGENT_MODE = os.getenv("AGENT_MODE", "autonome").strip().lower()
-from napoleon_archivist import Archivist, AGENT_MODEL  # noqa: E402
-archivist = Archivist(embed_client, conn, emb_matrix, chunk_ids, m_conn, m_matrix, m_ids, events_data)
-print(f"Mode de récit : {AGENT_MODE}" + (f" (archiviste : {AGENT_MODEL})" if AGENT_MODE == "autonome" else ""))
+from napoleon_archivist import Archivist  # noqa: E402
+archivist = Archivist(chat_client, conn, emb_matrix, chunk_ids, m_conn, m_matrix, m_ids, events_data,
+                      model=agent_model, embed_client=embed_client)
+print(f"Mode de récit : {AGENT_MODE} — {llm_base_url} (archiviste : {agent_model}, narrateur : {model})")
 
 
 # Métadonnées Gallica par tome de correspondance.
@@ -261,7 +272,7 @@ def _traduire(textes: list[str], lang: str) -> list[str]:
                     f"Traduis en {LANGUES[lang]} ces libellés d'un récit sur Napoléon, fidèlement et sans "
                     "rien ajouter. Réponds en JSON : {\"traductions\": [...]} dans le même ordre.\n"
                     + json.dumps(manquants, ensure_ascii=False))}])
-            out = json.loads(resp.choices[0].message.content or "{}").get("traductions") or []
+            out = parse_json_object(resp.choices[0].message.content).get("traductions") or []
             for src, dst in zip(manquants, out):
                 if isinstance(dst, str) and dst.strip():
                     _traductions[(lang, src)] = dst.strip()
@@ -465,36 +476,79 @@ app = Flask(__name__)
 _LOCAL_ADDRS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
 
 
-def _set_openai_key(key: str) -> None:
-    """Remplace la clé OpenAI à chaud : clients du narrateur, des embeddings et de l'archiviste."""
-    global openai_key, embed_client, chat_client
-    client = OpenAI(api_key=key)
-    openai_key, embed_client, chat_client = key, client, client
-    archivist.client = client
+def _apply_agent_config(base_url, key, narrator_model, archivist_model, embedding_key):
+    """Applique à chaud la configuration de la partie agent (narrateur + archiviste + embeddings)."""
+    global llm_base_url, llm_key, model, agent_model, embed_key, chat_client, embed_client
+    llm_base_url, llm_key = base_url, key
+    model, agent_model = narrator_model, archivist_model
+    chat_client = CompatClient(base_url, key)
+    archivist.client, archivist.model = chat_client, archivist_model
+    if embedding_key is not None:
+        embed_key = embedding_key or None
+        embed_client = OpenAI(api_key=embed_key) if embed_key else None
+        archivist.embed_client = embed_client
 
 
 @app.get("/config/status")
 def config_status():
-    # Jamais la clé elle-même : seulement si elle est configurée.
-    return jsonify({"openai": bool(openai_key)})
+    # Jamais les clés elles-mêmes : seulement ce qui est configuré.
+    return jsonify({"llm": chat_client is not None, "base_url": llm_base_url, "model": model,
+                    "agent_model": agent_model, "embeddings": embed_client is not None,
+                    "has_key": bool(llm_key)})
+
+
+def _local_only():
+    return request.remote_addr in _LOCAL_ADDRS
+
+
+@app.post("/config/models")
+def list_models():
+    """Modèles proposés par un fournisseur (pour la liste de choix). Machine locale uniquement."""
+    if not _local_only():
+        return jsonify({"error": "forbidden"}), 403
+    data = request.json or {}
+    base_url = (data.get("base_url") or OPENAI_BASE_URL).strip()
+    key = (data.get("api_key") or "").strip() or (llm_key if base_url == llm_base_url else None)
+    try:
+        return jsonify({"models": CompatClient(base_url, key).list_models()})
+    except Exception as exc:
+        print(f"[CONFIG] liste des modèles impossible ({base_url}) : {type(exc).__name__}")
+        return jsonify({"error": "invalid_llm"}), 400
 
 
 @app.post("/config")
 def set_config():
-    """Clé OpenAI saisie dans l'interface. Accepté uniquement depuis la machine locale."""
-    if request.remote_addr not in _LOCAL_ADDRS:
+    """Configuration de la partie agent saisie dans l'interface. Machine locale uniquement.
+
+    Le fournisseur est vérifié (liste des modèles) avant d'être appliqué ; la clé d'embeddings,
+    optionnelle, est vérifiée auprès d'OpenAI. Les valeurs retenues sont renvoyées (sans les clés)
+    pour être écrites dans .env par le serveur Node."""
+    if not _local_only():
         return jsonify({"error": "forbidden"}), 403
-    key = ((request.json or {}).get("openai_key") or "").strip()
-    if not key:
-        return jsonify({"error": "missing_openai_key"}), 400
+    data = request.json or {}
+    base_url = (data.get("base_url") or llm_base_url).strip().rstrip("/")
+    key = (data.get("api_key") or "").strip() or (llm_key if base_url == llm_base_url else "")
+    narrator = (data.get("model") or model).strip()
+    archivist_m = (data.get("agent_model") or agent_model).strip()
+    emb = data.get("embedding_key")
+    emb = emb.strip() if isinstance(emb, str) else None
+    if emb is None and is_openai(base_url) and key:
+        emb = key                       # fournisseur OpenAI : la même clé sert aux embeddings
     try:
-        OpenAI(api_key=key).models.list()   # vérifie la clé sans rien consommer
+        CompatClient(base_url, key).list_models()
     except Exception as exc:
-        print(f"[CONFIG] clé OpenAI refusée : {type(exc).__name__}")
-        return jsonify({"error": "invalid_openai_key"}), 400
-    _set_openai_key(key)
-    print("[CONFIG] clé OpenAI mise à jour depuis l'interface")
-    return jsonify({"openai": True})
+        print(f"[CONFIG] fournisseur refusé ({base_url}) : {type(exc).__name__}")
+        return jsonify({"error": "invalid_llm"}), 400
+    if emb:
+        try:
+            OpenAI(api_key=emb).models.list()
+        except Exception:
+            return jsonify({"error": "invalid_embedding_key"}), 400
+    _apply_agent_config(base_url, key, narrator, archivist_m, emb)
+    print(f"[CONFIG] agent : {base_url} — archiviste {archivist_m}, narrateur {narrator}, "
+          f"embeddings {'oui' if embed_client else 'non'}")
+    return jsonify({"ok": True, "base_url": base_url, "model": narrator, "agent_model": archivist_m,
+                    "embeddings": embed_client is not None})
 
 
 @app.post("/chat")
@@ -507,7 +561,7 @@ def chat():
     if not message:
         return jsonify({"error": "message requis"}), 400
     if chat_client is None:
-        return jsonify({"error": "missing_openai_key"}), 503
+        return jsonify({"error": "missing_llm"}), 503
 
     if AGENT_MODE == "autonome":
         with sessions_lock:
