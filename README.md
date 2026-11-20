@@ -104,8 +104,6 @@ cd napoleon-story-talking
 pip install -r requirements.txt
 python scripts/download_data.py   # bases RAG (≈285 Mo) depuis la Release GitHub, empreintes vérifiées
 cd web && npm install && cd ..
-
-cp .env.example .env    # puis renseignez LLM_API_KEY, AZURE_SPEECH_KEY, AZURE_SPEECH_REGION
 ```
 
 Lancement, dans deux terminaux :
@@ -115,7 +113,11 @@ python pipeline/napoleon_api.py
 cd web && npm run dev
 ```
 
-Puis ouvrez <http://localhost:5174>.
+Puis ouvrez <http://localhost:5174>. Au premier lancement, le panneau **⚙ Paramètres** s'ouvre : choisissez
+la langue et saisissez votre clé OpenAI, votre clé Azure Speech et sa région (l'offre gratuite F0 d'Azure
+suffit pour un usage personnel). Les clés sont vérifiées auprès d'OpenAI et d'Azure, puis enregistrées
+dans le fichier `.env` local, et ne quittent pas votre ordinateur. Vous pouvez aussi les renseigner
+directement dans `.env` à partir de `.env.example`.
 
 ## L'avatar 3D
 

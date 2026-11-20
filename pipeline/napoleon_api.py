@@ -46,12 +46,12 @@ from napoleon_agent import (
 # ---------------------------------------------------------------------------
 
 openai_key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
-if not openai_key:
-    raise RuntimeError("Clé API OpenAI introuvable dans .env (LLM_API_KEY)")
-
-embed_client = OpenAI(api_key=openai_key)
+# Sans clé, l'API démarre quand même : la clé peut être saisie dans « Paramètres » de l'interface.
+embed_client = OpenAI(api_key=openai_key) if openai_key else None
 chat_client  = embed_client
 model        = os.getenv("LLM_MODEL", "gpt-4.1-mini")
+if not openai_key:
+    print("Clé OpenAI absente : saisissez-la dans « Paramètres » de l'interface (ou LLM_API_KEY dans .env).")
 
 if not RAG_DB.exists():
     sys.exit(f"Base RAG introuvable : {RAG_DB}\n"
@@ -462,6 +462,40 @@ sessions_lock = Lock()
 
 app = Flask(__name__)
 
+_LOCAL_ADDRS = {"127.0.0.1", "::1", "::ffff:127.0.0.1"}
+
+
+def _set_openai_key(key: str) -> None:
+    """Remplace la clé OpenAI à chaud : clients du narrateur, des embeddings et de l'archiviste."""
+    global openai_key, embed_client, chat_client
+    client = OpenAI(api_key=key)
+    openai_key, embed_client, chat_client = key, client, client
+    archivist.client = client
+
+
+@app.get("/config/status")
+def config_status():
+    # Jamais la clé elle-même : seulement si elle est configurée.
+    return jsonify({"openai": bool(openai_key)})
+
+
+@app.post("/config")
+def set_config():
+    """Clé OpenAI saisie dans l'interface. Accepté uniquement depuis la machine locale."""
+    if request.remote_addr not in _LOCAL_ADDRS:
+        return jsonify({"error": "forbidden"}), 403
+    key = ((request.json or {}).get("openai_key") or "").strip()
+    if not key:
+        return jsonify({"error": "missing_openai_key"}), 400
+    try:
+        OpenAI(api_key=key).models.list()   # vérifie la clé sans rien consommer
+    except Exception as exc:
+        print(f"[CONFIG] clé OpenAI refusée : {type(exc).__name__}")
+        return jsonify({"error": "invalid_openai_key"}), 400
+    _set_openai_key(key)
+    print("[CONFIG] clé OpenAI mise à jour depuis l'interface")
+    return jsonify({"openai": True})
+
 
 @app.post("/chat")
 def chat():
@@ -472,6 +506,8 @@ def chat():
 
     if not message:
         return jsonify({"error": "message requis"}), 400
+    if chat_client is None:
+        return jsonify({"error": "missing_openai_key"}), 503
 
     if AGENT_MODE == "autonome":
         with sessions_lock:

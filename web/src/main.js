@@ -22,9 +22,19 @@ const contextLettres  = document.getElementById('context-lettres')
 const startBtn     = document.getElementById('start-conversation-btn')
 const endBtn       = document.getElementById('end-conversation-btn')
 const resetBtn     = document.getElementById('reset-conversation-btn')
-const langButton   = document.getElementById('lang-button')
-const langMenu     = document.getElementById('lang-menu')
 const recordBtn    = document.getElementById('record-btn')
+const settingsBtn      = document.getElementById('settings-btn')
+const settingsDialog   = document.getElementById('settings-dialog')
+const settingsForm     = document.getElementById('settings-form')
+const settingsClose    = document.getElementById('settings-close')
+const settingsSave     = document.getElementById('settings-save')
+const settingsMessage  = document.getElementById('settings-message')
+const langGrid         = document.getElementById('lang-grid')
+const openaiKeyInput   = document.getElementById('openai-key')
+const azureKeyInput    = document.getElementById('azure-key')
+const azureRegionInput = document.getElementById('azure-region')
+const openaiState      = document.getElementById('openai-state')
+const azureState       = document.getElementById('azure-state')
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let avatar   = null
@@ -41,7 +51,7 @@ const MAX_VISIBLE_MESSAGES = 80
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
-  initLanguage()
+  initSettings()
   setStatus(t('loadingAvatar'), false)
   restoreConversation()
   renderHistory()
@@ -61,87 +71,148 @@ async function init() {
     return
   }
 
+  const status = await refreshConfigStatus()
+  if (status.azure) await initSpeech()
+  ready = true
+  if (!status.api) setStatus(t('apiUnreachable'), false)
+  else if (!status.openai || !status.azure) {
+    setStatus(t('missingKeys'), false)
+    openSettings()
+  } else if (synth) setReady()
+  updateControls()
+}
+
+/** (Re)crée la synthèse vocale Azure — au démarrage ou après la saisie d'une clé. */
+async function initSpeech() {
   try {
+    synth?.stop()
     synth = await SpeechSynth.create(getLangInfo())
     synth.onViseme = (id)    => avatar?.setViseme(id)
     synth.onAction = (anim)  => avatar?.switchAnimation(anim)
     synth.onStart  = () => { speaking = true;  avatar?.startTalking() }
     synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); setReady() }
-    ready = true
-    setReady()
+    return true
   } catch (err) {
     console.error('[Speech] Erreur init TTS:', err)
+    synth = null
     setStatus(t('ttsUnavailable') + (err.message || err), false)
-    ready = true
+    return false
   }
-
-  updateControls()
 }
 
-// ── Langue ────────────────────────────────────────────────────────────────────
-function initLanguage() {
+// ── Paramètres : langue + clés API ───────────────────────────────────────────
+let configStatus = { openai: false, azure: false, azureRegion: '', api: false }
+
+async function refreshConfigStatus() {
+  try {
+    const res = await fetch('/api/config-status')
+    configStatus = await res.json()
+  } catch {
+    configStatus = { openai: false, azure: false, azureRegion: '', api: false }
+  }
+  renderKeyFields()
+  return configStatus
+}
+
+function initSettings() {
   for (const [code, info] of Object.entries(LANGS)) {
-    const li = document.createElement('li')
     const btn = document.createElement('button')
     btn.type = 'button'
-    btn.setAttribute('role', 'option')
+    btn.className = 'lang-option'
     btn.dataset.lang = code
     btn.innerHTML = info.flag   // SVG statique défini dans i18n.js
     btn.append(document.createTextNode(info.label))
-    btn.addEventListener('click', () => { chooseLanguage(code); closeLangMenu(true) })
-    li.appendChild(btn)
-    langMenu.appendChild(li)
+    btn.addEventListener('click', () => chooseLanguage(code))
+    langGrid.appendChild(btn)
   }
-  renderLangButton()
+  renderLangGrid()
   applyStaticTexts()
+  renderKeyFields()
 }
 
-function renderLangButton() {
-  const info = getLangInfo()
-  langButton.innerHTML = `${info.flag}<span>${info.label}</span><span class="caret">▾</span>`
-  for (const btn of langMenu.querySelectorAll('button')) {
-    btn.setAttribute('aria-selected', String(btn.dataset.lang === getLang()))
+function renderLangGrid() {
+  for (const btn of langGrid.querySelectorAll('button')) {
+    btn.setAttribute('aria-pressed', String(btn.dataset.lang === getLang()))
   }
 }
 
-function openLangMenu() {
-  langMenu.hidden = false
-  langButton.setAttribute('aria-expanded', 'true')
-  langMenu.querySelector('[aria-selected="true"]')?.focus()
+/** Champs de clés : jamais pré-remplis ; un champ vide conserve la clé déjà configurée. */
+function renderKeyFields() {
+  openaiKeyInput.placeholder = configStatus.openai ? t('keyConfigured') : 'sk-…'
+  azureKeyInput.placeholder = configStatus.azure ? t('keyConfigured') : t('azureKeyPlaceholder')
+  if (!azureRegionInput.value) azureRegionInput.value = configStatus.azureRegion || ''
+  openaiState.textContent = configStatus.openai ? '✓' : ''
+  azureState.textContent = configStatus.azure ? '✓' : ''
 }
 
-function closeLangMenu(focusButton = false) {
-  langMenu.hidden = true
-  langButton.setAttribute('aria-expanded', 'false')
-  if (focusButton) langButton.focus()
+function openSettings() {
+  settingsMessage.textContent = ''
+  renderKeyFields()
+  if (!settingsDialog.open) settingsDialog.showModal()
 }
 
-langButton.addEventListener('click', () => (langMenu.hidden ? openLangMenu() : closeLangMenu()))
-document.addEventListener('click', (e) => {
-  if (!langMenu.hidden && !e.target.closest('#lang-picker')) closeLangMenu()
-})
-langMenu.addEventListener('keydown', (e) => {
-  const items = [...langMenu.querySelectorAll('button')]
-  const i = items.indexOf(document.activeElement)
-  if (e.key === 'Escape') { e.preventDefault(); closeLangMenu(true) }
-  else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length].focus() }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length].focus() }
+settingsBtn.addEventListener('click', openSettings)
+settingsClose.addEventListener('click', () => settingsDialog.close())
+
+settingsForm.addEventListener('submit', async (e) => {
+  e.preventDefault()
+  const body = {
+    openaiKey: openaiKeyInput.value.trim(),
+    azureKey: azureKeyInput.value.trim(),
+    azureRegion: azureRegionInput.value.trim() !== (configStatus.azureRegion || '') || azureKeyInput.value.trim()
+      ? azureRegionInput.value.trim() : '',
+  }
+  if (!body.openaiKey && !body.azureKey && !body.azureRegion) {
+    settingsDialog.close()
+    return
+  }
+  settingsSave.disabled = true
+  settingsMessage.className = 'settings-message'
+  settingsMessage.textContent = t('saving')
+  try {
+    const res = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'error')
+    openaiKeyInput.value = ''
+    azureKeyInput.value = ''
+    const status = await refreshConfigStatus()
+    if ((body.azureKey || body.azureRegion) && status.azure) await initSpeech()
+    settingsMessage.classList.add('ok')
+    settingsMessage.textContent = t('saved')
+    if (status.openai && status.azure && synth) setReady()
+  } catch (err) {
+    const code = err.message
+    settingsMessage.classList.add('error')
+    settingsMessage.textContent = t(
+      code === 'invalid_openai_key' ? 'invalidOpenai'
+        : code === 'invalid_azure' ? 'invalidAzure'
+          : code === 'api_unreachable' ? 'apiUnreachable' : 'saveFailed')
+  } finally {
+    settingsSave.disabled = false
+  }
 })
 
 // La langue peut changer en cours de conversation : la réponse suivante et la voix suivent.
 function chooseLanguage(code) {
   if (code === getLang()) return
   setLang(code)
-  renderLangButton()
+  renderLangGrid()
   applyStaticTexts()
+  renderKeyFields()
+  if (SHOW_RECORDER) renderRecordButton()
   synth?.setLanguage(getLangInfo())
   renderHistory()
-  if (ready && !pending && !speaking) setReady()
+  if (ready && !pending && !speaking && synth) setReady()
   else updateControls()
 }
 
-// ── Enregistrement de démo ────────────────────────────────────────────────────
-const recorder = new DemoRecorder()
+// ── Enregistrement de démo (activé par VITE_DEMO_RECORDER=true dans .env) ────
+const SHOW_RECORDER = import.meta.env.VITE_DEMO_RECORDER === 'true'
+const recorder = SHOW_RECORDER ? new DemoRecorder() : null
 
 function renderRecordButton() {
   const on = recorder.recording
@@ -151,33 +222,34 @@ function renderRecordButton() {
   recordBtn.setAttribute('aria-pressed', String(on))
 }
 
-recorder.onStateChange = (on) => {
-  renderRecordButton()
-  if (!on) addBubble(t('recordingSaved'), 'system')
-}
-
-if (!recordingSupported()) {
-  recordBtn.disabled = true
-  recordBtn.title = t('recordingUnsupported')
-}
-
-recordBtn.addEventListener('click', async () => {
-  if (recorder.recording) {
-    recorder.stop()
-    return
-  }
-  try {
-    const { hasAudio } = await recorder.start()
-    addBubble(t(hasAudio ? 'recordingOn' : 'recordingNoAudio'), 'system')
-  } catch (err) {
-    // Refus de partage par l'utilisateur : rien à signaler
-    if (err?.name !== 'NotAllowedError') {
-      console.error('[Enregistrement]', err)
-      addBubble(t('recordingUnsupported'), 'system')
-    }
+if (SHOW_RECORDER) {
+  recordBtn.hidden = false
+  recorder.onStateChange = (on) => {
     renderRecordButton()
+    if (!on) addBubble(t('recordingSaved'), 'system')
   }
-})
+  if (!recordingSupported()) {
+    recordBtn.disabled = true
+    recordBtn.title = t('recordingUnsupported')
+  }
+  recordBtn.addEventListener('click', async () => {
+    if (recorder.recording) {
+      recorder.stop()
+      return
+    }
+    try {
+      const { hasAudio } = await recorder.start()
+      addBubble(t(hasAudio ? 'recordingOn' : 'recordingNoAudio'), 'system')
+    } catch (err) {
+      // Refus de partage par l'utilisateur : rien à signaler
+      if (err?.name !== 'NotAllowedError') {
+        console.error('[Enregistrement]', err)
+        addBubble(t('recordingUnsupported'), 'system')
+      }
+      renderRecordButton()
+    }
+  })
+}
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 startBtn.addEventListener('click', async () => {
@@ -273,7 +345,8 @@ async function respond(userText, showUser = true) {
     apiActions  = data.actions ?? []
     apiAnnotation = data.annotation ?? null
   } catch (err) {
-    speech = t('commsDown')
+    speech = err.message === 'missing_openai_key' ? t('missingKeys') : t('commsDown')
+    if (err.message === 'missing_openai_key') openSettings()
     console.error('[Chat]', err)
   }
 

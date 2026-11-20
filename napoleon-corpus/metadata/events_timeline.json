@@ -1,0 +1,110 @@
+[
+  {
+    "event": "Siège de Toulon",
+    "start": "1793-08-01",
+    "end": "1794-03-31",
+    "period_order": 2
+  },
+  {
+    "event": "Jeunesse et débuts militaires",
+    "start": "1794-04-01",
+    "end": "1796-02-28",
+    "period_order": 2
+  },
+  {
+    "event": "Première campagne d'Italie",
+    "start": "1796-03-01",
+    "end": "1797-10-31",
+    "period_order": 3
+  },
+  {
+    "event": "Campagne d'Égypte",
+    "start": "1798-05-01",
+    "end": "1799-10-31",
+    "period_order": 4
+  },
+  {
+    "event": "Coup d'État du 18 Brumaire",
+    "start": "1799-09-01",
+    "end": "1800-01-31",
+    "period_order": 5
+  },
+  {
+    "event": "Campagne de Marengo",
+    "start": "1800-04-01",
+    "end": "1800-07-31",
+    "period_order": 5
+  },
+  {
+    "event": "Consulat et paix d'Amiens",
+    "start": "1800-08-01",
+    "end": "1805-08-31",
+    "period_order": 5
+  },
+  {
+    "event": "Austerlitz",
+    "start": "1805-09-01",
+    "end": "1805-12-31",
+    "period_order": 6
+  },
+  {
+    "event": "Réorganisation de l'Empire",
+    "start": "1806-01-01",
+    "end": "1806-08-31",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne de Prusse et Pologne",
+    "start": "1806-09-01",
+    "end": "1807-07-31",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne d'Espagne",
+    "start": "1807-10-01",
+    "end": "1814-04-30",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne d'Autriche",
+    "start": "1809-04-01",
+    "end": "1809-10-31",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne de Russie",
+    "start": "1812-06-01",
+    "end": "1812-12-31",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne d'Allemagne",
+    "start": "1813-04-01",
+    "end": "1813-10-31",
+    "period_order": 6
+  },
+  {
+    "event": "Campagne de France",
+    "start": "1814-01-01",
+    "end": "1814-04-30",
+    "period_order": 6
+  },
+  {
+    "event": "Exil à l'île d'Elbe",
+    "start": "1814-05-01",
+    "end": "1815-02-28",
+    "period_order": 7
+  },
+  {
+    "event": "Cent-Jours et Waterloo",
+    "start": "1815-03-01",
+    "end": "1815-07-31",
+    "period_order": 7
+  },
+  {
+    "event": "Sainte-Hélène",
+    "start": "1815-10-01",
+    "end": "1821-05-31",
+    "period_order": 7
+  }
+]

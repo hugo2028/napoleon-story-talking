@@ -105,8 +105,6 @@ cd napoleon-story-talking
 pip install -r requirements.txt
 python scripts/download_data.py   # RAG databases (≈285 MB) from the GitHub Release, checksums verified
 cd web && npm install && cd ..
-
-cp .env.example .env    # then fill in LLM_API_KEY, AZURE_SPEECH_KEY, AZURE_SPEECH_REGION
 ```
 
 Run it in two terminals:
@@ -116,7 +114,10 @@ python pipeline/napoleon_api.py
 cd web && npm run dev
 ```
 
-Then open <http://localhost:5174>. Pick the conversation language with the flag menu.
+Then open <http://localhost:5174>. On first launch, the **⚙ Settings** panel opens: choose the language and
+enter your OpenAI key, your Azure Speech key and its region (Azure's free F0 tier is enough for personal
+use). The keys are checked with OpenAI and Azure, then saved to the local `.env` file, and never leave
+your computer. You can also fill them in `.env` directly, starting from `.env.example`.
 
 ## The 3D avatar
 

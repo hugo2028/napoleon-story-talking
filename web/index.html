@@ -180,22 +180,8 @@
       white-space: nowrap;
     }
 
-    #lang-picker {
-      position: relative;
+    #settings-btn {
       flex-basis: 100%;
-    }
-
-    #lang-button {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-    }
-
-    #lang-button .caret {
-      font-size: 9px;
-      color: var(--text-dim);
     }
 
     .flag {
@@ -206,47 +192,156 @@
       box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18);
     }
 
-    #lang-menu {
-      position: absolute;
-      top: calc(100% + 4px);
-      right: 0;
-      z-index: 20;
-      min-width: 100%;
-      margin: 0;
-      padding: 4px;
-      list-style: none;
+    /* ── Paramètres ─────────────────────────────────────────────────── */
+    #settings-dialog {
+      margin: auto;   /* la remise à zéro globale des marges annule le centrage natif */
+      width: min(440px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      padding: 0;
       background: var(--surface2);
+      color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+      font-family: system-ui, sans-serif;
     }
 
-    #lang-menu[hidden] { display: none; }
+    #settings-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+    }
 
-    #lang-menu button {
-      width: 100%;
+    #settings-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 20px;
+    }
+
+    .settings-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .settings-head h3 {
+      font-family: Georgia, serif;
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    #settings-close {
+      background: none;
+      border: 0;
+      color: var(--text-dim);
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+
+    #settings-close:hover,
+    #settings-close:focus-visible { color: var(--gold); }
+
+    .settings-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-section h4 {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .settings-note {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-dim);
+    }
+
+    .settings-note a { color: var(--gold); }
+
+    #lang-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 6px;
+    }
+
+    .lang-option {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 7px 10px;
-      background: none;
-      border: 0;
-      border-radius: 6px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--border);
+      border-radius: 8px;
       color: var(--text);
       font-size: 12px;
-      font-family: system-ui, sans-serif;
-      text-align: left;
+      font-family: inherit;
       cursor: pointer;
-      white-space: nowrap;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
     }
 
-    #lang-menu button:hover,
-    #lang-menu button:focus-visible,
-    #lang-menu button[aria-selected="true"] {
-      background: rgba(201, 168, 76, 0.12);
+    .lang-option:hover,
+    .lang-option:focus-visible { border-color: var(--gold-dim); outline: none; }
+
+    .lang-option[aria-pressed="true"] {
       color: var(--gold);
-      outline: none;
+      border-color: var(--gold-dim);
+      background: rgba(201, 168, 76, 0.12);
     }
+
+    .key-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      font-size: 12px;
+    }
+
+    .key-field span {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text);
+    }
+
+    .key-state { color: var(--gold); }
+
+    .key-field input {
+      width: 100%;
+      padding: 8px 10px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: ui-monospace, Consolas, monospace;
+    }
+
+    .key-field input:focus { outline: none; border-color: var(--gold-dim); }
+
+    .settings-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .settings-message {
+      font-size: 12px;
+      color: var(--text-dim);
+      min-height: 1em;
+    }
+
+    .settings-message.ok { color: var(--gold); }
+    .settings-message.error { color: #ff8a7a; }
 
     #record-btn.recording {
       color: #ff6b5e;
@@ -600,15 +695,11 @@
           <p data-i18n="chatIntro">Interrogez l'Empereur sur sa vie, ses campagnes et son empire.</p>
         </div>
         <div id="chat-actions">
-          <div id="lang-picker">
-            <button type="button" id="lang-button" class="chat-action" aria-haspopup="listbox"
-                    aria-expanded="false" data-i18n-aria="language" aria-label="Langue"></button>
-            <ul id="lang-menu" role="listbox" hidden></ul>
-          </div>
+          <button type="button" id="settings-btn" class="chat-action" data-i18n="settings">⚙ Paramètres</button>
           <button type="button" id="start-conversation-btn" class="chat-action primary" data-i18n="start">Commencer</button>
           <button type="button" id="end-conversation-btn" class="chat-action" data-i18n="end">Finir</button>
           <button type="button" id="reset-conversation-btn" class="chat-action" data-i18n="reset">Reset</button>
-          <button type="button" id="record-btn" class="chat-action" data-i18n="record">● Enregistrer</button>
+          <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
         </div>
       </div>
     </div>
@@ -628,6 +719,48 @@
       </form>
     </div>
   </div>
+
+
+  <!-- Paramètres : langue et clés API (enregistrées dans le .env local) -->
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <form id="settings-form" method="dialog">
+      <div class="settings-head">
+        <h3 id="settings-title" data-i18n="settingsTitle">Paramètres</h3>
+        <button type="button" id="settings-close" data-i18n-aria="close" aria-label="Fermer">×</button>
+      </div>
+
+      <section class="settings-section">
+        <h4 data-i18n="language">Langue</h4>
+        <div id="lang-grid"></div>
+      </section>
+
+      <section class="settings-section">
+        <h4 data-i18n="keysTitle">Clés API</h4>
+        <p class="settings-note" data-i18n="keysIntro"></p>
+        <label class="key-field">
+          <span><span data-i18n="openaiKey">Clé OpenAI</span><span class="key-state" id="openai-state"></span></span>
+          <input type="password" id="openai-key" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="key-field">
+          <span><span data-i18n="azureKey">Clé Azure Speech</span><span class="key-state" id="azure-state"></span></span>
+          <input type="password" id="azure-key" autocomplete="off" spellcheck="false" />
+        </label>
+        <label class="key-field">
+          <span data-i18n="azureRegion">Région Azure</span>
+          <input type="text" id="azure-region" autocomplete="off" spellcheck="false" placeholder="francecentral" />
+        </label>
+        <p class="settings-note">
+          <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" data-i18n="getOpenaiKey"></a> ·
+          <a href="https://portal.azure.com/#create/Microsoft.CognitiveServicesSpeechServices" target="_blank" rel="noopener" data-i18n="getAzureKey"></a>
+        </p>
+      </section>
+
+      <div class="settings-actions">
+        <span id="settings-message" class="settings-message" role="status"></span>
+        <button type="submit" id="settings-save" class="chat-action primary" data-i18n="save">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
 
   <script type="module" src="/src/main.js"></script>
 </body>

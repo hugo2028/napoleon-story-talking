@@ -41,6 +41,9 @@ web/avatar/
 *.mp4
 *.mov
 
-# Corpus source et scripts de lots (non publiés)
-napoleon-corpus/
+# Corpus source et scripts de lots (non publiés), sauf la chronologie lue par l'API
+napoleon-corpus/*
+!napoleon-corpus/metadata/
+napoleon-corpus/metadata/*
+!napoleon-corpus/metadata/events_timeline.json
 shards/

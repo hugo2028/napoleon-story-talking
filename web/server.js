@@ -1,10 +1,44 @@
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname  = path.dirname(__filename)
-dotenv.config({ path: path.join(__dirname, '..', '.env') })
+const ENV_PATH   = path.join(__dirname, '..', '.env')
+dotenv.config({ path: ENV_PATH })
+
+// ── Clés saisies dans « Paramètres » : écrites dans le .env local, jamais renvoyées ──
+const LOCAL_ADDRS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+const isLocal = (req) => LOCAL_ADDRS.has(req.socket.remoteAddress)
+
+/** Met à jour (ou ajoute) des variables dans .env sans toucher au reste du fichier. */
+function upsertEnv(vars) {
+  let text = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH, 'utf8') : ''
+  for (const [key, value] of Object.entries(vars)) {
+    const line = `${key}=${value}`
+    const re = new RegExp(`^#?\\s*${key}=.*$`, 'm')
+    text = re.test(text) ? text.replace(re, line) : `${text.replace(/\s*$/, '')}\n${line}\n`
+    process.env[key] = value
+  }
+  fs.writeFileSync(ENV_PATH, text.startsWith('\n') ? text.slice(1) : text)
+}
+
+const azureConfigured = () =>
+  Boolean(process.env.AZURE_SPEECH_KEY && (process.env.AZURE_SPEECH_REGION || process.env.AZURE_ENDPOINT))
+
+/** Vérifie une clé Azure Speech en demandant un jeton de 10 minutes à la région indiquée. */
+async function azureKeyWorks(key, region) {
+  try {
+    const res = await fetch(`https://${region}.api.cognitive.microsoft.com/sts/v1.0/issueToken`, {
+      method: 'POST',
+      headers: { 'Ocp-Apim-Subscription-Key': key, 'Content-Length': '0' },
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
 
 import express from 'express'
 import cors from 'cors'
@@ -35,6 +69,51 @@ app.get('/api/speech-config', (req, res) => {
     endpoint:    process.env.AZURE_ENDPOINT,
     ttsProvider: process.env.TTS_PROVIDER || 'azure',   // 'azure' | 'elevenlabs'
   })
+})
+
+// État des clés (sans jamais les renvoyer) : l'interface ouvre « Paramètres » s'il en manque une.
+app.get('/api/config-status', async (req, res) => {
+  let openai = false
+  let api = true
+  try {
+    const r = await fetch(`${NAPOLEON_API}/config/status`)
+    openai = Boolean((await r.json()).openai)
+  } catch {
+    api = false
+  }
+  res.json({ openai, azure: azureConfigured(), azureRegion: process.env.AZURE_SPEECH_REGION || '', api })
+})
+
+// Enregistre les clés saisies dans « Paramètres » (machine locale uniquement), après vérification.
+app.post('/api/config', async (req, res) => {
+  if (!isLocal(req)) return res.status(403).json({ error: 'forbidden' })
+  const openaiKey   = (req.body.openaiKey || '').trim()
+  const azureKey    = (req.body.azureKey || '').trim()
+  const azureRegion = (req.body.azureRegion || '').trim().toLowerCase()
+
+  if (azureKey || azureRegion) {
+    const key = azureKey || process.env.AZURE_SPEECH_KEY || ''
+    const region = azureRegion || process.env.AZURE_SPEECH_REGION || ''
+    if (!key || !/^[a-z0-9]+$/.test(region)) return res.status(400).json({ error: 'invalid_azure' })
+    if (!(await azureKeyWorks(key, region))) return res.status(400).json({ error: 'invalid_azure' })
+    upsertEnv({ AZURE_SPEECH_KEY: key, AZURE_SPEECH_REGION: region })
+  }
+
+  if (openaiKey) {
+    try {
+      const r = await fetch(`${NAPOLEON_API}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ openai_key: openaiKey }),
+      })
+      const data = await r.json()
+      if (!r.ok) return res.status(400).json({ error: data.error || 'invalid_openai_key' })
+    } catch {
+      return res.status(502).json({ error: 'api_unreachable' })
+    }
+    upsertEnv({ LLM_API_KEY: openaiKey })
+  }
+  res.json({ ok: true, azure: azureConfigured() })
 })
 
 // ElevenLabs TTS proxy — évite d'exposer la clé API au frontend
@@ -92,7 +171,7 @@ app.post('/api/chat', async (req, res) => {
     const data = await pyRes.json()
     if (!pyRes.ok) {
       console.error('[Agent]', data)
-      return res.status(pyRes.status).json({ error: data.error || 'Erreur agent' })
+      return res.status(pyRes.status).json({ error: data.error || 'Erreur agent', code: data.error })
     }
     res.json({ speech: data.speech || '', conversation_id: data.conversation_id, event: data.event, turn: data.turn, doc_count: data.doc_count ?? null, context: data.context ?? null, sources: data.sources ?? null, actions: data.actions ?? null, annotation: data.annotation ?? null })
   } catch (err) {
