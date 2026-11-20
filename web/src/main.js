@@ -1,7 +1,7 @@
 import { AvatarPlayer, avatarModelAvailable } from './avatar.js'
 import { PortraitAvatar } from './portraitAvatar.js'
 import { SpeechSynth, stripPauses } from './speechSynth.js'
-import { LANGS, t, getLang, getLangInfo, setLang, applyStaticTexts } from './i18n.js'
+import { LANGS, t, getLang, getLangInfo, getSpeechInfo, setLang, applyStaticTexts } from './i18n.js'
 import { DemoRecorder, recordingSupported } from './recorder.js'
 import { BrowserSpeech } from './browserSpeech.js'
 import { PROVIDERS, providerFromUrl } from './providers.js'
@@ -104,12 +104,12 @@ async function initSpeech() {
   synth = null
   try {
     // Azure ne sert qu'à synchroniser les lèvres de l'avatar 3D : sans modèle, voix du navigateur.
-    if (hasAvatarModel && configStatus.azure) synth = await SpeechSynth.create(getLangInfo())
+    if (hasAvatarModel && configStatus.azure) synth = await SpeechSynth.create(getSpeechInfo())
   } catch (err) {
     console.warn('[Speech] Azure indisponible, voix du navigateur :', err)
   }
   if (!synth && BrowserSpeech.supported()) {
-    try { synth = await BrowserSpeech.create(getLangInfo()) } catch (err) { console.warn('[Speech]', err) }
+    try { synth = await BrowserSpeech.create(getSpeechInfo()) } catch (err) { console.warn('[Speech]', err) }
   }
   if (!synth) return false
   synth.onViseme = (id)    => avatar?.setViseme(id)
@@ -313,7 +313,7 @@ function chooseLanguage(code) {
   applyStaticTexts()
   renderSettingsFields()
   if (SHOW_RECORDER) renderRecordButton()
-  synth?.setLanguage(getLangInfo())
+  synth?.setLanguage(getSpeechInfo())
   renderHistory()
   if (ready && !pending && !speaking && synth) setReady()
   else updateControls()
@@ -443,7 +443,7 @@ async function respond(userText, showUser = true) {
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversationId, lang: getLang(), messages: history.map(({ role, content }) => ({ role, content })) })
+      body: JSON.stringify({ conversationId, lang: getLang(), langName: getLangInfo().promptName, messages: history.map(({ role, content }) => ({ role, content })) })
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Erreur LLM')

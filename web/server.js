@@ -180,7 +180,7 @@ app.post('/api/tts', async (req, res) => {
 
 // Agent chat endpoint — proxy vers napoleon_api.py (Python Flask, port 5001)
 app.post('/api/chat', async (req, res) => {
-  const { conversationId, messages, lang } = req.body
+  const { conversationId, messages, lang, langName } = req.body
   const message = lastUserMessage(messages)
 
   if (!message) {
@@ -191,7 +191,7 @@ app.post('/api/chat', async (req, res) => {
     const pyRes = await fetch(`${NAPOLEON_API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation_id: conversationId || null, message, lang: lang || 'fr' })
+      body: JSON.stringify({ conversation_id: conversationId || null, message, lang: lang || 'fr', lang_name: langName || '' })
     })
     const data = await pyRes.json()
     if (!pyRes.ok) {

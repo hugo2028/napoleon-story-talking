@@ -1,459 +1,57 @@
-// Langues de l'interface et de la voix. Ajouter une langue = une entrée ici
-// (+ son code dans LANGUES de pipeline/napoleon_api.py).
+// Langues de l'interface et du récit.
+//
+// Ajouter une langue :
+//   1. une entrée dans LANGS ci-dessous (nom, locale, voix, nom donné au narrateur) ;
+//   2. ses libellés dans web/src/locales/<code>.json (scripts/translate_ui.py les génère) ;
+//   3. éventuellement son drapeau dans FLAGS.
+// L'API Python accepte toute langue envoyée par l'interface : rien d'autre à modifier.
+
+// Libellés : un fichier JSON par langue. Les pluriels sont des objets { one, few, many, other }
+// où {n} est remplacé par le nombre (catégories de Intl.PluralRules).
+const LOCALES = Object.fromEntries(
+  Object.entries(import.meta.glob('./locales/*.json', { eager: true, import: 'default' }))
+    .map(([path, strings]) => [path.match(/([\w-]+)\.json$/)[1], strings]),
+)
+
+// label        : nom de la langue dans la langue elle-même
+// locale       : langue de l'interface, des dates et des pluriels
+// speechLocale : langue de la voix si elle diffère (langues sans voix de synthèse : voix d'une langue proche)
+// voice        : voix Azure (utilisée seulement avec un avatar 3D)
+// promptName   : nom de la langue dans la consigne donnée au narrateur
+// dir          : 'rtl' pour les écritures de droite à gauche
 export const LANGS = {
-  fr: {
-    label: 'Français', locale: 'fr-FR', voice: 'fr-FR-AlainNeural',
-    strings: {
-      subtitle: 'Empereur des Français · 1769 – 1821',
-      chatTitle: 'Dialogue impérial',
-      chatIntro: 'Interrogez l\'Empereur sur sa vie, ses campagnes et son empire.',
-      start: 'Commencer', end: 'Finir', reset: 'Reset', send: 'Envoyer', language: 'Langue',
-      loadingAvatar: 'Chargement de l\'avatar…',
-      avatarError: 'Erreur avatar — vérifiez avatar/avatar.glb',
-      ttsUnavailable: 'TTS indisponible : ',
-      ttsError: 'Erreur TTS : ',
-      initializing: 'Initialisation…',
-      started: 'Conversation commencée. Posez votre première question à l\'Empereur.',
-      ended: 'Conversation terminée. Commencez une nouvelle conversation pour repartir à zéro.',
-      endedStatus: 'Conversation terminée',
-      endedHistory: 'Conversation terminée. L\'historique reste visible jusqu\'au prochain reset.',
-      empty: 'Commencez une conversation pour parler avec Napoléon.',
-      readyIdle: 'Prêt — commencez une conversation',
-      askQuestion: 'Posez votre question…',
-      thinking: 'Napoléon réfléchit…',
-      speaking: 'L\'Empereur parle…',
-      commsDown: 'Les communications sont interrompues.',
-      placeholderActive: 'Posez votre question à l\'Empereur…',
-      placeholderIdle: 'Commencez une conversation pour écrire…',
-      letters: n => `${n} lettre${n > 1 ? 's' : ''}`,
-      sources: 'sources', source: 'source', chapter: 'Chapitre',
-      record: "● Enregistrer", stopRecording: "■ Arrêter",
-      recordingOn: "Enregistrement en cours… Le fichier vidéo sera téléchargé à l'arrêt.",
-      recordingNoAudio: "Enregistrement sans son : relancez-le et cochez « Partager aussi l'audio de l'onglet ».",
-      recordingUnsupported: "Enregistrement vidéo non pris en charge par ce navigateur.",
-      recordingSaved: "Vidéo enregistrée dans vos téléchargements.",
-      settings: "⚙ Paramètres",
-      settingsTitle: "Paramètres",
-      azureKey: "Clé Azure Speech",
-      azureRegion: "Région Azure",
-      azureKeyPlaceholder: "clé de la ressource Speech",
-      keyConfigured: "configurée — laisser vide pour la conserver",
-      getAzureKey: "Créer une ressource Azure Speech (offre gratuite F0)",
-      save: "Enregistrer",
-      saving: "Vérification…",
-      saved: "Clés vérifiées et enregistrées.",
-      saveFailed: "Échec de l'enregistrement.",
-      close: "Fermer",
-      invalidAzure: "Clé ou région Azure refusée par Azure.",
-      apiUnreachable: "API Python injoignable : lancez python pipeline/napoleon_api.py.",
-      agentTitle: "Modèle de l'agent",
-      required: "requis",
-      optional: "optionnel",
-      agentIntro: "L'archiviste cherche dans les lettres et le narrateur fait parler Napoléon. Toute API compatible OpenAI convient. Les clés sont vérifiées puis enregistrées dans le fichier .env de votre ordinateur, jamais ailleurs.",
-      provider: "Fournisseur",
-      customProvider: "Autre (URL compatible OpenAI)",
-      baseUrl: "URL de l'API",
-      apiKey: "Clé API",
-      apiKeyPlaceholder: "clé du fournisseur",
-      agentModel: "Modèle de l'archiviste",
-      narratorModel: "Modèle du narrateur",
-      refreshModels: "↻ Actualiser la liste",
-      getKey: "Obtenir une clé",
-      modelHint: "Les modèles viennent de l'API du fournisseur. L'archiviste doit gérer l'appel d'outils (function calling) ; un modèle rapide suffit au narrateur.",
-      embeddingKey: "Clé OpenAI pour la recherche sémantique",
-      embeddingHint: "Les bases ont été indexées avec les embeddings d'OpenAI. Sans cette clé, l'archiviste cherche par mots-clés.",
-      voiceTitle: "Voix Azure Speech",
-      voiceIntro: "Pour votre avatar 3D : Azure Speech lui donne une voix neuronale et synchronise ses lèvres. Sans Azure, Napoléon parle avec la voix du navigateur.",
-      avatarTitle: "Avatar 3D",
-      avatarFound: "Modèle 3D détecté (web/avatar/avatar.glb).",
-      avatarMissing: "Aucun modèle 3D : un médaillon 2D le remplace et Napoléon parle avec la voix du navigateur. Pour un avatar 3D, déposez web/avatar/avatar.glb (voir le README).",
-      loadingModels: "Chargement des modèles…",
-      modelsNeedKey: "— saisissez la clé pour voir les modèles —",
-      chooseModels: "Choisissez un modèle pour l'archiviste et pour le narrateur.",
-      invalidLlm: "Fournisseur injoignable ou clé refusée.",
-      invalidEmbedding: "Clé OpenAI (recherche sémantique) refusée.",
-      missingKeys: "Aucun modèle configuré : choisissez-en un dans Paramètres.",
-      modelsLoaded: n => `${n} modèle${n > 1 ? 's' : ''} disponible${n > 1 ? 's' : ''}.`,
-    },
-  },
-  en: {
-    label: 'English', locale: 'en-GB', voice: 'en-GB-RyanNeural',
-    strings: {
-      subtitle: 'Emperor of the French · 1769 – 1821',
-      chatTitle: 'Imperial dialogue',
-      chatIntro: 'Ask the Emperor about his life, his campaigns and his empire.',
-      start: 'Start', end: 'End', reset: 'Reset', send: 'Send', language: 'Language',
-      loadingAvatar: 'Loading the avatar…',
-      avatarError: 'Avatar error — check avatar/avatar.glb',
-      ttsUnavailable: 'Speech unavailable: ',
-      ttsError: 'Speech error: ',
-      initializing: 'Initialising…',
-      started: 'Conversation started. Ask the Emperor your first question.',
-      ended: 'Conversation ended. Start a new conversation to begin again.',
-      endedStatus: 'Conversation ended',
-      endedHistory: 'Conversation ended. The history stays visible until the next reset.',
-      empty: 'Start a conversation to talk with Napoleon.',
-      readyIdle: 'Ready — start a conversation',
-      askQuestion: 'Ask your question…',
-      thinking: 'Napoleon is thinking…',
-      speaking: 'The Emperor is speaking…',
-      commsDown: 'Communications are cut off.',
-      placeholderActive: 'Ask the Emperor your question…',
-      placeholderIdle: 'Start a conversation to write…',
-      letters: n => `${n} letter${n > 1 ? 's' : ''}`,
-      sources: 'sources', source: 'source', chapter: 'Chapter',
-      record: "● Record", stopRecording: "■ Stop",
-      recordingOn: "Recording… The video file will download when you stop.",
-      recordingNoAudio: "Recording without sound: restart it and tick “Also share tab audio”.",
-      recordingUnsupported: "Video recording is not supported by this browser.",
-      recordingSaved: "Video saved to your downloads.",
-      settings: "⚙ Settings",
-      settingsTitle: "Settings",
-      azureKey: "Azure Speech key",
-      azureRegion: "Azure region",
-      azureKeyPlaceholder: "Speech resource key",
-      keyConfigured: "configured — leave empty to keep it",
-      getAzureKey: "Create an Azure Speech resource (free F0 tier)",
-      save: "Save",
-      saving: "Checking…",
-      saved: "Keys checked and saved.",
-      saveFailed: "Could not save.",
-      close: "Close",
-      invalidAzure: "Azure rejected this key or region.",
-      apiUnreachable: "Python API unreachable: run python pipeline/napoleon_api.py.",
-      agentTitle: "Agent model",
-      required: "required",
-      optional: "optional",
-      agentIntro: "The archivist searches the letters and the narrator gives Napoleon his voice. Any OpenAI-compatible API works. Keys are checked, then saved to the .env file on your computer and nowhere else.",
-      provider: "Provider",
-      customProvider: "Other (OpenAI-compatible URL)",
-      baseUrl: "API URL",
-      apiKey: "API key",
-      apiKeyPlaceholder: "provider key",
-      agentModel: "Archivist model",
-      narratorModel: "Narrator model",
-      refreshModels: "↻ Refresh list",
-      getKey: "Get a key",
-      modelHint: "Models come from the provider's API. The archivist needs tool calling (function calling); a fast model is enough for the narrator.",
-      embeddingKey: "OpenAI key for semantic search",
-      embeddingHint: "The databases were indexed with OpenAI embeddings. Without this key, the archivist searches by keyword.",
-      voiceTitle: "Azure Speech voice",
-      voiceIntro: "For your 3D avatar: Azure Speech gives it a neural voice and syncs its lips. Without Azure, Napoleon speaks with the browser's voice.",
-      avatarTitle: "3D avatar",
-      avatarFound: "3D model found (web/avatar/avatar.glb).",
-      avatarMissing: "No 3D model: a 2D medallion takes its place and Napoleon speaks with the browser's voice. For a 3D avatar, add web/avatar/avatar.glb (see the README).",
-      loadingModels: "Loading models…",
-      modelsNeedKey: "— enter the key to see the models —",
-      chooseModels: "Choose a model for the archivist and for the narrator.",
-      invalidLlm: "Provider unreachable or key rejected.",
-      invalidEmbedding: "OpenAI key (semantic search) rejected.",
-      missingKeys: "No model configured: choose one in Settings.",
-      modelsLoaded: n => `${n} model${n > 1 ? 's' : ''} available.`,
-    },
-  },
-  es: {
-    label: 'Español', locale: 'es-ES', voice: 'es-ES-AlvaroNeural',
-    strings: {
-      subtitle: 'Emperador de los franceses · 1769 – 1821',
-      chatTitle: 'Diálogo imperial',
-      chatIntro: 'Pregunte al Emperador por su vida, sus campañas y su imperio.',
-      start: 'Empezar', end: 'Terminar', reset: 'Reiniciar', send: 'Enviar', language: 'Idioma',
-      loadingAvatar: 'Cargando el avatar…',
-      avatarError: 'Error del avatar — compruebe avatar/avatar.glb',
-      ttsUnavailable: 'Voz no disponible: ',
-      ttsError: 'Error de voz: ',
-      initializing: 'Iniciando…',
-      started: 'Conversación iniciada. Haga su primera pregunta al Emperador.',
-      ended: 'Conversación terminada. Empiece una nueva conversación para volver a empezar.',
-      endedStatus: 'Conversación terminada',
-      endedHistory: 'Conversación terminada. El historial sigue visible hasta el próximo reinicio.',
-      empty: 'Empiece una conversación para hablar con Napoleón.',
-      readyIdle: 'Listo — empiece una conversación',
-      askQuestion: 'Haga su pregunta…',
-      thinking: 'Napoleón reflexiona…',
-      speaking: 'El Emperador habla…',
-      commsDown: 'Las comunicaciones están interrumpidas.',
-      placeholderActive: 'Haga su pregunta al Emperador…',
-      placeholderIdle: 'Empiece una conversación para escribir…',
-      letters: n => `${n} carta${n > 1 ? 's' : ''}`,
-      sources: 'fuentes', source: 'fuente', chapter: 'Capítulo',
-      record: "● Grabar", stopRecording: "■ Detener",
-      recordingOn: "Grabando… El archivo de vídeo se descargará al detener.",
-      recordingNoAudio: "Grabación sin sonido: reiníciela y marque «Compartir también el audio de la pestaña».",
-      recordingUnsupported: "Este navegador no permite grabar vídeo.",
-      recordingSaved: "Vídeo guardado en sus descargas.",
-      settings: "⚙ Ajustes",
-      settingsTitle: "Ajustes",
-      azureKey: "Clave de Azure Speech",
-      azureRegion: "Región de Azure",
-      azureKeyPlaceholder: "clave del recurso Speech",
-      keyConfigured: "configurada — déjela vacía para conservarla",
-      getAzureKey: "Crear un recurso Azure Speech (nivel gratuito F0)",
-      save: "Guardar",
-      saving: "Verificando…",
-      saved: "Claves verificadas y guardadas.",
-      saveFailed: "No se pudo guardar.",
-      close: "Cerrar",
-      invalidAzure: "Azure ha rechazado la clave o la región.",
-      apiUnreachable: "API de Python inaccesible: ejecute python pipeline/napoleon_api.py.",
-      agentTitle: "Modelo del agente",
-      required: "obligatorio",
-      optional: "opcional",
-      agentIntro: "El archivero busca en las cartas y el narrador da voz a Napoleón. Sirve cualquier API compatible con OpenAI. Las claves se verifican y se guardan en el archivo .env de su ordenador, en ningún otro sitio.",
-      provider: "Proveedor",
-      customProvider: "Otro (URL compatible con OpenAI)",
-      baseUrl: "URL de la API",
-      apiKey: "Clave API",
-      apiKeyPlaceholder: "clave del proveedor",
-      agentModel: "Modelo del archivero",
-      narratorModel: "Modelo del narrador",
-      refreshModels: "↻ Actualizar la lista",
-      getKey: "Obtener una clave",
-      modelHint: "Los modelos vienen de la API del proveedor. El archivero necesita llamada a herramientas (function calling); al narrador le basta un modelo rápido.",
-      embeddingKey: "Clave de OpenAI para la búsqueda semántica",
-      embeddingHint: "Las bases se indexaron con embeddings de OpenAI. Sin esta clave, el archivero busca por palabras clave.",
-      voiceTitle: "Voz Azure Speech",
-      voiceIntro: "Para su avatar 3D: Azure Speech le da una voz neuronal y sincroniza sus labios. Sin Azure, Napoleón habla con la voz del navegador.",
-      avatarTitle: "Avatar 3D",
-      avatarFound: "Modelo 3D detectado (web/avatar/avatar.glb).",
-      avatarMissing: "Sin modelo 3D: lo sustituye un medallón 2D y Napoleón habla con la voz del navegador. Para un avatar 3D, añada web/avatar/avatar.glb (véase el README).",
-      loadingModels: "Cargando modelos…",
-      modelsNeedKey: "— introduzca la clave para ver los modelos —",
-      chooseModels: "Elija un modelo para el archivero y para el narrador.",
-      invalidLlm: "Proveedor inaccesible o clave rechazada.",
-      invalidEmbedding: "Clave de OpenAI (búsqueda semántica) rechazada.",
-      missingKeys: "Ningún modelo configurado: elija uno en Ajustes.",
-      modelsLoaded: n => `${n} modelo${n > 1 ? 's' : ''} disponible${n > 1 ? 's' : ''}.`,
-    },
-  },
-  it: {
-    label: 'Italiano', locale: 'it-IT', voice: 'it-IT-DiegoNeural',
-    strings: {
-      subtitle: 'Imperatore dei Francesi · 1769 – 1821',
-      chatTitle: 'Dialogo imperiale',
-      chatIntro: 'Interrogate l\'Imperatore sulla sua vita, le sue campagne e il suo impero.',
-      start: 'Inizia', end: 'Termina', reset: 'Azzera', send: 'Invia', language: 'Lingua',
-      loadingAvatar: 'Caricamento dell\'avatar…',
-      avatarError: 'Errore avatar — verificate avatar/avatar.glb',
-      ttsUnavailable: 'Voce non disponibile: ',
-      ttsError: 'Errore voce: ',
-      initializing: 'Inizializzazione…',
-      started: 'Conversazione iniziata. Fate la vostra prima domanda all\'Imperatore.',
-      ended: 'Conversazione terminata. Iniziate una nuova conversazione per ricominciare.',
-      endedStatus: 'Conversazione terminata',
-      endedHistory: 'Conversazione terminata. La cronologia resta visibile fino al prossimo azzeramento.',
-      empty: 'Iniziate una conversazione per parlare con Napoleone.',
-      readyIdle: 'Pronto — iniziate una conversazione',
-      askQuestion: 'Fate la vostra domanda…',
-      thinking: 'Napoleone riflette…',
-      speaking: 'L\'Imperatore parla…',
-      commsDown: 'Le comunicazioni sono interrotte.',
-      placeholderActive: 'Fate la vostra domanda all\'Imperatore…',
-      placeholderIdle: 'Iniziate una conversazione per scrivere…',
-      letters: n => `${n} letter${n > 1 ? 'e' : 'a'}`,
-      sources: 'fonti', source: 'fonte', chapter: 'Capitolo',
-      record: "● Registra", stopRecording: "■ Ferma",
-      recordingOn: "Registrazione in corso… Il video verrà scaricato all'arresto.",
-      recordingNoAudio: "Registrazione senza audio: riavviatela e spuntate «Condividi anche l'audio della scheda».",
-      recordingUnsupported: "Questo browser non supporta la registrazione video.",
-      recordingSaved: "Video salvato nei download.",
-      settings: "⚙ Impostazioni",
-      settingsTitle: "Impostazioni",
-      azureKey: "Chiave Azure Speech",
-      azureRegion: "Regione Azure",
-      azureKeyPlaceholder: "chiave della risorsa Speech",
-      keyConfigured: "configurata — lasciare vuoto per mantenerla",
-      getAzureKey: "Creare una risorsa Azure Speech (livello gratuito F0)",
-      save: "Salva",
-      saving: "Verifica…",
-      saved: "Chiavi verificate e salvate.",
-      saveFailed: "Salvataggio non riuscito.",
-      close: "Chiudi",
-      invalidAzure: "Azure ha rifiutato la chiave o la regione.",
-      apiUnreachable: "API Python irraggiungibile: avviate python pipeline/napoleon_api.py.",
-      agentTitle: "Modello dell'agente",
-      required: "obbligatorio",
-      optional: "facoltativo",
-      agentIntro: "L'archivista cerca nelle lettere e il narratore dà voce a Napoleone. Va bene qualsiasi API compatibile con OpenAI. Le chiavi vengono verificate e salvate nel file .env del vostro computer, da nessun'altra parte.",
-      provider: "Fornitore",
-      customProvider: "Altro (URL compatibile con OpenAI)",
-      baseUrl: "URL dell'API",
-      apiKey: "Chiave API",
-      apiKeyPlaceholder: "chiave del fornitore",
-      agentModel: "Modello dell'archivista",
-      narratorModel: "Modello del narratore",
-      refreshModels: "↻ Aggiorna la lista",
-      getKey: "Ottenere una chiave",
-      modelHint: "I modelli arrivano dall'API del fornitore. L'archivista richiede la chiamata di strumenti (function calling); per il narratore basta un modello veloce.",
-      embeddingKey: "Chiave OpenAI per la ricerca semantica",
-      embeddingHint: "Le basi sono state indicizzate con gli embeddings di OpenAI. Senza questa chiave, l'archivista cerca per parole chiave.",
-      voiceTitle: "Voce Azure Speech",
-      voiceIntro: "Per il vostro avatar 3D: Azure Speech gli dà una voce neurale e sincronizza le labbra. Senza Azure, Napoleone parla con la voce del browser.",
-      avatarTitle: "Avatar 3D",
-      avatarFound: "Modello 3D rilevato (web/avatar/avatar.glb).",
-      avatarMissing: "Nessun modello 3D: lo sostituisce un medaglione 2D e Napoleone parla con la voce del browser. Per un avatar 3D, aggiungete web/avatar/avatar.glb (vedi il README).",
-      loadingModels: "Caricamento dei modelli…",
-      modelsNeedKey: "— inserite la chiave per vedere i modelli —",
-      chooseModels: "Scegliete un modello per l'archivista e per il narratore.",
-      invalidLlm: "Fornitore irraggiungibile o chiave rifiutata.",
-      invalidEmbedding: "Chiave OpenAI (ricerca semantica) rifiutata.",
-      missingKeys: "Nessun modello configurato: sceglietene uno in Impostazioni.",
-      modelsLoaded: n => `${n} modell${n > 1 ? 'i' : 'o'} disponibil${n > 1 ? 'i' : 'e'}.`,
-    },
-  },
-  de: {
-    label: 'Deutsch', locale: 'de-DE', voice: 'de-DE-ConradNeural',
-    strings: {
-      subtitle: 'Kaiser der Franzosen · 1769 – 1821',
-      chatTitle: 'Kaiserlicher Dialog',
-      chatIntro: 'Befragen Sie den Kaiser zu seinem Leben, seinen Feldzügen und seinem Reich.',
-      start: 'Beginnen', end: 'Beenden', reset: 'Zurücksetzen', send: 'Senden', language: 'Sprache',
-      loadingAvatar: 'Avatar wird geladen…',
-      avatarError: 'Avatar-Fehler — avatar/avatar.glb prüfen',
-      ttsUnavailable: 'Sprachausgabe nicht verfügbar: ',
-      ttsError: 'Fehler der Sprachausgabe: ',
-      initializing: 'Wird gestartet…',
-      started: 'Gespräch begonnen. Stellen Sie dem Kaiser Ihre erste Frage.',
-      ended: 'Gespräch beendet. Beginnen Sie ein neues Gespräch, um neu anzufangen.',
-      endedStatus: 'Gespräch beendet',
-      endedHistory: 'Gespräch beendet. Der Verlauf bleibt bis zum nächsten Zurücksetzen sichtbar.',
-      empty: 'Beginnen Sie ein Gespräch, um mit Napoleon zu sprechen.',
-      readyIdle: 'Bereit — beginnen Sie ein Gespräch',
-      askQuestion: 'Stellen Sie Ihre Frage…',
-      thinking: 'Napoleon denkt nach…',
-      speaking: 'Der Kaiser spricht…',
-      commsDown: 'Die Verbindungen sind unterbrochen.',
-      placeholderActive: 'Stellen Sie dem Kaiser Ihre Frage…',
-      placeholderIdle: 'Beginnen Sie ein Gespräch, um zu schreiben…',
-      letters: n => `${n} Brief${n > 1 ? 'e' : ''}`,
-      sources: 'Quellen', source: 'Quelle', chapter: 'Kapitel',
-      record: "● Aufnehmen", stopRecording: "■ Stoppen",
-      recordingOn: "Aufnahme läuft… Die Videodatei wird beim Stoppen heruntergeladen.",
-      recordingNoAudio: "Aufnahme ohne Ton: neu starten und „Tab-Audio teilen“ aktivieren.",
-      recordingUnsupported: "Videoaufnahme wird von diesem Browser nicht unterstützt.",
-      recordingSaved: "Video in Ihren Downloads gespeichert.",
-      settings: "⚙ Einstellungen",
-      settingsTitle: "Einstellungen",
-      azureKey: "Azure-Speech-Schlüssel",
-      azureRegion: "Azure-Region",
-      azureKeyPlaceholder: "Schlüssel der Speech-Ressource",
-      keyConfigured: "konfiguriert — leer lassen, um ihn zu behalten",
-      getAzureKey: "Azure-Speech-Ressource erstellen (kostenlose Stufe F0)",
-      save: "Speichern",
-      saving: "Wird geprüft…",
-      saved: "Schlüssel geprüft und gespeichert.",
-      saveFailed: "Speichern fehlgeschlagen.",
-      close: "Schließen",
-      invalidAzure: "Azure hat Schlüssel oder Region abgelehnt.",
-      apiUnreachable: "Python-API nicht erreichbar: python pipeline/napoleon_api.py starten.",
-      agentTitle: "Modell des Agenten",
-      required: "erforderlich",
-      optional: "optional",
-      agentIntro: "Der Archivar durchsucht die Briefe, der Erzähler leiht Napoleon seine Stimme. Jede OpenAI-kompatible API funktioniert. Die Schlüssel werden geprüft und nur in der .env-Datei auf Ihrem Computer gespeichert.",
-      provider: "Anbieter",
-      customProvider: "Andere (OpenAI-kompatible URL)",
-      baseUrl: "API-URL",
-      apiKey: "API-Schlüssel",
-      apiKeyPlaceholder: "Schlüssel des Anbieters",
-      agentModel: "Modell des Archivars",
-      narratorModel: "Modell des Erzählers",
-      refreshModels: "↻ Liste aktualisieren",
-      getKey: "Schlüssel erhalten",
-      modelHint: "Die Modelle stammen aus der API des Anbieters. Der Archivar braucht Tool-Aufrufe (function calling); für den Erzähler genügt ein schnelles Modell.",
-      embeddingKey: "OpenAI-Schlüssel für die semantische Suche",
-      embeddingHint: "Die Datenbanken wurden mit OpenAI-Embeddings indexiert. Ohne diesen Schlüssel sucht der Archivar nach Stichwörtern.",
-      voiceTitle: "Azure-Speech-Stimme",
-      voiceIntro: "Für Ihren 3D-Avatar: Azure Speech verleiht ihm eine neuronale Stimme und synchronisiert die Lippen. Ohne Azure spricht Napoleon mit der Browserstimme.",
-      avatarTitle: "3D-Avatar",
-      avatarFound: "3D-Modell gefunden (web/avatar/avatar.glb).",
-      avatarMissing: "Kein 3D-Modell: Ein 2D-Medaillon ersetzt es, und Napoleon spricht mit der Browserstimme. Für einen 3D-Avatar web/avatar/avatar.glb hinzufügen (siehe README).",
-      loadingModels: "Modelle werden geladen…",
-      modelsNeedKey: "— Schlüssel eingeben, um die Modelle zu sehen —",
-      chooseModels: "Wählen Sie ein Modell für den Archivar und für den Erzähler.",
-      invalidLlm: "Anbieter nicht erreichbar oder Schlüssel abgelehnt.",
-      invalidEmbedding: "OpenAI-Schlüssel (semantische Suche) abgelehnt.",
-      missingKeys: "Kein Modell konfiguriert: Bitte in den Einstellungen auswählen.",
-      modelsLoaded: n => `${n} Modell${n > 1 ? 'e' : ''} verfügbar.`,
-    },
-  },
-  pt: {
-    label: 'Português', locale: 'pt-PT', voice: 'pt-PT-DuarteNeural',
-    strings: {
-      subtitle: 'Imperador dos Franceses · 1769 – 1821',
-      chatTitle: 'Diálogo imperial',
-      chatIntro: 'Interrogue o Imperador sobre a sua vida, as suas campanhas e o seu império.',
-      start: 'Começar', end: 'Terminar', reset: 'Reiniciar', send: 'Enviar', language: 'Idioma',
-      loadingAvatar: 'A carregar o avatar…',
-      avatarError: 'Erro do avatar — verifique avatar/avatar.glb',
-      ttsUnavailable: 'Voz indisponível: ',
-      ttsError: 'Erro de voz: ',
-      initializing: 'A iniciar…',
-      started: 'Conversa iniciada. Faça a sua primeira pergunta ao Imperador.',
-      ended: 'Conversa terminada. Comece uma nova conversa para recomeçar.',
-      endedStatus: 'Conversa terminada',
-      endedHistory: 'Conversa terminada. O histórico fica visível até ao próximo reinício.',
-      empty: 'Comece uma conversa para falar com Napoleão.',
-      readyIdle: 'Pronto — comece uma conversa',
-      askQuestion: 'Faça a sua pergunta…',
-      thinking: 'Napoleão reflete…',
-      speaking: 'O Imperador fala…',
-      commsDown: 'As comunicações estão interrompidas.',
-      placeholderActive: 'Faça a sua pergunta ao Imperador…',
-      placeholderIdle: 'Comece uma conversa para escrever…',
-      letters: n => `${n} carta${n > 1 ? 's' : ''}`,
-      sources: 'fontes', source: 'fonte', chapter: 'Capítulo',
-      record: "● Gravar", stopRecording: "■ Parar",
-      recordingOn: "A gravar… O ficheiro de vídeo será transferido ao parar.",
-      recordingNoAudio: "Gravação sem som: reinicie e marque «Partilhar também o áudio do separador».",
-      recordingUnsupported: "Este navegador não suporta gravação de vídeo.",
-      recordingSaved: "Vídeo guardado nas suas transferências.",
-      settings: "⚙ Definições",
-      settingsTitle: "Definições",
-      azureKey: "Chave Azure Speech",
-      azureRegion: "Região Azure",
-      azureKeyPlaceholder: "chave do recurso Speech",
-      keyConfigured: "configurada — deixe vazio para a manter",
-      getAzureKey: "Criar um recurso Azure Speech (nível gratuito F0)",
-      save: "Guardar",
-      saving: "A verificar…",
-      saved: "Chaves verificadas e guardadas.",
-      saveFailed: "Não foi possível guardar.",
-      close: "Fechar",
-      invalidAzure: "O Azure recusou a chave ou a região.",
-      apiUnreachable: "API Python inacessível: execute python pipeline/napoleon_api.py.",
-      agentTitle: "Modelo do agente",
-      required: "obrigatório",
-      optional: "opcional",
-      agentIntro: "O arquivista pesquisa nas cartas e o narrador dá voz a Napoleão. Serve qualquer API compatível com a OpenAI. As chaves são verificadas e guardadas no ficheiro .env do seu computador, em mais lado nenhum.",
-      provider: "Fornecedor",
-      customProvider: "Outro (URL compatível com a OpenAI)",
-      baseUrl: "URL da API",
-      apiKey: "Chave API",
-      apiKeyPlaceholder: "chave do fornecedor",
-      agentModel: "Modelo do arquivista",
-      narratorModel: "Modelo do narrador",
-      refreshModels: "↻ Atualizar a lista",
-      getKey: "Obter uma chave",
-      modelHint: "Os modelos vêm da API do fornecedor. O arquivista precisa de chamada de ferramentas (function calling); para o narrador basta um modelo rápido.",
-      embeddingKey: "Chave OpenAI para a pesquisa semântica",
-      embeddingHint: "As bases foram indexadas com embeddings da OpenAI. Sem esta chave, o arquivista pesquisa por palavras-chave.",
-      voiceTitle: "Voz Azure Speech",
-      voiceIntro: "Para o seu avatar 3D: o Azure Speech dá-lhe uma voz neural e sincroniza os lábios. Sem Azure, Napoleão fala com a voz do navegador.",
-      avatarTitle: "Avatar 3D",
-      avatarFound: "Modelo 3D detetado (web/avatar/avatar.glb).",
-      avatarMissing: "Sem modelo 3D: um medalhão 2D substitui-o e Napoleão fala com a voz do navegador. Para um avatar 3D, adicione web/avatar/avatar.glb (ver o README).",
-      loadingModels: "A carregar os modelos…",
-      modelsNeedKey: "— introduza a chave para ver os modelos —",
-      chooseModels: "Escolha um modelo para o arquivista e para o narrador.",
-      invalidLlm: "Fornecedor inacessível ou chave recusada.",
-      invalidEmbedding: "Chave OpenAI (pesquisa semântica) recusada.",
-      missingKeys: "Nenhum modelo configurado: escolha um nas Definições.",
-      modelsLoaded: n => `${n} modelo${n > 1 ? 's' : ''} disponíve${n > 1 ? 'is' : 'l'}.`,
-    },
-  },
+  fr: { label: 'Français', locale: 'fr-FR', voice: 'fr-FR-AlainNeural', promptName: 'français' },
+  en: { label: 'English', locale: 'en-GB', voice: 'en-GB-RyanNeural', promptName: 'anglais' },
+  es: { label: 'Español', locale: 'es-ES', voice: 'es-ES-AlvaroNeural', promptName: 'espagnol' },
+  it: { label: 'Italiano', locale: 'it-IT', voice: 'it-IT-DiegoNeural', promptName: 'italien' },
+  de: { label: 'Deutsch', locale: 'de-DE', voice: 'de-DE-ConradNeural', promptName: 'allemand' },
+  pt: { label: 'Português', locale: 'pt-PT', voice: 'pt-PT-DuarteNeural', promptName: 'portugais' },
+  // Langues liées à l'histoire napoléonienne
+  ru: { label: 'Русский', locale: 'ru-RU', voice: 'ru-RU-DmitryNeural', promptName: 'russe' },
+  pl: { label: 'Polski', locale: 'pl-PL', voice: 'pl-PL-MarekNeural', promptName: 'polonais' },
+  nl: { label: 'Nederlands', locale: 'nl-NL', voice: 'nl-NL-MaartenNeural', promptName: 'néerlandais' },
+  ar: { label: 'العربية', locale: 'ar-EG', voice: 'ar-EG-ShakirNeural', promptName: 'arabe (arabe standard moderne)', dir: 'rtl' },
+  // Grand public mondial
+  zh: { label: '中文', locale: 'zh-CN', voice: 'zh-CN-YunxiNeural', promptName: 'chinois (mandarin, caractères simplifiés)' },
+  ja: { label: '日本語', locale: 'ja-JP', voice: 'ja-JP-KeitaNeural', promptName: 'japonais' },
+  ko: { label: '한국어', locale: 'ko-KR', voice: 'ko-KR-InJoonNeural', promptName: 'coréen' },
+  hi: { label: 'हिन्दी', locale: 'hi-IN', voice: 'hi-IN-MadhurNeural', promptName: 'hindi' },
+  // Autres langues européennes
+  sv: { label: 'Svenska', locale: 'sv-SE', voice: 'sv-SE-MattiasNeural', promptName: 'suédois' },
+  da: { label: 'Dansk', locale: 'da-DK', voice: 'da-DK-JeppeNeural', promptName: 'danois' },
+  cs: { label: 'Čeština', locale: 'cs-CZ', voice: 'cs-CZ-AntoninNeural', promptName: 'tchèque' },
+  el: { label: 'Ελληνικά', locale: 'el-GR', voice: 'el-GR-NestorasNeural', promptName: 'grec moderne' },
+  ro: { label: 'Română', locale: 'ro-RO', voice: 'ro-RO-EmilNeural', promptName: 'roumain' },
+  tr: { label: 'Türkçe', locale: 'tr-TR', voice: 'tr-TR-AhmetNeural', promptName: 'turc' },
+  uk: { label: 'Українська', locale: 'uk-UA', voice: 'uk-UA-OstapNeural', promptName: 'ukrainien' },
+  // Langues régionales (corse, breton : pas de voix de synthèse, voix d'une langue proche)
+  co: { label: 'Corsu', locale: 'co-FR', speechLocale: 'it-IT', voice: 'it-IT-DiegoNeural', promptName: 'corse' },
+  ca: { label: 'Català', locale: 'ca-ES', voice: 'ca-ES-EnricNeural', promptName: 'catalan' },
+  eu: { label: 'Euskara', locale: 'eu-ES', voice: 'eu-ES-AnderNeural', promptName: 'basque' },
+  br: { label: 'Brezhoneg', locale: 'br-FR', speechLocale: 'fr-FR', voice: 'fr-FR-AlainNeural', promptName: 'breton' },
 }
 
-// Drapeaux en SVG : les émojis drapeaux ne s'affichent pas sous Windows.
+// ── Drapeaux en SVG (les émojis drapeaux ne s'affichent pas sous Windows) ─────
 const stripes = (dir, colors) => {
   const n = colors.length
   return colors.map((c, i) => dir === 'v'
@@ -462,6 +60,16 @@ const stripes = (dir, colors) => {
 }
 const svg = (body, viewBox = '0 0 60 40') =>
   `<svg class="flag" viewBox="${viewBox}" preserveAspectRatio="none" aria-hidden="true">${body}</svg>`
+const star = (cx, cy, r, fill, turn = 0) => {
+  const pts = []
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + turn + (i * Math.PI) / 5
+    const rr = i % 2 ? r * 0.4 : r
+    pts.push(`${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`)
+  }
+  return `<polygon points="${pts.join(' ')}" fill="${fill}"/>`
+}
+const alternate = (a, b, n) => Array.from({ length: n }, (_, i) => (i % 2 ? b : a))
 
 const FLAGS = {
   fr: svg(stripes('v', ['#002654', '#ffffff', '#ce1126'])),
@@ -475,9 +83,45 @@ const FLAGS = {
     + '<path d="M0,0L60,30M60,0L0,30" stroke="#c8102e" stroke-width="2"/>'
     + '<path d="M30,0v30M0,15h60" stroke="#fff" stroke-width="10"/>'
     + '<path d="M30,0v30M0,15h60" stroke="#c8102e" stroke-width="6"/>', '0 0 60 30'),
+  ru: svg(stripes('h', ['#ffffff', '#0039a6', '#d52b1e'])),
+  pl: svg(stripes('h', ['#ffffff', '#dc143c'])),
+  nl: svg(stripes('h', ['#ae1c28', '#ffffff', '#21468b'])),
+  // Arabe : drapeau égyptien simplifié (campagne d'Égypte)
+  ar: svg(stripes('h', ['#ce1126', '#ffffff', '#000000']) + '<circle cx="30" cy="20" r="4" fill="#c09300"/>'),
+  zh: svg('<rect width="60" height="40" fill="#de2910"/>' + star(10, 10, 6, '#ffde00')
+    + star(20, 4, 2, '#ffde00', 0.4) + star(24, 8, 2, '#ffde00', 0.8)
+    + star(24, 14, 2, '#ffde00', 0) + star(20, 18, 2, '#ffde00', 0.4)),
+  ja: svg('<rect width="60" height="40" fill="#ffffff"/><circle cx="30" cy="20" r="12" fill="#bc002d"/>'),
+  ko: svg('<rect width="60" height="40" fill="#ffffff"/>'
+    + '<path d="M20,20a10,10 0 0 1 20,0z" fill="#cd2e3a"/><path d="M20,20a10,10 0 0 0 20,0z" fill="#0047a0"/>'
+    + '<path d="M8,6l6,4M8,9l6,4M46,27l6,4M46,30l6,4M8,34l6,-4M8,31l6,-4M46,13l6,-4M46,10l6,-4" stroke="#000" stroke-width="1.6"/>'),
+  hi: svg(stripes('h', ['#ff9933', '#ffffff', '#138808'])
+    + '<circle cx="30" cy="20" r="5" fill="none" stroke="#000080" stroke-width="1.3"/>'),
+  sv: svg('<rect width="60" height="40" fill="#006aa7"/><rect x="16" width="8" height="40" fill="#fecc00"/>'
+    + '<rect y="16" width="60" height="8" fill="#fecc00"/>'),
+  da: svg('<rect width="60" height="40" fill="#c8102e"/><rect x="17" width="6" height="40" fill="#ffffff"/>'
+    + '<rect y="17" width="60" height="6" fill="#ffffff"/>'),
+  cs: svg(stripes('h', ['#ffffff', '#d7141a']) + '<polygon points="0,0 30,20 0,40" fill="#11457e"/>'),
+  el: svg(stripes('h', alternate('#0d5eaf', '#ffffff', 9))
+    + '<rect width="22.2" height="22.2" fill="#0d5eaf"/><rect x="8.9" width="4.4" height="22.2" fill="#fff"/>'
+    + '<rect y="8.9" width="22.2" height="4.4" fill="#fff"/>'),
+  ro: svg(stripes('v', ['#002b7f', '#fcd116', '#ce1126'])),
+  tr: svg('<rect width="60" height="40" fill="#e30a17"/><circle cx="23" cy="20" r="10" fill="#fff"/>'
+    + '<circle cx="25.5" cy="20" r="8" fill="#e30a17"/>' + star(35, 20, 4, '#fff', -Math.PI / 2)),
+  uk: svg(stripes('h', ['#0057b7', '#ffd700'])),
+  // Corse : tête de Maure simplifiée
+  co: svg('<rect width="60" height="40" fill="#ffffff"/><circle cx="30" cy="21" r="10" fill="#000"/>'
+    + '<rect x="19" y="14" width="22" height="3.5" fill="#fff"/>'),
+  ca: svg(stripes('h', alternate('#fcdd09', '#da121a', 9))),
+  eu: svg('<rect width="60" height="40" fill="#d52b2b"/>'
+    + '<path d="M0,0L60,40M60,0L0,40" stroke="#009b48" stroke-width="5"/>'
+    + '<path d="M30,0v40M0,20h60" stroke="#ffffff" stroke-width="5"/>'),
+  br: svg(stripes('h', alternate('#000000', '#ffffff', 9)) + '<rect width="26" height="22.2" fill="#ffffff"/>'
+    + [6, 13, 20].flatMap(x => [5, 11, 17].map(y => `<circle cx="${x}" cy="${y}" r="1.6" fill="#000"/>`)).join('')),
 }
 for (const [code, info] of Object.entries(LANGS)) info.flag = FLAGS[code] || ''
 
+// ── Langue courante ───────────────────────────────────────────────────────────
 const LANG_KEY = 'napoleon.lang'
 
 function initialLang() {
@@ -494,6 +138,12 @@ let current = initialLang()
 export function getLang() { return current }
 export function getLangInfo() { return LANGS[current] }
 
+/** Langue et voix de synthèse (une langue sans voix utilise celle d'une langue proche). */
+export function getSpeechInfo() {
+  const info = LANGS[current]
+  return { locale: info.speechLocale || info.locale, voice: info.voice }
+}
+
 export function setLang(code) {
   if (!LANGS[code]) return
   current = code
@@ -501,15 +151,27 @@ export function setLang(code) {
   document.documentElement.lang = code
 }
 
-/** Libellé traduit ; les entrées fonctions (pluriels) reçoivent les arguments. */
+/** Libellé traduit ; à défaut, l'anglais puis le français. Les pluriels reçoivent le nombre. */
 export function t(key, ...args) {
-  const value = LANGS[current].strings[key] ?? LANGS.fr.strings[key] ?? key
-  return typeof value === 'function' ? value(...args) : value
+  const value = LOCALES[current]?.[key] ?? LOCALES.en?.[key] ?? LOCALES.fr?.[key] ?? key
+  if (value && typeof value === 'object') {
+    const n = Number(args[0] ?? 0)
+    let category = 'other'
+    try { category = new Intl.PluralRules(LANGS[current].locale).select(n) } catch {}
+    const template = value[category] ?? value.other ?? value.one ?? ''
+    return template.replace('{n}', String(n))
+  }
+  return value
 }
 
-/** Textes fixes de la page : éléments marqués data-i18n / data-i18n-placeholder. */
+/** Textes fixes de la page (data-i18n / data-i18n-aria) et sens d'écriture des panneaux. */
 export function applyStaticTexts(root = document) {
   document.documentElement.lang = current
   for (const el of root.querySelectorAll('[data-i18n]')) el.textContent = t(el.dataset.i18n)
   for (const el of root.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria))
+  // Arabe : écriture de droite à gauche dans les panneaux de texte, sans retourner toute la page.
+  const dir = LANGS[current].dir || 'ltr'
+  for (const id of ['chat-panel', 'context-bubble', 'settings-dialog']) {
+    root.getElementById?.(id)?.setAttribute('dir', dir)
+  }
 }

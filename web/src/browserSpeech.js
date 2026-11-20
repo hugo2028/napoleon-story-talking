@@ -9,7 +9,7 @@ const MAX_CHUNK = 220            // Chrome coupe les énoncés trop longs : on d
 const MOUTH_VISEMES = [1, 2, 4, 6, 9, 11, 13, 19]
 const NATURAL_RE = /natural|neural|online|premium|enhanced/i
 // Prénoms des voix masculines courantes (Edge, Chrome, Windows, macOS) : Napoléon parle d'une voix d'homme.
-const MALE_RE = /\b(henri|remy|rémy|paul|gerard|gérard|antoine|thomas|jean|fabrice|ryan|guy|andrew|brian|christopher|eric|roger|steffan|david|mark|daniel|alex|oliver|george|alvaro|álvaro|jorge|dario|raul|pablo|diego|giuseppe|cosimo|luca|conrad|florian|killian|jonas|jan|stefan|markus|duarte|antonio|fabio|julio)\b/i
+const MALE_RE = /\b(henri|remy|rémy|paul|gerard|gérard|antoine|thomas|jean|fabrice|ryan|guy|andrew|brian|christopher|eric|roger|steffan|david|mark|daniel|alex|oliver|george|alvaro|álvaro|jorge|dario|raul|pablo|diego|giuseppe|cosimo|luca|conrad|florian|killian|jonas|jan|stefan|markus|duarte|antonio|fabio|julio|dmitry|dmitri|pavel|marek|maarten|shakir|hamed|yunxi|yunjian|yunyang|kangkang|keita|daichi|naoki|injoon|hyunsu|madhur|prabhat|mattias|jeppe|antonin|antonín|jakub|nestoras|emil|ahmet|ostap|enric|ander|arnaud|joan)\b/i
 
 export class BrowserSpeech {
   constructor(lang) {

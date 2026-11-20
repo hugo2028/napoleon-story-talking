@@ -237,12 +237,20 @@ def _parse_actions(raw: str) -> tuple[str, list[dict]]:
     return clean_text, _cap_repeated_actions(actions)
 
 
-# Langues proposées à l'interface : code → nom (pour les consignes données au modèle).
+# Langues : code → nom donné au modèle dans ses consignes. L'interface envoie le nom de chaque
+# langue avec la requête (web/src/i18n.js, promptName) : toute langue qu'elle propose est acceptée.
 LANGUES = {"fr": "français", "en": "anglais", "es": "espagnol", "it": "italien",
            "de": "allemand", "pt": "portugais"}
 
 
-def _langue(code) -> str:
+def _langue(code, name=None) -> str:
+    """Code de langue validé ; enregistre le nom fourni par l'interface (nettoyé : il entre dans une consigne)."""
+    code = str(code or "fr").strip().lower()
+    if not re.fullmatch(r"[a-z]{2,3}(-[a-z0-9]{2,4})?", code):
+        return "fr"
+    clean = re.sub(r"[^\w ()',.-]", "", str(name or "")).strip()[:60]
+    if code != "fr" and clean:
+        LANGUES[code] = clean
     return code if code in LANGUES else "fr"
 
 
@@ -556,7 +564,7 @@ def chat():
     data = request.json or {}
     frontend_conv_id = (data.get("conversation_id") or "").strip()
     message = (data.get("message") or "").strip()
-    lang = _langue(data.get("lang"))
+    lang = _langue(data.get("lang"), data.get("lang_name"))
 
     if not message:
         return jsonify({"error": "message requis"}), 400
