@@ -84,6 +84,18 @@ ANIMATION_DESCRIPTIONS = {
     "emotion_cocky_confident": "posture fière et sûre de soi ; vantardise, assurance, triomphe personnel, « c'est moi qui l'ai fait »",
     "emotion_happy_hand_gesture": "geste joyeux des mains ; enthousiasme, bonne nouvelle, victoire, plaisir",
     "emotion_relieved_sigh": "soupir de soulagement ; danger écarté, fin d'une épreuve, lassitude",
+    "emotion_angry_point": "pointe du doigt avec colère ; accusation, reproche direct, désigner un coupable, « vous ! »",
+    "emotion_shake_fist": "secoue le poing ; rage, menace, défi lancé à l'ennemi, révolte",
+    "emotion_fist_pump": "poing serré de victoire ; triomphe, succès éclatant, « nous avons gagné ! »",
+    "emotion_disappointed": "abattement déçu ; déception, échec, espoir trahi, constat amer",
+    "emotion_pouting": "moue boudeuse et contrariée ; vexation, rancune, mécontentement, dépit",
+    "gesture_charge": "ordre de charge vers l'avant ; attaque, commandement militaire, élan, « en avant ! »",
+    "gesture_salute": "salut militaire ; respect, honneur, armée, discipline, hommage aux soldats",
+    "gesture_bow_formal": "révérence formelle ; salutation solennelle, déférence, respect protocolaire",
+    "gesture_bow_informal": "petite inclinaison rapide ; salut courtois, remerciement, politesse légère",
+    "gesture_waving": "fait signe de la main ; bonjour, au revoir, accueil, appel amical",
+    "gesture_telling_secret": "se penche pour faire une confidence ; secret, aparté, révélation, « entre nous »",
+    "gesture_shoulder_rubbing": "se frotte l'épaule ; fatigue, douleur, blessure, lassitude après l'effort",
     "idle_weight_shift": "posture de repos, transfert du poids d'une jambe à l'autre ; attente sans parler",
     # ── Ancien avatar ──
     "c'est gagné bras droit": "geste de victoire avec le bras droit ; conclusion forte, succès, triomphe, point remporté",
@@ -136,7 +148,8 @@ def _load_avatar_animation_names() -> list[str]:
             name = animation.get("name")
             if not name:
                 continue
-            if name.startswith("Armature") or name in {"faceit_shape_action", "overwrite_shape_action"}:
+            # "_backup_*" : sources Mixamo brutes conservées dans le .blend, jamais à jouer
+            if name.startswith(("Armature", "_")) or name in {"faceit_shape_action", "overwrite_shape_action"}:
                 continue
             names.append(name)
         if names:

@@ -50,6 +50,9 @@ const azureRegionInput   = document.getElementById('azure-region')
 const azureState         = document.getElementById('azure-state')
 const avatarNote         = document.getElementById('avatar-note')
 const voiceSection       = document.getElementById('voice-section')
+const agentSection       = document.getElementById('agent-section')
+const avatarSection      = document.getElementById('avatar-section')
+const settingsActions    = document.getElementById('settings-actions')
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let avatar   = null
@@ -186,6 +189,12 @@ function renderSettingsFields(fromStatus = false) {
   azureState.textContent = configStatus.azure ? '✓' : ''
   avatarNote.textContent = t(hasAvatarModel ? 'avatarFound' : 'avatarMissing')
   voiceSection.hidden = !hasAvatarModel
+  // Version en ligne : configuration fixée sur le serveur, seule la langue reste au choix
+  const readOnly = Boolean(configStatus.readOnly)
+  agentSection.hidden = readOnly
+  avatarSection.hidden = readOnly
+  settingsActions.hidden = readOnly
+  if (readOnly) voiceSection.hidden = true
 }
 
 /** Listes de modèles remplies depuis l'API du fournisseur ; le choix actuel reste sélectionné. */
@@ -243,7 +252,7 @@ function openSettings() {
   showSettingsMessage('')
   renderSettingsFields(true)
   if (!settingsDialog.open) settingsDialog.showModal()
-  loadModels(true)
+  if (!configStatus.readOnly) loadModels(true)
 }
 
 settingsBtn.addEventListener('click', openSettings)

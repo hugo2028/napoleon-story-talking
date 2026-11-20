@@ -95,9 +95,24 @@ au visiteur : tu enquêtes avec tes outils puis tu transmets au narrateur ce qu'
 
 Le visiteur peut t'écrire dans une autre langue que le français (anglais, espagnol…). Le corpus est en français : comprends sa demande, mais fais toujours tes recherches, tes titres et tes résumés en français (la traduction est faite au moment de la narration).
 
+Deux façons de converser :
+- le RÉCIT GUIDÉ (plan, moments, variantes, pistes proposées) : quand le visiteur veut qu'on lui \
+raconte un épisode et se laisse conduire ;
+- la CONVERSATION LIBRE : le visiteur veut parler avec Napoléon à sa façon. Il lui pose des questions directes \
+(sur un homme, une décision, un sentiment, une opinion), rebondit sur ce qu'il vient d'entendre, \
+le contredit ou bavarde.
+C'est à toi de juger, d'après ses messages, laquelle il souhaite, et de suivre son élan. En conversation \
+libre, ne le ramène pas de force dans le récit et ne lui impose pas de choix qu'il n'a pas demandés : \
+Napoléon répond à ce qu'on lui demande. Termine alors par repondre_librement, avec dans « lettres » \
+les 1 à 3 lettres qui fondent la réponse (trouvées par tes recherches, comme pour le récit), et dans \
+« consigne » la question à laquelle répondre, ce que les lettres disent réellement (à qui elles sont \
+adressées, de qui elles parlent, et si elles n'y répondent qu'en partie), et s'il convient ou non de relancer. \
+N'y ajoute aucun jugement que les lettres ne portent pas. Le récit \
+en cours et ses pistes restent en attente : le visiteur pourra y revenir quand il voudra.
+
 Tes responsabilités :
 1. Comprendre ce que veut le visiteur (nouveau sujet, choix d'une piste proposée, suite du récit, \
-détail précis, simple échange).
+détail précis, conversation libre, simple échange).
 2. Enquêter quand c'est nécessaire : situer la période (chronologie), mesurer la matière \
 disponible (explorer_periode), chercher (rechercher / rechercher_mots), lire les lettres prometteuses.
    - C'est TOI qui choisis le seuil et le nombre de résultats : regarde la distribution des scores \
@@ -152,8 +167,9 @@ fixer_plan avec EXACTEMENT le même intitulé de sujet, en gardant les chapitres
 ajoutant/réordonnant ce qu'il faut (les chapitres déjà racontés sont conservés automatiquement). \
 Ne change d'intitulé de sujet que si le visiteur passe vraiment à une autre période ou un autre thème : \
 nouvelle enquête et nouveau plan.
-6. Pour une salutation ou un échange sans rapport avec la correspondance, utilise repondre_librement \
-(tu peux d'abord chercher une lettre marquante pour proposer un sujet concret).
+6. Pour une salutation, un échange sans rapport avec la correspondance ou une conversation libre, \
+utilise repondre_librement (tu peux d'abord chercher une lettre marquante pour proposer un sujet concret, \
+ou les lettres qui répondent à la question du visiteur).
 7. Lettre tirée au hasard (premier tour) : quand le contexte fournit des « lettres tirées au hasard » \
 et que le visiteur salue ou ne précise pas de sujet, laisse le hasard orienter la conversation : \
 garde celle dont la « phrase citable » est la plus forte (à défaut, la plus évocatrice), situe son épisode (chronologie, au besoin lire_lettres), \
@@ -248,8 +264,12 @@ TOOLS = [
          "note": {"type": "string", "description": "Consigne courte au narrateur (angle, émotion, lien avec la demande)."}},
         ["chapitre", "lettres", "pistes"]),
     _fn("repondre_librement",
-        "Termine le tour sans lettre à raconter (salutation, échange, question hors correspondance).",
-        {"consigne": {"type": "string", "description": "Ce que Napoléon doit dire/proposer, en une ou deux phrases."},
+        "Termine le tour hors du récit guidé : salutation, échange, question hors correspondance, "
+        "ou conversation libre où Napoléon répond directement au visiteur, sans plan ni choix à proposer.",
+        {"consigne": {"type": "string", "description": "Ce que Napoléon doit dire ou à quoi il répond, sous quel angle, "
+                      "et s'il relance ou non, en une ou deux phrases."},
+         "lettres": {"type": "array", "items": {"type": "integer"},
+                     "description": "Optionnel : 1 à 3 lettres sur lesquelles Napoléon fonde sa réponse (conversation libre)."},
          "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."}},
         ["consigne"]),
 ]
@@ -563,6 +583,10 @@ class Archivist:
         ]
         for step in range(MAX_AGENT_STEPS):
             force = step == MAX_AGENT_STEPS - 1
+            if step == MAX_AGENT_STEPS - 2:
+                messages.append({"role": "user", "content": (
+                    "Il te reste deux appels : conclus maintenant avec ce que tu as lu "
+                    "(fixer_plan puis servir_tour, ou repondre_librement).")})
             resp = self.client.chat.completions.create(
                 model=self.model, messages=messages, tools=TOOLS, temperature=0.2,
                 tool_choice=("required" if not force else "required"),
@@ -614,7 +638,16 @@ class Archivist:
                     "Napoléon fait entendre à son visiteur UNE phrase de cette lettre pour lui donner "
                     "envie de l'épisode : " + args.get("consigne", ""))
                 citation = ok[0]["texte"] if ok else None
+            demandees = [int(i) for i in (args.get("lettres") or []) if str(i).isdigit()][:3]
+            connues = self._meta(demandees) if demandees else {}
+            inconnues = [l for l in demandees if l not in connues]
+            if inconnues:
+                return {"_erreur": f"lettres inconnues {inconnues} : sers des identifiants trouvés par tes recherches."}
             return {"type": "libre", "consigne": args.get("consigne", ""),
+                    "lettres": demandees,
+                    "citations": self._choisir_citations(
+                        state, demandees, "Napoléon répond à son visiteur : " + args.get("consigne", ""))
+                    if demandees else [],
                     "lettre_amorce": int(amorce) if amorce else None,
                     "citation_amorce": citation,
                     "_amorce_date": meta[int(amorce)][1] if amorce else None}
@@ -673,7 +706,11 @@ class Archivist:
                         other["statut"] = "ecarte"
             state["pistes"] = [p["id"] for p in decision["pistes"]]
         else:
-            # Une réponse libre ne change pas les pistes en attente ; elle peut poser une amorce
+            # Une réponse libre ne change ni le plan ni les pistes en attente ; ses lettres sont
+            # comptées comme racontées, et elle peut poser une amorce.
+            for l in decision.get("lettres") or []:
+                if l not in state["racontees"]:
+                    state["racontees"].append(l)
             if decision.get("lettre_amorce"):
                 row = decision.get("_amorce_date")
                 state["amorce"] = {"id": int(decision["lettre_amorce"]), "date": row,
@@ -703,9 +740,25 @@ class Archivist:
                     parts.append(f"Ne raconte PAS cette lettre : {evoque}, comme un souvenir qui te revient, "
                                  "ancré par sa date et son lieu dits à voix haute. Elle sera racontée en entier si le "
                                  "visiteur accepte. Réponse courte : 4 à 5 phrases au total.")
+            if decision.get("lettres"):
+                letters = fetch_chunks(self.conn, decision["lettres"])
+                parts.append("Conversation libre : ton visiteur te parle à sa façon. Réponds à ce qu'il te dit, "
+                             "en t'appuyant sur ces lettres, chacune ancrée par sa date. Tiens-t'en STRICTEMENT à ce "
+                             "qu'elles disent : n'ajoute ni fait, ni idée, ni jugement qui n'y figure pas. Distingue le destinataire "
+                             "de la lettre et les personnes dont elle parle. Si elles ne répondent qu'en partie à la "
+                             "question, dis simplement ce que tu écrivais ces jours-là, sans leur faire dire davantage. "
+                             "Ne lui propose pas de choix de suite et ne le ramène pas à un récit : ne termine par une "
+                             "question que si elle vient naturellement ou si la consigne le demande :\n" + "\n\n".join(
+                    f"[{c.get('date_iso') or 'date inconnue'}] {(c.get('title') or '')[:80]}\n{(c.get('text') or '')[:900]}"
+                    for c in letters))
+                if decision.get("citations"):
+                    parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », "
+                                 "si elles servent ta réponse. Ne cite rien d'autre entre guillemets :\n"
+                                 + "\n".join(f"- « {c['texte']} »" for c in decision["citations"]))
             parts.append(f"Consigne de l'archiviste : {decision['consigne']}")
-            parts.append("Aucune autre lettre n'est fournie : n'avance aucun fait historique précis "
-                         "qui ne figure pas ci-dessus.")
+            if not decision.get("lettres"):
+                parts.append("Aucune autre lettre n'est fournie : n'avance aucun fait historique précis "
+                             "qui ne figure pas ci-dessus.")
             parts.append(f"Message du visiteur : {user_message}")
             return "\n\n---\n\n".join(parts)
 
@@ -788,7 +841,9 @@ class Archivist:
             ann["chapitre"] = decision["chapitre"]["titre"]
             ids = decision["lettres"]
         else:
-            ids = [decision["lettre_amorce"]] if decision.get("lettre_amorce") else []
+            ids = list(decision.get("lettres") or [])
+            if decision.get("lettre_amorce") and decision["lettre_amorce"] not in ids:
+                ids.append(decision["lettre_amorce"])
         chunks = sorted(fetch_chunks(self.conn, ids) if ids else [], key=lambda c: c.get("date_iso") or "")
         for c in chunks:
             titre = (c.get("title") or "").strip()

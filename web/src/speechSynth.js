@@ -3,6 +3,7 @@ import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk'
 const MAX_ACTION_REPEATS = 3
 const PAUSE_RE = /\s*\[\s*pause\s*\]\s*/gi
 const PAUSE_MS = 700
+let tokenRefreshTimer = null   // renouvellement du jeton Azure (version en ligne)
 /** Texte sans balises [pause], pour l'affichage. */
 export function stripPauses(text = '') {
   return text.replace(PAUSE_RE, ' ').replace(/\s{2,}/g, ' ').trim()
@@ -43,8 +44,8 @@ export class SpeechSynth {
 
   static async create(lang = { locale: 'fr-FR', voice: 'fr-FR-AlainNeural' }) {
     const res = await fetch('/api/speech-config')
-    const { key, region, endpoint, ttsProvider } = await res.json()
-    if (!key) throw new Error('AZURE_SPEECH_KEY manquant dans .env')
+    const { key, token, region, endpoint, ttsProvider } = await res.json()
+    if (!key && !token) throw new Error('AZURE_SPEECH_KEY manquant dans .env')
 
     const regionFromEndpoint = endpoint?.match(
       /^https?:\/\/([a-z0-9-]+)\.(?:api\.cognitive|cognitiveservices)\.azure\.com|^https?:\/\/([a-z0-9-]+)\.api\.cognitive\.microsoft\.com/
@@ -52,7 +53,21 @@ export class SpeechSynth {
 
     const effectiveRegion = region || regionFromEndpoint
     let config
-    if (effectiveRegion) {
+    if (token && effectiveRegion) {
+      // Version en ligne : jeton de 10 minutes délivré par le serveur, renouvelé toutes les 8 minutes
+      config = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, effectiveRegion)
+      clearInterval(tokenRefreshTimer)
+      tokenRefreshTimer = setInterval(async () => {
+        try {
+          const fresh = await (await fetch('/api/speech-config')).json()
+          if (fresh.token) config.authorizationToken = fresh.token
+        } catch (err) {
+          console.warn('[Speech] renouvellement du jeton Azure impossible', err)
+        }
+      }, 8 * 60 * 1000)
+    } else if (!key) {
+      throw new Error('AZURE_SPEECH_REGION manquant')
+    } else if (effectiveRegion) {
       config = SpeechSDK.SpeechConfig.fromSubscription(key, effectiveRegion)
     } else if (endpoint) {
       config = SpeechSDK.SpeechConfig.fromEndpoint(new URL(endpoint), key)

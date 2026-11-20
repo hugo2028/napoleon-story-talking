@@ -963,7 +963,9 @@ def _chat_autonome(frontend_conv_id: str | None, user_message: str, lang: str = 
     if decision["type"] == "tour":
         served = decision["lettres"]
     else:
-        served = [decision["lettre_amorce"]] if decision.get("lettre_amorce") else []
+        served = list(decision.get("lettres") or [])
+        if decision.get("lettre_amorce") and decision["lettre_amorce"] not in served:
+            served.append(decision["lettre_amorce"])
     context_text = None
     if subject and subject != previous_subject and state["plan"].get("debut") and state["plan"].get("fin"):
         context_text = generate_context({"event": subject, "start": state["plan"]["debut"],
@@ -989,5 +991,6 @@ def _chat_autonome(frontend_conv_id: str | None, user_message: str, lang: str = 
 
 if __name__ == "__main__":
     port = int(os.getenv("NAPOLEON_API_PORT", 5001))
-    print(f"Napoleon API ready on :{port}")
-    app.run(host="0.0.0.0", port=port, debug=False)
+    host = os.getenv("NAPOLEON_API_HOST", "0.0.0.0")   # 127.0.0.1 en ligne : seul le serveur Node y accède
+    print(f"Napoleon API ready on {host}:{port}")
+    app.run(host=host, port=port, debug=False, threaded=True)
