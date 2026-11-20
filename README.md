@@ -75,9 +75,9 @@ Tout le reste découle de ce choix :
   comme si Napoléon venait de la relire, et l'on plonge dans le jour où elle a été écrite.
 - **Le temps rendu visible.** À l'écran, l'épisode, la période, le chapitre et les dates des lettres
   racontées avancent avec le récit. Chaque réplique renvoie à la page de l'édition sur Gallica.
-- **Une présence incarnée, dans six langues.** Napoléon parle, avec la voix de synthèse du navigateur,
-  et choisit ses gestes. Le corpus reste en français, et la conversation se tient en français, anglais,
-  espagnol, italien, allemand ou portugais.
+- **Une présence incarnée, dans 25 langues.** Napoléon parle, avec la voix de synthèse du navigateur,
+  et choisit ses gestes. Le corpus reste en français ; la conversation se tient dans la langue choisie,
+  citations traduites comprises (voir « Langues » plus bas).
 
 ## Architecture
 
@@ -127,6 +127,26 @@ d'Edge sont les plus naturelles.
 
 Les clés sont vérifiées auprès de chaque service, puis enregistrées dans le fichier `.env` local : elles ne
 quittent pas votre ordinateur. Vous pouvez aussi remplir `.env` à la main à partir de `.env.example`.
+
+## Langues
+
+L'interface et le récit sont disponibles en 25 langues :
+
+- **langues d'origine du projet** : français, anglais, espagnol, italien, allemand, portugais ;
+- **pays traversés par l'épopée** : russe, polonais, néerlandais, arabe (écrit de droite à gauche) ;
+- **grand public mondial** : chinois, japonais, coréen, hindi ;
+- **autres langues européennes** : suédois, danois, tchèque, grec, roumain, turc, ukrainien ;
+- **langues régionales** : corse, catalan, basque, breton.
+
+Le narrateur écrit directement dans la langue choisie ; la qualité dépend du modèle configuré, et elle est
+plus inégale pour les langues régionales. Le corse et le breton n'ont pas de voix de synthèse : Napoléon
+y parle avec une voix italienne ou française. Le nombre de voix disponibles dépend du navigateur (Edge en
+propose le plus).
+
+**Ajouter une langue** : une entrée dans `LANGS` de `web/src/i18n.js` (nom, locale, nom donné au
+narrateur, éventuellement un drapeau), puis `python scripts/translate_ui.py <code>` génère et vérifie ses
+libellés dans `web/src/locales/<code>.json` avec le modèle configuré. L'API accepte toute langue proposée
+par l'interface.
 
 ## L'avatar 3D
 

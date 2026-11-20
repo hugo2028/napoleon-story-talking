@@ -75,9 +75,9 @@ Everything else follows from that choice:
   Napoleon had just been rereading it, and plunges into the day it was written.
 - **Time made visible.** On screen, the episode, period, chapter and dates of the letters being told
   move forward with the story. Each answer links to the page of the edition on Gallica.
-- **An embodied presence, in six languages.** Napoleon speaks, with the browser's speech synthesis, and
-  chooses his gestures. The corpus stays in French, and the conversation can be held in French, English,
-  Spanish, Italian, German or Portuguese.
+- **An embodied presence, in 25 languages.** Napoleon speaks, with the browser's speech synthesis, and
+  chooses his gestures. The corpus stays in French; the conversation is held in the chosen language,
+  quotations included (see "Languages" below).
 
 ## Architecture
 
@@ -125,6 +125,26 @@ Napoleon speaks with the browser's speech synthesis, free and keyless: Edge "Nat
 
 The keys are checked with each service, then saved to the local `.env` file: they never leave your
 computer. You can also fill in `.env` by hand, starting from `.env.example`.
+
+## Languages
+
+The interface and the story are available in 25 languages:
+
+- **the project's original languages**: French, English, Spanish, Italian, German, Portuguese;
+- **countries the Napoleonic era went through**: Russian, Polish, Dutch, Arabic (written right to left);
+- **a worldwide audience**: Chinese, Japanese, Korean, Hindi;
+- **other European languages**: Swedish, Danish, Czech, Greek, Romanian, Turkish, Ukrainian;
+- **regional languages**: Corsican, Catalan, Basque, Breton.
+
+The narrator writes directly in the chosen language; quality depends on the configured model and is more
+uneven for regional languages. Corsican and Breton have no speech synthesis voice: Napoleon speaks them
+with an Italian or French voice. The number of voices available depends on the browser (Edge offers the
+most).
+
+**Adding a language**: one entry in `LANGS` in `web/src/i18n.js` (name, locale, name given to the
+narrator, optionally a flag), then `python scripts/translate_ui.py <code>` generates and checks its labels
+in `web/src/locales/<code>.json` with the configured model. The API accepts any language the interface
+offers.
 
 ## The 3D avatar
 
