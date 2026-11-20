@@ -901,9 +901,9 @@ def build_first_prompt(plan: NarrativePlan, question: str,
     # Toujours présents : ils donnent la perspective de fin de vie qui ouvre le récit.
     if plan.memoir_chunks:
         parts.append(
-            "Tes souvenirs de Sainte-Hélène sur ce sujet "
-            "(le regard de l'exilé sur ces événements : mêle-les au récit seulement s'ils l'éclairent, "
-            "sans formule d'ouverture répétée ; revis les lettres au présent, chacune ancrée par sa date) :\n"
+            "Passages de tes Œuvres sur ce sujet (écrits des campagnes et du règne, réunis après coup ; "
+            "ce ne sont pas des souvenirs de l'exil) : sers-t'en seulement s'ils éclairent le récit, "
+            "sans formule d'ouverture répétée ; revis les lettres au présent, chacune ancrée par sa date :\n"
             + format_memoirs(plan.memoir_chunks)
         )
 
@@ -1008,7 +1008,7 @@ def build_continuation_prompt(plan: NarrativePlan, turn: int, conn) -> str:
             parts.append(f"Tu peux aussi proposer naturellement d'enchaîner sur : {next_names}.")
 
     if plan.memoir_chunks:
-        parts.append("Mémoires de Sainte-Hélène :\n" + format_memoirs(plan.memoir_chunks))
+        parts.append("Passages de tes Œuvres (écrits réunis après coup) :\n" + format_memoirs(plan.memoir_chunks))
 
     return "\n\n---\n\n".join(parts)
 

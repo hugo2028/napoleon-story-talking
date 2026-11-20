@@ -213,9 +213,6 @@ d'Italie, Égypte, Consulat, Empire, Sainte-Hélène).
 - **Des textes d'attribution discutable.** Certains petits recueils (opuscules de circonstance, textes
   publiés après la chute de l'Empire) mériteraient une vérification de leur authenticité ; les bulletins
   et certains rapports ne sont pas toujours de la main de Napoléon.
-- **Une confusion à corriger dans l'application.** L'archiviste présente les passages des *Œuvres de
-  Napoléon Bonaparte* comme des « souvenirs de Sainte-Hélène ». Or ces *Œuvres* rassemblent surtout des
-  écrits des campagnes et du règne, pas des mémoires de l'exil.
 - **Des liens Gallica approximatifs.** Quand le numéro de page d'une lettre n'est pas connu, la page
   Gallica est estimée par interpolation dans le tome.
 

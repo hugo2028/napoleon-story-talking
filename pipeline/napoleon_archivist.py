@@ -5,7 +5,7 @@ Au lieu d'un pipeline figé (classifieur → seuil fixe → échantillonnage →
 un LLM « archiviste » dispose d'outils pour :
   - consulter la chronologie et la répartition des lettres d'une période,
   - chercher (sémantique avec seuil et limite choisis par lui, ou mots exacts),
-  - lire les lettres et les mémoires de Sainte-Hélène,
+  - lire les lettres et les Œuvres de Napoléon Bonaparte (éd. Panckoucke),
   - fixer / réviser un plan de récit en chapitres,
   - servir un tour (lettres à raconter + pistes proposées au visiteur).
 
@@ -137,8 +137,8 @@ Un plan d'un seul moment n'est acceptable que si les lettres manquent vraiment.
 « l'anniversaire » d'une bataille ne peut pas dater du jour de cette bataille ; une lettre qui \
 mentionne des faits postérieurs à sa date est mal datée → écarte-la.
 4. Servir le tour avec servir_tour : le chapitre à raconter maintenant, 1 à 3 lettres (de préférence \
-1 ou 2), éventuellement 1 à 2 passages des mémoires quand le regard de l'exilé apporte quelque chose \
-(pas à chaque tour), \
+1 ou 2), éventuellement 1 à 2 passages des Œuvres de Napoléon (écrits des campagnes et du règne \
+réunis après coup, pas des souvenirs de l'exil) quand ils éclairent le moment raconté (pas à chaque tour), \
 et les pistes à proposer pour la suite :
    - les pistes portent sur LE MÊME passage : les 2 variantes du moment suivant (jamais deux moments \
 éloignés, jamais un saut de plusieurs mois) — c'est la règle dès que ce moment a 2 variantes ;
@@ -218,7 +218,8 @@ TOOLS = [
         "Tire 5 lettres au hasard dans toute la correspondance (jamais déjà racontées), chacune avec un extrait "
         "et sa « phrase citable ». Utile quand le visiteur veut autre chose sans dire quoi : le hasard d'une "
         "lettre ouvre un sujet concret, tiré des archives plutôt que de la mémoire générale."),
-    _fn("memoires", "Recherche sémantique dans les mémoires et souvenirs de Sainte-Hélène.",
+    _fn("memoires", "Recherche dans les Œuvres de Napoléon Bonaparte (éd. Panckoucke) : écrits des campagnes "
+        "et du règne réunis après coup. Ce ne sont pas des souvenirs de Sainte-Hélène.",
         {"requete": {"type": "string"},
          "limite": {"type": "integer", "description": "1-8, défaut 4."}},
         ["requete"]),
@@ -237,11 +238,11 @@ TOOLS = [
          }, "required": ["titre", "resume", "lettres"]}}},
         ["sujet", "chapitres"]),
     _fn("servir_tour",
-        "Termine le tour : transmet au narrateur le chapitre à raconter, les lettres, les mémoires "
-        "éventuels et les pistes à proposer au visiteur.",
+        "Termine le tour : transmet au narrateur le chapitre à raconter, les lettres, les passages des "
+        "Œuvres éventuels et les pistes à proposer au visiteur.",
         {"chapitre": {"type": "string", "description": "Identifiant du chapitre (ex. c2)."},
          "lettres": {"type": "array", "items": {"type": "integer"}, "description": "1 à 3 lettres à raconter."},
-         "memoires": {"type": "array", "items": {"type": "integer"}, "description": "0 à 2 passages des mémoires."},
+         "memoires": {"type": "array", "items": {"type": "integer"}, "description": "0 à 2 passages des Œuvres de Napoléon (outil memoires)."},
          "pistes": {"type": "array", "items": {"type": "string"}, "description": "0 à 2 identifiants de chapitres non racontés : les variantes du moment suivant."},
          "transition": {"type": "string", "description": "Si aucune piste : moment de la vie vers lequel proposer d'enchaîner."},
          "note": {"type": "string", "description": "Consigne courte au narrateur (angle, émotion, lien avec la demande)."}},
@@ -714,9 +715,11 @@ class Archivist:
             for mid in decision["memoires"]:
                 row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (mid,)).fetchone()
                 if row:
-                    mem.append(f"[{(row[0] or 'Mémoires')[:60]}]\n{(row[1] or '')[:400]}")
+                    mem.append(f"[{(row[0] or 'Œuvres')[:60]}]\n{(row[1] or '')[:400]}")
             if mem:
-                parts.append("Tes souvenirs de Sainte-Hélène (le regard de l'exilé : mêle-les au récit seulement s'ils l'éclairent) :\n"
+                parts.append("Passages de tes Œuvres (écrits des campagnes et du règne, réunis après coup ; ce ne sont pas "
+                             "des souvenirs de l'exil) : sers-t'en seulement s'ils éclairent le moment raconté, sans "
+                             "les présenter comme des souvenirs de Sainte-Hélène :\n"
                              + "\n\n".join(mem))
         if state["plan"]:
             p = state["plan"]

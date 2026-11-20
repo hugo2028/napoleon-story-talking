@@ -208,9 +208,6 @@ Empire, Saint Helena).
 - **Texts of debatable attribution.** Some small collections (occasional pamphlets, texts published after
   the fall of the Empire) would deserve an authenticity check; bulletins and some reports were not always
   written by Napoleon himself.
-- **A mislabelling to fix in the application.** The archivist presents passages from the *Œuvres de
-  Napoléon Bonaparte* as "Saint Helena recollections". In fact these *Œuvres* mainly gather writings from
-  the campaigns and the reign, not memoirs of the exile.
 - **Approximate Gallica links.** When a letter's page number is not known, the Gallica page is estimated by
   interpolation within the volume.
 
