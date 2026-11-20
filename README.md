@@ -4,10 +4,7 @@ Un avatar conversationnel de Napoléon Bonaparte, exilé à Sainte-Hélène, qui
 lettre après lettre, dans l'ordre où il l'a écrite**. Chaque réponse est construite à partir de sa
 correspondance datée, citée mot pour mot et reliée à sa source sur Gallica (BnF).
 
-*A conversational Napoleon avatar who relives his life in the present tense, letter by letter, in the
-order he wrote them. Every answer is built from his dated correspondence, quoted verbatim and linked to
-its Gallica (BnF) source. Available in French, English,
-Spanish, Italian, German and Portuguese.*
+**[English version](README.en.md)**
 
 ## Démo
 
@@ -92,20 +89,20 @@ Tout le reste découle de ce choix :
 ```
 web/            Interface (Vite) + relais Node/Express (port 3002) — voix Azure, avatar three.js
 pipeline/       API Flask (port 5001), archiviste (napoleon_archivist.py), narrateur (napoleon_agent.py)
-data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings) — via Git LFS
+scripts/        download_data.py : télécharge les bases RAG depuis la Release GitHub
+data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings), non versionnées
 ```
 
 ## Installation
 
-Prérequis : Python 3.11+, Node.js 18+, [Git LFS](https://git-lfs.com), une clé OpenAI et une ressource
-Azure Speech.
+Prérequis : Python 3.11+, Node.js 18+, une clé OpenAI et une ressource Azure Speech.
 
 ```bash
-git lfs install
 git clone https://github.com/hugo2028/napoleon-story-talking.git
 cd napoleon-story-talking
 
 pip install -r requirements.txt
+python scripts/download_data.py   # bases RAG (≈285 Mo) depuis la Release GitHub, empreintes vérifiées
 cd web && npm install && cd ..
 
 cp .env.example .env    # puis renseignez LLM_API_KEY, AZURE_SPEECH_KEY, AZURE_SPEECH_REGION
@@ -150,7 +147,9 @@ Bibliothèque nationale de France et consultées sur [Gallica](https://gallica.b
 | Lettres à Joséphine (*Tendresses impériales*) | 111 | 12 000 |
 | Écrits de jeunesse (*Le Souper de Beaucaire*…) | 106 | 14 000 |
 
-`data/rag/` contient les deux bases utilisées par l'application :
+Les deux bases utilisées par l'application sont publiées dans la Release
+[`data-v1`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v1) et téléchargées
+dans `data/rag/` par `scripts/download_data.py` :
 
 - `napoleon_clean.sqlite` : **25 843 passages** datés et classés, dont 21 358 lettres, 1 973 ordres,
   1 356 bulletins et 162 proclamations, avec leurs embeddings ;

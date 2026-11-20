@@ -53,6 +53,10 @@ embed_client = OpenAI(api_key=openai_key)
 chat_client  = embed_client
 model        = os.getenv("LLM_MODEL", "gpt-4.1-mini")
 
+if not RAG_DB.exists():
+    sys.exit(f"Base RAG introuvable : {RAG_DB}\n"
+             "Téléchargez les bases avec : python scripts/download_data.py")
+
 print(f"Chargement RAG : {RAG_DB} ...")
 conn, emb_matrix, chunk_ids = load_db(RAG_DB)
 print(f"  {len(emb_matrix)} vecteurs lettres")

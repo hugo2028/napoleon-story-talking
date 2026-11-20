@@ -1,2 +1,0 @@
-# Bases RAG (seules données versionnées) via Git LFS
-data/rag/*.sqlite filter=lfs diff=lfs merge=lfs -text

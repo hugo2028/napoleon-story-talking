@@ -14,12 +14,9 @@ web/.env.*
 web/node_modules/
 web/dist/
 
-# data/ reste local, sauf les deux bases RAG (versionnées via Git LFS)
-data/*
-!data/rag/
-data/rag/*
-!data/rag/napoleon_clean.sqlite
-!data/rag/napoleon_memoirs.sqlite
+# data/ reste local : les bases RAG se téléchargent depuis la Release GitHub
+# (python scripts/download_data.py)
+data/
 shards/logs/
 *.log
 
