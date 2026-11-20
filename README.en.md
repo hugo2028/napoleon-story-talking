@@ -81,8 +81,8 @@ Everything else follows from that choice:
   Napoleon had just been rereading it, and plunges into the day it was written.
 - **Time made visible.** On screen, the episode, period, chapter and dates of the letters being told
   move forward with the story. Each answer links to the page of the edition on Gallica.
-- **An embodied presence, in six languages.** Napoleon speaks and chooses his gestures. With Azure
-  Speech, his voice is neural and drives the lip-sync; without Azure, he speaks with the browser's voice. The corpus stays in French, and the conversation can be held in French, English,
+- **An embodied presence, in six languages.** Napoleon speaks, with the browser's speech synthesis, and
+  chooses his gestures. The corpus stays in French, and the conversation can be held in French, English,
   Spanish, Italian, German or Portuguese.
 
 ## Architecture
@@ -101,7 +101,6 @@ data/rag/       RAG SQLite databases (letters + memoirs, with embeddings), not v
 |---|---|---|
 | **Required** | Python 3.11+, Node.js 18+ and **a language model** reachable through an OpenAI-compatible API: OpenAI, Anthropic, Mistral, Google Gemini, OpenRouter, Groq, or **Ollama**, free and local | — |
 | Optional | An **OpenAI** key for semantic search, if your provider is not OpenAI | the archivist searches by keyword |
-| Optional | An **Azure Speech** resource (free F0 tier): neural voice and lip-sync | the browser's built-in voice, free (Edge "Natural" voices sound best) |
 | Optional | A **3D avatar** `web/avatar/avatar.glb` (see below) | an animated 2D medallion |
 
 ```bash
@@ -125,7 +124,9 @@ Then open <http://localhost:5174>. On first launch, the **⚙ Settings** panel o
 1. choose the language;
 2. choose the provider and enter its key: the list of models is read from its API, and you pick one for
    the archivist (it must support tool calling) and one for the narrator;
-3. if you like, add an OpenAI key for semantic search and an Azure Speech key for the voice.
+3. if your provider is not OpenAI, you can add an OpenAI key for semantic search.
+
+Napoleon speaks with the browser's speech synthesis, free and keyless: Edge "Natural" voices sound best.
 
 The keys are checked with each service, then saved to the local `.env` file: they never leave your
 computer. You can also fill in `.env` by hand, starting from `.env.example`.
@@ -145,6 +146,10 @@ To use your own avatar, place a `web/avatar/avatar.glb` file containing:
 - named animations: `idle_weight_shift` (rest), `talk_speaking_with_gestures` (speech) and any gestures
   you like (`head_nod_yes`, `head_shake_no`, `gesture_look_away`…). The names found in the file are
   offered to the language model automatically.
+
+As soon as a 3D model is present, **⚙ Settings** also offers an **Azure Speech** voice (optional, free F0
+tier): a neural voice whose visemes sync the avatar's lips. Without Azure, the avatar speaks with the
+browser's voice.
 
 ## Data sources
 

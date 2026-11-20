@@ -80,10 +80,9 @@ Tout le reste découle de ce choix :
   comme si Napoléon venait de la relire, et l'on plonge dans le jour où elle a été écrite.
 - **Le temps rendu visible.** À l'écran, l'épisode, la période, le chapitre et les dates des lettres
   racontées avancent avec le récit. Chaque réplique renvoie à la page de l'édition sur Gallica.
-- **Une présence incarnée, dans six langues.** Napoléon parle et choisit ses gestes. Avec Azure Speech,
-  sa voix est neuronale et pilote la synchronisation labiale ; sans Azure, il parle avec la voix du
-  navigateur. Le corpus reste en français, et la conversation se tient en français,
-  anglais, espagnol, italien, allemand ou portugais.
+- **Une présence incarnée, dans six langues.** Napoléon parle, avec la voix de synthèse du navigateur,
+  et choisit ses gestes. Le corpus reste en français, et la conversation se tient en français, anglais,
+  espagnol, italien, allemand ou portugais.
 
 ## Architecture
 
@@ -101,7 +100,6 @@ data/rag/       Bases SQLite du RAG (lettres + mémoires, avec embeddings), non 
 |---|---|---|
 | **Requis** | Python 3.11+, Node.js 18+ et **un modèle de langage** accessible par une API compatible OpenAI : OpenAI, Anthropic, Mistral, Google Gemini, OpenRouter, Groq, ou **Ollama**, gratuit et en local | — |
 | Optionnel | Une clé **OpenAI** pour la recherche sémantique, si le fournisseur choisi n'est pas OpenAI | l'archiviste cherche par mots-clés |
-| Optionnel | Une ressource **Azure Speech** (offre gratuite F0) : voix neuronale et lèvres synchronisées | la voix intégrée au navigateur, gratuite (les voix « Natural » d'Edge sont les meilleures) |
 | Optionnel | Un **avatar 3D** `web/avatar/avatar.glb` (voir plus bas) | un médaillon 2D animé |
 
 ```bash
@@ -125,8 +123,11 @@ Puis ouvrez <http://localhost:5174>. Au premier lancement, le panneau **⚙ Para
 1. choisissez la langue ;
 2. choisissez le fournisseur et saisissez sa clé : la liste des modèles est lue sur son API, et vous
    choisissez celui de l'archiviste (il doit gérer l'appel d'outils) et celui du narrateur ;
-3. si vous le souhaitez, ajoutez une clé OpenAI pour la recherche sémantique et une clé Azure Speech
-   pour la voix.
+3. si votre fournisseur n'est pas OpenAI, ajoutez si vous le souhaitez une clé OpenAI pour la recherche
+   sémantique.
+
+Napoléon parle avec la voix de synthèse du navigateur, gratuite et sans clé : les voix « Natural »
+d'Edge sont les plus naturelles.
 
 Les clés sont vérifiées auprès de chaque service, puis enregistrées dans le fichier `.env` local : elles ne
 quittent pas votre ordinateur. Vous pouvez aussi remplir `.env` à la main à partir de `.env.example`.
@@ -145,6 +146,10 @@ Pour utiliser votre propre avatar, déposez un fichier `web/avatar/avatar.glb` q
 - des animations nommées : `idle_weight_shift` (repos), `talk_speaking_with_gestures` (parole) et,
   au choix, des gestes (`head_nod_yes`, `head_shake_no`, `gesture_look_away`…). Les noms trouvés dans
   le fichier sont proposés automatiquement au modèle de langage.
+
+Dès qu'un modèle 3D est présent, **⚙ Paramètres** propose aussi une voix **Azure Speech** (optionnelle,
+offre gratuite F0) : une voix neuronale dont les visèmes synchronisent les lèvres de l'avatar. Sans
+Azure, l'avatar parle avec la voix du navigateur.
 
 ## Sources des données
 

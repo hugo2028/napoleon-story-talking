@@ -49,6 +49,7 @@ const azureKeyInput      = document.getElementById('azure-key')
 const azureRegionInput   = document.getElementById('azure-region')
 const azureState         = document.getElementById('azure-state')
 const avatarNote         = document.getElementById('avatar-note')
+const voiceSection       = document.getElementById('voice-section')
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let avatar   = null
@@ -102,7 +103,8 @@ async function initSpeech() {
   synth?.stop()
   synth = null
   try {
-    if (configStatus.azure) synth = await SpeechSynth.create(getLangInfo())
+    // Azure ne sert qu'à synchroniser les lèvres de l'avatar 3D : sans modèle, voix du navigateur.
+    if (hasAvatarModel && configStatus.azure) synth = await SpeechSynth.create(getLangInfo())
   } catch (err) {
     console.warn('[Speech] Azure indisponible, voix du navigateur :', err)
   }
@@ -183,6 +185,7 @@ function renderSettingsFields(fromStatus = false) {
   azureKeyInput.placeholder = configStatus.azure ? t('keyConfigured') : t('azureKeyPlaceholder')
   azureState.textContent = configStatus.azure ? '✓' : ''
   avatarNote.textContent = t(hasAvatarModel ? 'avatarFound' : 'avatarMissing')
+  voiceSection.hidden = !hasAvatarModel
 }
 
 /** Listes de modèles remplies depuis l'API du fournisseur ; le choix actuel reste sélectionné. */
