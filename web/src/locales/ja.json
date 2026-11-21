@@ -79,6 +79,5 @@
   "missingKeys": "モデルが設定されていません：設定で選択してください。",
   "modelsLoaded": {
     "other": "{n}件のモデルが利用可能です。"
-  },
-  "transcript": "テキスト"
+  }
 }

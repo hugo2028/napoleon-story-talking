@@ -79,6 +79,5 @@
   "missingKeys": "Model yapılandırılmadı: Ayarlardan bir model seçiniz.",
   "modelsLoaded": {
     "other": "{n} model mevcut."
-  },
-  "transcript": "Metin"
+  }
 }

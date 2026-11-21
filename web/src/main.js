@@ -257,13 +257,6 @@ function openSettings() {
 
 settingsBtn.addEventListener('click', openSettings)
 
-// Mobile : texte intégral des réponses affiché à la demande (par défaut, de petits résumés)
-const transcriptBtn = document.getElementById('transcript-btn')
-transcriptBtn.addEventListener('click', () => {
-  const on = document.body.classList.toggle('show-transcript')
-  transcriptBtn.setAttribute('aria-pressed', String(on))
-  chatLog.scrollTop = chatLog.scrollHeight
-})
 settingsClose.addEventListener('click', () => settingsDialog.close())
 
 settingsForm.addEventListener('submit', async (e) => {
@@ -481,7 +474,7 @@ async function respond(userText, showUser = true) {
   history.push({ role: 'assistant', content: speech, sources: apiSources, annotation: apiAnnotation })
   trimHistory()
   persistConversation()
-  addBubble(speech, 'napoleon', apiSources, apiAnnotation)
+  addBubble(speech, 'napoleon', apiSources)
   // Les notes suivent chaque réponse : nouvel épisode → nouveau contexte, sinon on garde
   // le contexte de l'épisode en cours mais chapitre et lettres sont ceux de CETTE réponse.
   if (apiAnnotation) {
@@ -513,31 +506,19 @@ async function respond(userText, showUser = true) {
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
-/** Résumé court d'une réponse, pour les petites bulles sur mobile : le chapitre raconté,
- *  sinon la première phrase, abrégée. */
-function shortSummary(text, annotation) {
-  if (annotation?.chapitre) return annotation.chapitre
-  const clean = stripPauses(text).trim()
-  const first = (clean.match(/^.+?[.!?…](?=\s|$)/) || [clean])[0]
-  return first.length > 110 ? first.slice(0, 107).trimEnd() + '…' : first
-}
-
-function addBubble(text, role, sources = null, annotation = null) {
+function addBubble(text, role, sources = null) {
   const div = document.createElement('div')
   div.className = `bubble bubble-${role}`
-  if (role === 'napoleon') {
-    const summary = document.createElement('div')
-    summary.className = 'bubble-summary'
-    summary.textContent = shortSummary(text, annotation)
-    const full = document.createElement('div')
-    full.className = 'bubble-full'
-    full.textContent = stripPauses(text)
-    div.append(summary, full)
-  } else {
-    div.textContent = stripPauses(text)
-  }
+  // Le texte est dans son propre bloc : sur mobile, il est masqué et seules les lettres restent.
+  const body = document.createElement('div')
+  body.className = 'bubble-text'
+  body.textContent = stripPauses(text)
+  div.appendChild(body)
 
   if (role === 'napoleon' && sources && sources.length > 0) {
+    div.classList.add('has-sources')
+    chatLog.querySelector('.latest-sources')?.classList.remove('latest-sources')
+    div.classList.add('latest-sources')
     const btn = document.createElement('button')
     btn.className = 'source-toggle'
     btn.textContent = `📜 ${t('letters', sources.length)} · ${t('sources')}`
@@ -697,7 +678,7 @@ function renderHistory() {
   }
 
   for (const message of history) {
-    addBubble(message.content, message.role === 'assistant' ? 'napoleon' : 'user', message.sources, message.annotation)
+    addBubble(message.content, message.role === 'assistant' ? 'napoleon' : 'user', message.sources)
   }
   // Repères en haut à gauche : ceux de la dernière réponse qui en avait
   const lastAnn = [...history].reverse().find(m => m.annotation)?.annotation

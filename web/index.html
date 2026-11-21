@@ -685,12 +685,8 @@
     }
 
     /* ── Responsive ──────────────────────────────────────────────────── */
-    /* Résumé court des réponses : affiché seulement sur mobile (voir plus bas) */
-    .bubble-summary { display: none; }
-    #transcript-btn { display: none; }
-
-    /* Mobile : l'avatar occupe tout l'écran ; par-dessus, des repères réduits et un dialogue compact
-       (petites bulles qui résument les réponses, le texte intégral reste accessible par un bouton). */
+    /* Mobile : l'avatar occupe tout l'écran, en entier. Pas de texte : Napoléon parle, et de chaque
+       réponse ne restent que ses lettres, cliquables ; par-dessus, des repères réduits. */
     @media (max-width: 680px) {
       body { display: block; }
       #avatar-panel {
@@ -743,28 +739,43 @@
       }
       #settings-btn { flex-basis: auto; }
       #chat-actions .chat-action { min-height: 28px; padding: 5px 9px; }
-      #transcript-btn { display: inline-block; }
+      #record-btn { display: none !important; }
       #chat-log {
         flex: 0 1 auto;
-        max-height: 24dvh;
-        padding: 6px 10px;
+        max-height: 30dvh;
+        padding: 4px 10px;
         gap: 6px;
-        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%);
-        mask-image: linear-gradient(to bottom, transparent, #000 28%);
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 40%);
+        mask-image: linear-gradient(to bottom, transparent, #000 40%);
       }
-      .bubble {
-        max-width: 86%;
-        padding: 6px 10px;
-        font-size: 12px;
-        line-height: 1.4;
-        background: rgba(12, 10, 8, 0.6);
+      #chat-log:not(:has(.has-sources)) { padding: 0; }
+      .bubble-user, .bubble-system, .bubble-text { display: none; }
+      /* seules les lettres de la dernière réponse restent à l'écran */
+      .bubble-napoleon:not(.latest-sources) { display: none; }
+      .bubble-napoleon {
+        max-width: 100%;
+        padding: 0;
+        background: none;
+        border: none;
+        font-style: normal;
       }
-      .bubble-system { font-size: 11px; padding: 4px 8px; }
-      body:not(.show-transcript) .bubble-summary { display: block; }
-      body:not(.show-transcript) .bubble-full { display: none; }
-      body.show-transcript #chat-panel { max-height: 70dvh; background: rgba(12, 10, 8, 0.94); }
-      body.show-transcript #chat-log { max-height: 50dvh; -webkit-mask-image: none; mask-image: none; }
-      .source-toggle { margin-top: 4px; padding-top: 4px; }
+      .bubble-napoleon .source-toggle {
+        width: auto;
+        margin: 0;
+        padding: 5px 12px;
+        border: 1px solid rgba(201, 168, 76, 0.35);
+        border-radius: 999px;
+        background: rgba(12, 10, 8, 0.7);
+        opacity: 1;
+      }
+      .bubble-napoleon .source-panel {
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: rgba(12, 10, 8, 0.88);
+        border: 1px solid var(--border);
+      }
+      .source-item { flex-wrap: wrap; }
+      .source-snippet { white-space: normal; }
       #chat-footer {
         padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
         border: none;
@@ -814,7 +825,6 @@
           <button type="button" id="end-conversation-btn" class="chat-action" data-i18n="end">Finir</button>
           <button type="button" id="reset-conversation-btn" class="chat-action" data-i18n="reset">Reset</button>
           <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
-          <button type="button" id="transcript-btn" class="chat-action" aria-pressed="false">📜 <span data-i18n="transcript">Texte</span></button>
         </div>
       </div>
     </div>

@@ -169,13 +169,13 @@ export class AvatarPlayer {
     const center = this.frameCenter
     const size = this.frameSize
     const isClose = mode === 'closeup'
-    // Écran en hauteur (mobile) : les repères couvrent le haut et le dialogue le bas de l'image ;
-    // on vise plus haut pour que la tête descende dans la zone dégagée.
+    // Écran en hauteur (mobile) : les repères couvrent le haut et les commandes le bas de l'image ;
+    // la caméra recule pour que Napoléon tienne en entier dans la zone dégagée.
     const portrait = this.camera && this.camera.aspect < 0.8
-    const focusY = center.y + size.y * (isClose ? 0.22 : portrait ? 0.22 : 0.12)
+    const focusY = center.y + size.y * (isClose ? 0.22 : portrait ? 0.04 : 0.12)
     const distance = isClose
       ? Math.max(2.2, size.y * 0.48 + 0.85)
-      : Math.max(5.4, size.y * 1.3 + 2.7)
+      : Math.max(5.4, size.y * 1.3 + 2.7) * (portrait ? 1.5 : 1)
 
     this.cameraMode = mode
     this.cameraFovTarget = isClose ? 26 : 30

@@ -81,6 +81,5 @@
   "modelsLoaded": {
     "one": "{n} model disponible.",
     "other": "{n} models disponibles."
-  },
-  "transcript": "Text"
+  }
 }
