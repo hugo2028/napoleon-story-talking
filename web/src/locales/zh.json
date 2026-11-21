@@ -79,5 +79,6 @@
   "missingKeys": "未配置模型：请在设置中选择。",
   "modelsLoaded": {
     "other": "可用模型 {n} 个。"
-  }
+  },
+  "transcript": "文字"
 }

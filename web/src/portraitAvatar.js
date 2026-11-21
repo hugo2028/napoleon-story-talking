@@ -46,9 +46,13 @@ const STYLE = `
 .portrait-jaw { transform-origin: 158px 222px; transition: transform 70ms linear; }
 .portrait-ring { transition: stroke-opacity .2s, stroke-width .2s; }
 .portrait-avatar.speaking .portrait-ring { stroke-width: 4; }
+/* Réflexion : le buste s'incline, le cercle d'or respire lentement */
+.portrait-avatar.thinking .portrait-bust { transform: rotate(-3deg) translateY(3px); }
+.portrait-avatar.thinking .portrait-ring { animation: portrait-think 1.8s ease-in-out infinite; }
+@keyframes portrait-think { 50% { stroke-opacity: .25; } }
 @keyframes portrait-breathe { 50% { transform: rotate(-1.2deg) translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) {
-  .portrait-avatar.speaking .portrait-bust { animation: none; }
+  .portrait-avatar.speaking .portrait-bust, .portrait-avatar.thinking .portrait-ring { animation: none; }
 }`
 
 export class PortraitAvatar {
@@ -87,7 +91,16 @@ export class PortraitAvatar {
     this.ring.style.strokeOpacity = String(0.65 + amount * 0.35)
   }
 
+  startThinking() {
+    this.root.classList.add('thinking')
+  }
+
+  stopThinking() {
+    this.root.classList.remove('thinking')
+  }
+
   startTalking() {
+    this.stopThinking()
     this.isSpeaking = true
     this.root.classList.add('speaking')
   }

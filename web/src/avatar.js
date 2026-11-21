@@ -26,6 +26,10 @@ const IDLE_ACTION_NAME = 'idle_weight_shift'
 const TALK_ACTION_NAME = 'talk_speaking_with_gestures'
 const TALK_ACTION_NAMES = [TALK_ACTION_NAME]
 const ACTION_REPLAY_COOLDOWN_MS = 3000
+// Réflexion entre deux réponses : une animation « thinking » si le modèle en contient une,
+// sinon une attitude composée (tête penchée, regard ailleurs) et, de temps en temps, un geste pensif.
+const THINK_ACTION_NAME = 'thinking'
+const THINK_GESTURES = ['gesture_look_away', 'head_shake_thoughtful']
 
 export class AvatarPlayer {
   constructor(container) {
@@ -67,6 +71,11 @@ export class AvatarPlayer {
     this.headMoveUntil = 0
     this.headTarget = { x: 0, y: 0, z: 0 }
     this.headCurrent = { x: 0, y: 0, z: 0 }
+    this.isThinking = false
+    this.nextThinkGestureAt = 0
+    this.nextThinkPoseAt = 0
+    this.thinkPose = { x: 0, y: 0, z: 0 }
+    this.thinkGaze = 'down'
     this.frameCenter = new THREE.Vector3()
     this.frameSize = new THREE.Vector3(1, 1, 1)
     this.cameraMode = 'default'
@@ -160,7 +169,10 @@ export class AvatarPlayer {
     const center = this.frameCenter
     const size = this.frameSize
     const isClose = mode === 'closeup'
-    const focusY = center.y + size.y * (isClose ? 0.22 : 0.12)
+    // Écran en hauteur (mobile) : les repères couvrent le haut et le dialogue le bas de l'image ;
+    // on vise plus haut pour que la tête descende dans la zone dégagée.
+    const portrait = this.camera && this.camera.aspect < 0.8
+    const focusY = center.y + size.y * (isClose ? 0.22 : portrait ? 0.22 : 0.12)
     const distance = isClose
       ? Math.max(2.2, size.y * 0.48 + 0.85)
       : Math.max(5.4, size.y * 1.3 + 2.7)
@@ -211,6 +223,7 @@ export class AvatarPlayer {
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height)
+    if (this.avatarRoot) this._setCameraTargets(this.cameraMode, false)
   }
 
   _tick() {
@@ -283,6 +296,49 @@ export class AvatarPlayer {
       this.overlayMorphs.mouthSmileLeft = 0.06
       this.overlayMorphs.mouthSmileRight = 0.06
     }
+
+    if (this.isThinking) this._updateThinking()
+  }
+
+  /** Attitude de réflexion : la tête se penche et change lentement d'appui, le regard se pose ailleurs. */
+  _updateThinking() {
+    if (this.elapsed >= this.nextThinkPoseAt) {
+      this.nextThinkPoseAt = this.elapsed + 2.4 + Math.random() * 1.8
+      const side = Math.random() < 0.5 ? -1 : 1
+      this.thinkGaze = Math.random() < 0.65 ? 'down' : 'up'
+      this.thinkPose = {
+        x: THREE.MathUtils.degToRad(this.thinkGaze === 'down' ? 6 + Math.random() * 3 : -4 - Math.random() * 2),
+        y: THREE.MathUtils.degToRad(side * (5 + Math.random() * 5)),
+        z: THREE.MathUtils.degToRad(side * (3 + Math.random() * 3)),
+      }
+    }
+    this.headTarget = this.thinkPose
+    if (this.thinkGaze === 'down') this.overlayMorphs.eyesLookDown = 0.45
+    else this.overlayMorphs.eyesLookUp = 0.4
+
+    const thinkClip = this.actions.get(THINK_ACTION_NAME)
+    if (!thinkClip && this.elapsed >= this.nextThinkGestureAt) {
+      this.nextThinkGestureAt = this.elapsed + 6 + Math.random() * 4
+      const available = THINK_GESTURES.filter(name => this.actions.has(name))
+      if (available.length) this.playNamedGesture(available[Math.floor(Math.random() * available.length)])
+    }
+  }
+
+  /** Napoléon réfléchit pendant que l'archiviste cherche ses lettres. */
+  startThinking() {
+    if (this.isThinking) return
+    this.isThinking = true
+    this.nextThinkPoseAt = this.elapsed
+    this.nextThinkGestureAt = this.elapsed + 1.2
+    const thinkClip = this.actions.get(THINK_ACTION_NAME)
+    if (thinkClip) this._switchBodyAction(thinkClip, 0.4)
+  }
+
+  stopThinking() {
+    if (!this.isThinking) return
+    this.isThinking = false
+    this.headTarget = { x: 0, y: 0, z: 0 }
+    if (!this.isSpeaking && this.baseAction) this._switchBodyAction(this.baseAction, 0.4)
   }
 
   _updateMorphs(dt) {
@@ -364,6 +420,7 @@ export class AvatarPlayer {
   }
 
   startTalking() {
+    this.isThinking = false
     this.isSpeaking = true
     if (this.talkAction) {
       this._switchBodyAction(this.talkAction, 0.25)
@@ -408,7 +465,8 @@ export class AvatarPlayer {
     const durationMs = Math.max(350, next.getClip().duration * 1000 - 120)
     this._gestureReturnTimer = setTimeout(() => {
       if (this.currentBodyAction !== next) return
-      const fallback = this.isSpeaking ? this.talkAction : this.baseAction
+      const fallback = this.isSpeaking ? this.talkAction
+        : (this.isThinking && this.actions.get(THINK_ACTION_NAME)) || this.baseAction
       if (fallback && fallback !== next) {
         this._switchBodyAction(fallback, 0.25)
       }
