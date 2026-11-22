@@ -56,6 +56,8 @@ const settingsActions    = document.getElementById('settings-actions')
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let avatar   = null
+// Développement : l'avatar est inspectable depuis la console (window.__napoleon.avatar)
+if (import.meta.env.DEV) window.__napoleon = { get avatar() { return avatar } }
 let synth    = null
 let speaking = false
 let pending  = false
@@ -116,6 +118,9 @@ async function initSpeech() {
   }
   if (!synth) return false
   synth.onViseme = (id)    => avatar?.setViseme(id)
+  synth.onFaceReset  = ()          => avatar?.resetFace?.()
+  synth.onFaceFrames = (i, frames) => avatar?.addFaceFrames?.(i, frames)
+  synth.onFaceClock  = (t0)        => avatar?.setFaceClock?.(t0)
   synth.onAction = (anim)  => avatar?.switchAnimation(anim)
   synth.onStart  = () => { speaking = true;  avatar?.startTalking() }
   synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); setReady() }

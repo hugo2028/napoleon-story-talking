@@ -28,6 +28,10 @@ export class SpeechSynth {
     this.onStart     = null
     this.onEnd       = null
     this.onAction    = null   // (animationName: string) => void — déclenché mid-speech
+    // Animation faciale complète (Azure « FacialExpression ») : 60 images/s, 55 valeurs ARKit par image
+    this.onFaceFrames = null  // (firstFrameIndex: number, frames: number[][]) => void
+    this.onFaceClock  = null  // (frame0At: number) => void — instant (performance.now) de l'image 0
+    this.onFaceReset  = null  // () => void
     this._timers     = []
     this._azureSynth = null
     // Web Audio (mode ElevenLabs uniquement)
@@ -107,6 +111,7 @@ export class SpeechSynth {
 
     const actionScheduler = this._createWordActionScheduler(actions, AUDIO_BUFFER_MS)
     let wordCount = 0
+    this.onFaceReset?.()
 
     const schedule = (id, ms) => {
       maxAudioOffsetMs = Math.max(maxAudioOffsetMs, ms)
@@ -128,7 +133,15 @@ export class SpeechSynth {
       pending.length = 0
     }
 
-    synth.visemeReceived = (_, e) => schedule(e.visemeId, e.audioOffset / 10000)
+    synth.visemeReceived = (_, e) => {
+      schedule(e.visemeId, e.audioOffset / 10000)
+      if (e.animation) {
+        try {
+          const chunk = JSON.parse(e.animation)
+          if (chunk.BlendShapes?.length) this.onFaceFrames?.(chunk.FrameIndex ?? 0, chunk.BlendShapes)
+        } catch { /* image d'animation illisible : on garde les visèmes */ }
+      }
+    }
 
     synth.wordBoundary = (_, e) => {
       const ms = e.audioOffset / 10000
@@ -148,6 +161,7 @@ export class SpeechSynth {
 
     synth.synthesisStarted = () => {
       playbackStart = performance.now()
+      this.onFaceClock?.(playbackStart + AUDIO_BUFFER_MS)
       flushPending()
       this.onStart?.()
     }
@@ -155,6 +169,7 @@ export class SpeechSynth {
     synth.synthesisCompleted = () => {
       if (playbackStart === null) {
         playbackStart = performance.now()
+        this.onFaceClock?.(playbackStart + AUDIO_BUFFER_MS)
         this.onStart?.()
         flushPending()
       }
@@ -349,7 +364,7 @@ export class SpeechSynth {
       .replace(PAUSE_RE, ` <break time="${PAUSE_MS}ms"/> `)
     return `<speak version="1.0" xml:lang="${this._config.speechSynthesisLanguage}" xmlns:mstts="http://www.w3.org/2001/mstts">
   <voice name="${this._config.speechSynthesisVoiceName}">
-    <mstts:viseme type="redlips_front"/>
+    <mstts:viseme type="FacialExpression"/>
     <prosody rate="-3%">
       ${escaped}
     </prosody>

@@ -26,6 +26,18 @@ const IDLE_ACTION_NAME = 'idle_weight_shift'
 const TALK_ACTION_NAME = 'talk_speaking_with_gestures'
 const TALK_ACTION_NAMES = [TALK_ACTION_NAME]
 const ACTION_REPLAY_COOLDOWN_MS = 3000
+// Ordre des 55 valeurs d'une image faciale Azure : les 52 expressions ARKit, puis le roulis
+// de la tête et des yeux (non utilisés ici).
+const AZURE_BLENDSHAPES = ['eyeBlinkLeft', 'eyeLookDownLeft', 'eyeLookInLeft', 'eyeLookOutLeft', 'eyeLookUpLeft',
+  'eyeSquintLeft', 'eyeWideLeft', 'eyeBlinkRight', 'eyeLookDownRight', 'eyeLookInRight', 'eyeLookOutRight',
+  'eyeLookUpRight', 'eyeSquintRight', 'eyeWideRight', 'jawForward', 'jawLeft', 'jawRight', 'jawOpen', 'mouthClose',
+  'mouthFunnel', 'mouthPucker', 'mouthLeft', 'mouthRight', 'mouthSmileLeft', 'mouthSmileRight', 'mouthFrownLeft',
+  'mouthFrownRight', 'mouthDimpleLeft', 'mouthDimpleRight', 'mouthStretchLeft', 'mouthStretchRight',
+  'mouthRollLower', 'mouthRollUpper', 'mouthShrugLower', 'mouthShrugUpper', 'mouthPressLeft', 'mouthPressRight',
+  'mouthLowerDownLeft', 'mouthLowerDownRight', 'mouthUpperUpLeft', 'mouthUpperUpRight', 'browDownLeft',
+  'browDownRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight', 'cheekPuff', 'cheekSquintLeft',
+  'cheekSquintRight', 'noseSneerLeft', 'noseSneerRight', 'tongueOut']
+const FACE_FPS = 60
 // Réflexion entre deux réponses : une animation « thinking » si le modèle en contient une,
 // sinon une attitude composée (tête penchée, regard ailleurs) et, de temps en temps, un geste pensif.
 const THINK_ACTION_NAME = 'thinking'
@@ -71,6 +83,9 @@ export class AvatarPlayer {
     this.headMoveUntil = 0
     this.headTarget = { x: 0, y: 0, z: 0 }
     this.headCurrent = { x: 0, y: 0, z: 0 }
+    this.faceFrames = []        // images faciales Azure, indexées par numéro d'image
+    this.faceClock = null       // performance.now() de l'image 0
+    this.faceValues = null      // valeurs de l'image courante (null : pas d'animation faciale)
     this.isThinking = false
     this.nextThinkGestureAt = 0
     this.nextThinkPoseAt = 0
@@ -341,8 +356,52 @@ export class AvatarPlayer {
     if (!this.isSpeaking && this.baseAction) this._switchBodyAction(this.baseAction, 0.4)
   }
 
+  // ── Animation faciale complète (Azure « FacialExpression ») ──────────────
+  resetFace() {
+    this.faceFrames = []
+    this.faceClock = null
+    this.faceValues = null
+  }
+
+  addFaceFrames(firstIndex, frames) {
+    for (let i = 0; i < frames.length; i++) this.faceFrames[firstIndex + i] = frames[i]
+  }
+
+  setFaceClock(frame0At) {
+    this.faceClock = frame0At
+  }
+
+  /** Valeurs de l'image faciale à l'instant présent (interpolées), ou null hors animation. */
+  _currentFaceValues() {
+    if (this.faceClock === null || !this.faceFrames.length) return null
+    const f = (performance.now() - this.faceClock) / 1000 * FACE_FPS
+    if (f < 0) return null
+    if (f >= this.faceFrames.length) {
+      // fin de la phrase : on relâche (ou on attend les images suivantes encore en route)
+      return f > this.faceFrames.length + FACE_FPS * 0.5 ? null : this.faceValues
+    }
+    const i = Math.floor(f)
+    const a = this.faceFrames[i]
+    const b = this.faceFrames[i + 1] || a
+    if (!a) return this.faceValues
+    const t = f - i
+    return a.map((v, k) => v + ((b[k] ?? v) - v) * t)
+  }
+
   _updateMorphs(dt) {
     if (!this.morphInfluences) return
+    this.faceValues = this._currentFaceValues()
+    if (this.faceValues) {
+      // Le visage suit Azure image par image ; clignements et regard procéduraux s'ajoutent.
+      const face = {}
+      AZURE_BLENDSHAPES.forEach((name, k) => { face[name] = this.faceValues[k] || 0 })
+      for (const name of this.morphNames) {
+        const idx = this.morphDict[name]
+        const target = Math.min(1, Math.max(face[name] || 0, this.overlayMorphs[name] || 0))
+        this.morphInfluences[idx] = THREE.MathUtils.lerp(this.morphInfluences[idx], target, Math.min(1, dt * 30))
+      }
+      return
+    }
     const targetIndex = this.morphDict[this.activeMorphName]
     const relaxSpeed = 10
     for (const name of this.morphNames) {
@@ -404,6 +463,7 @@ export class AvatarPlayer {
   }
 
   setViseme(id) {
+    if (this.faceValues) return
     const morphName = AZURE_VISEME_TO_MORPH[id] || SILENCE_MORPH
     if (this.morphDict?.[morphName] === undefined) {
       this.activeMorphName = SILENCE_MORPH
@@ -429,6 +489,7 @@ export class AvatarPlayer {
 
   stopTalking() {
     this.isSpeaking = false
+    this.resetFace()
     if (this.baseAction) {
       this._switchBodyAction(this.baseAction, 0.35)
     }
