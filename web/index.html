@@ -718,6 +718,10 @@
       #context-periode { font-size: 10px; }
       #context-chapitre { font-size: 12px; padding-top: 4px; }
       #context-lettres, #context-count, #context-text { display: none !important; }
+      /* Sans épisode, période ni chapitre (ex. lettre tirée au hasard), l'encadré serait vide */
+      #context-bubble:not(:has(#context-episode:not(:empty), #context-periode:not(:empty), #context-chapitre:not(:empty))) {
+        display: none !important;
+      }
 
       #chat-panel {
         position: fixed;
