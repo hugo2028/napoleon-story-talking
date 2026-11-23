@@ -19,7 +19,7 @@ published.
 | Extraction | **52,001 passages**, 7.9 million words, each with title, date, place and recipient when available |
 | AI cleaning | 51,836 passages reviewed: **36,857 kept**, 14,979 rejected (a reason recorded for each) |
 | Dates | 27,111 kept passages have a date; undated passages are left out of the application |
-| Application database | **25,843 dated passages**, 96.6% dated to the day, plus 4,238 passages from the *Œuvres* |
+| Application database | **26,003 dated passages**, 96.6% dated to the day, plus 4,238 passages from the *Œuvres* |
 
 ## 1. The sources
 
@@ -180,13 +180,23 @@ Passages rejected for a date conflict went through a **rescue** step: when anoth
 had a validated date, the passage was processed again with that information (88 cases, 76 recovered).
 
 **In the end**, 27,111 kept passages are dated. Only these, of at least 20 words, enter the application's
-database: **25,843 passages**, dated to the day for 24,954 of them, to the month for 378 and to the year for
-511. Each one is placed in a period (youth, Revolution and Toulon, Italian campaign, Egypt, Consulate,
+database: **26,003 passages**, dated to the day for 25,113 of them, to the month for 384 and to the year for
+506. Each one is placed in a period (youth, Revolution and Toulon, Italian campaign, Egypt, Consulate,
 Empire, Saint Helena).
+
+**November 2026 update: volume 10.** The volume 10 of the *Correspondance* originally downloaded was a copy
+of volume 9: the database held letters 7130 to 8065 twice and none of letters 8066 to 8960 (October 1804 –
+June 1805). The real volume 10 was extracted and cleaned with the same method (`gpt-5-nano`, same
+instructions): 1,344 passages, 1,086 kept, 1,035 dated with at least 20 words. The OCR reads "an xm" for
+"an XIII", which had dated 131 passages to 1803 or 1806; since the edition is chronological, the year was
+derived from the day and month (October–December 1804, January–June 1805), then each date was checked
+against the neighbouring letters: 13 passages out of step with their neighbours were dropped. The 862
+duplicate passages were replaced by **1,022 passages** from the real volume 10. The cleaning figures in
+section 5 are those of the initial run.
 
 ## 7. Indexing
 
-- `napoleon_clean.sqlite`: the 25,843 dated passages, with their `text-embedding-3-small` vector (OpenAI)
+- `napoleon_clean.sqlite`: the 26,003 dated passages, with their `text-embedding-3-small` vector (OpenAI)
   for semantic search.
 - `napoleon_memoirs.sqlite`: the 4,238 passages of the *Œuvres de Napoléon Bonaparte* (Gutenberg), with no
   date requirement, which the archivist consults as a counterpoint to the story.

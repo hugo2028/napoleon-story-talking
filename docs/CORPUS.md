@@ -19,7 +19,7 @@ est publiée.
 | Extraction | **52 001 passages**, 7,9 millions de mots, chacun avec titre, date, lieu et destinataire quand ils existent |
 | Nettoyage par IA | 51 836 passages examinés : **36 857 gardés**, 14 979 rejetés (motif enregistré pour chacun) |
 | Dates | 27 111 passages gardés ont une date ; les passages non datés sont exclus de l'application |
-| Base de l'application | **25 843 passages datés**, dont 96,6 % au jour près, et 4 238 passages des *Œuvres* |
+| Base de l'application | **26 003 passages datés**, dont 96,6 % au jour près, et 4 238 passages des *Œuvres* |
 
 ## 1. Les sources
 
@@ -186,13 +186,23 @@ la même lettre avait une date validée, le passage a été retraité avec cette
 récupérés).
 
 **Au final**, 27 111 passages gardés sont datés. Seuls ceux-là, d'au moins 20 mots, entrent dans la base
-de l'application : **25 843 passages**, datés au jour près pour 24 954 d'entre eux, au mois près pour 378
-et à l'année près pour 511. Chacun est rangé dans une période (jeunesse, Révolution et Toulon, campagne
+de l'application : **26 003 passages**, datés au jour près pour 25 113 d'entre eux, au mois près pour 384
+et à l'année près pour 506. Chacun est rangé dans une période (jeunesse, Révolution et Toulon, campagne
 d'Italie, Égypte, Consulat, Empire, Sainte-Hélène).
+
+**Mise à jour de novembre 2026 : le tome 10.** Le tome 10 de la *Correspondance* téléchargé à l'origine était
+une copie du tome 9 : la base contenait deux fois les lettres 7130 à 8065 et aucune des lettres 8066 à 8960
+(octobre 1804 – juin 1805). Le vrai tome 10 a été extrait et nettoyé par la même méthode (`gpt-5-nano`,
+même consigne) : 1 344 passages, 1 086 gardés, 1 035 datés d'au moins 20 mots. L'OCR écrit « an xm » pour
+« an XIII », ce qui avait fait dater 131 passages de 1803 ou 1806 ; l'édition étant chronologique, l'année
+a été déduite du jour et du mois (octobre-décembre 1804, janvier-juin 1805), puis chaque date comparée à
+celles des lettres voisines : 13 passages qui ne suivaient pas leurs voisins ont été écartés. Les 862
+passages en double ont été remplacés par **1 022 passages** du vrai tome 10. Les chiffres de nettoyage de
+la section 5 sont ceux du traitement initial.
 
 ## 7. L'indexation
 
-- `napoleon_clean.sqlite` : les 25 843 passages datés, avec leur vecteur `text-embedding-3-small` (OpenAI)
+- `napoleon_clean.sqlite` : les 26 003 passages datés, avec leur vecteur `text-embedding-3-small` (OpenAI)
   pour la recherche sémantique.
 - `napoleon_memoirs.sqlite` : les 4 238 passages des *Œuvres de Napoléon Bonaparte* (Gutenberg), sans
   exigence de date, que l'archiviste consulte en contrepoint du récit.

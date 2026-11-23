@@ -110,7 +110,7 @@ _TOME_META: dict[int, dict] = {
     7:  {"ark": "bpt6k62963462",  "offset": 12,  "max_letter": 1251, "total_vues": 628},
     8:  {"ark": "bpt6k96414306",  "offset": 16,  "max_letter": 1110, "total_vues": 756},
     9:  {"ark": "bpt6k9634014c",  "offset": 27,  "max_letter": 1209, "total_vues": 768},
-    10: {"ark": "bpt6k9634014c",  "offset": 13,  "max_letter": 1210, "total_vues": 768},
+    10: {"ark": "bpt6k9636651b",  "offset": 12,  "max_letter": 1022, "total_vues": 760},   # vrai tome 10 (remplacé en nov. 2026)
     11: {"ark": "bpt6k6328251z",  "offset": 12,  "max_letter": 1353, "total_vues": 758},
     12: {"ark": "bpt6k6294040x",  "offset": 15,  "max_letter": 1333, "total_vues": 632},
     13: {"ark": "bpt6k6328645m",  "offset": 12,  "max_letter": 1395, "total_vues": 783},
