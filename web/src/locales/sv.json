@@ -81,5 +81,9 @@
   "modelsLoaded": {
     "one": "{n} modell tillgänglig.",
     "other": "{n} modeller tillgängliga."
-  }
+  },
+  "newConversation": "↺ Ny konversation",
+  "confirmNew": "Rensa allt? Klicka igen",
+  "stop": "■ Stoppa",
+  "welcome": "Kejsaren väntar på Er. Ställ en fråga om hans liv, hans fälttåg eller hans regeringstid, eller hälsa bara: han kommer att börja berätta. 📜 under hans svar visar breven som hans ord kommer ifrån."
 }

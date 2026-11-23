@@ -20,7 +20,7 @@ const LOCALES = Object.fromEntries(
 // promptName   : nom de la langue dans la consigne donnée au narrateur
 // dir          : 'rtl' pour les écritures de droite à gauche
 export const LANGS = {
-  fr: { label: 'Français', locale: 'fr-FR', voice: 'fr-FR-AlainNeural', promptName: 'français' },
+  fr: { label: 'Français', locale: 'fr-FR', voice: 'fr-FR-Remy:DragonHDLatestNeural', promptName: 'français' },
   en: { label: 'English', locale: 'en-GB', voice: 'en-GB-RyanNeural', promptName: 'anglais' },
   es: { label: 'Español', locale: 'es-ES', voice: 'es-ES-AlvaroNeural', promptName: 'espagnol' },
   it: { label: 'Italiano', locale: 'it-IT', voice: 'it-IT-DiegoNeural', promptName: 'italien' },

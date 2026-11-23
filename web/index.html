@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-visual" />
   <title>Napoléon Bonaparte — Avatar</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
@@ -503,6 +503,19 @@
       align-items: baseline;
       font-size: 11px;
       font-style: normal;
+      color: var(--text);
+      text-decoration: none;
+      border-radius: 6px;
+    }
+    a.source-item:hover .source-title,
+    a.source-item:focus-visible .source-title { color: var(--gold); }
+    .source-title {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-dim);
     }
     .source-date {
       color: var(--gold);
@@ -526,6 +539,21 @@
       letter-spacing: 0.03em;
     }
     .source-link:hover { opacity: 1; text-decoration: underline; }
+
+    /* Sous-titres : seulement sur mobile (sur ordinateur, le texte est dans le fil) */
+    #subtitles { display: none; }
+
+    /* « Nouvelle conversation » : deuxième clic pour confirmer */
+    #new-conversation-btn.confirm {
+      color: var(--gold);
+      border-color: var(--gold-dim);
+      background: rgba(201, 168, 76, 0.12);
+    }
+
+    .bubble-welcome {
+      color: var(--text);
+      line-height: 1.6;
+    }
 
     .bubble-system {
       align-self: center;
@@ -598,6 +626,12 @@
     #send-btn:disabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+
+    #send-btn.stop {
+      color: var(--text);
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.06);
     }
 
     /* ── Context bubble ──────────────────────────────────────────────── */
@@ -693,6 +727,8 @@
         position: fixed;
         inset: 0;
         border: none;
+        /* Clavier ouvert : le navigateur fait défiler la page ; l'avatar compense et reste en place */
+        transform: translateY(var(--vv-top, 0px));
       }
       #title-overlay { top: 10px; }
       #title-overlay { width: 100%; }
@@ -727,7 +763,7 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 0;
+        bottom: var(--kb, 0px);   /* juste au-dessus du clavier quand il est ouvert */
         max-height: 46dvh;
         z-index: 3;
         border: none;
@@ -754,6 +790,42 @@
       }
       #chat-log:not(:has(.has-sources)) { padding: 0; }
       .bubble-user, .bubble-system, .bubble-text { display: none; }
+      /* Accueil : la seule bulle de texte gardée, tant que rien n'a été demandé */
+      .bubble-system.bubble-welcome {
+        display: block;
+        align-self: stretch;
+        border: none;
+        background: rgba(12, 10, 8, 0.6);
+        font-family: Georgia, serif;
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--text);
+      }
+      .bubble-welcome .bubble-text { display: block; }
+      #chat-log:has(.bubble-welcome) { padding: 4px 10px; -webkit-mask-image: none; mask-image: none; }
+
+      /* Sous-titres : deux lignes au plus, le texte monte au fil de la voix */
+      #subtitles {
+        display: block;
+        order: -1;   /* au-dessus des boutons, au plus près de Napoléon */
+        position: relative;
+        margin: 0 14px;
+        height: 0;
+        overflow: hidden;
+        font-family: Georgia, serif;
+        font-size: 16px;
+        line-height: 1.4;
+        text-align: center;
+        color: rgba(232, 223, 200, 0.55);
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+        opacity: 0;
+        transition: opacity 0.4s, height 0.3s;
+      }
+      #subtitles.visible { height: 2.8em; opacity: 1; }
+      .subtitles-inner { position: relative; transition: transform 0.45s ease; }
+      .subtitles-inner span { transition: color 0.2s; }
+      .subtitles-inner span.said { color: var(--text); }
+      .keyboard-open #subtitles { display: none; }
       /* seules les lettres de la dernière réponse restent à l'écran */
       .bubble-napoleon:not(.latest-sources) { display: none; }
       .bubble-napoleon {
@@ -778,8 +850,12 @@
         background: rgba(12, 10, 8, 0.88);
         border: 1px solid var(--border);
       }
-      .source-item { flex-wrap: wrap; }
-      .source-snippet { white-space: normal; }
+      .source-panel { gap: 2px; }
+      .source-item { padding: 7px 2px; font-size: 12px; }   /* lignes assez hautes pour le doigt */
+      .source-item + .source-item { border-top: 1px solid rgba(201, 168, 76, 0.12); }
+      .source-date { min-width: 0; font-weight: 500; }
+      .source-link { font-size: 0; }
+      .source-link::after { content: '↗'; font-size: 13px; }
       #chat-footer {
         padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
         border: none;
@@ -825,13 +901,14 @@
         </div>
         <div id="chat-actions">
           <button type="button" id="settings-btn" class="chat-action" data-i18n="settings">⚙ Paramètres</button>
-          <button type="button" id="start-conversation-btn" class="chat-action primary" data-i18n="start">Commencer</button>
-          <button type="button" id="end-conversation-btn" class="chat-action" data-i18n="end">Finir</button>
-          <button type="button" id="reset-conversation-btn" class="chat-action" data-i18n="reset">Reset</button>
+          <button type="button" id="new-conversation-btn" class="chat-action" data-i18n="newConversation" hidden>↺ Nouvelle conversation</button>
           <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
         </div>
       </div>
     </div>
+
+    <!-- Sous-titres défilants (mobile) -->
+    <div id="subtitles" aria-hidden="true"></div>
 
     <div id="chat-log"></div>
 

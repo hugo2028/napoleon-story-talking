@@ -83,5 +83,9 @@
     "one": "{n} model k dispozici.",
     "few": "{n} modely k dispozici.",
     "other": "{n} modelů k dispozici."
-  }
+  },
+  "newConversation": "↺ Nový rozhovor",
+  "confirmNew": "Opravdu vše vymazat? Klikněte znovu",
+  "stop": "■ Zastavit",
+  "welcome": "Císař Napoleon na Vás čeká. Zeptejte se ho na jeho život, tažení nebo vládu, nebo ho jen pozdravte: začne Vám vyprávět svůj příběh. 📜 pod jeho odpověďmi uvádí dopisy, ze kterých čerpá svá slova."
 }

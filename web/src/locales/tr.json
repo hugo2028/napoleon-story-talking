@@ -79,5 +79,9 @@
   "missingKeys": "Model yapılandırılmadı: Ayarlardan bir model seçiniz.",
   "modelsLoaded": {
     "other": "{n} model mevcut."
-  }
+  },
+  "newConversation": "↺ Yeni sohbet",
+  "confirmNew": "Her şeyi silmek istiyor musunuz? Lütfen tekrar tıklayınız",
+  "stop": "■ Durdur",
+  "welcome": "İmparator Napoléon sizi bekliyor. Ona hayatı, seferleri veya hükümdarlığı hakkında bir soru sorabilir ya da sadece merhaba diyebilirsiniz: hikayesine başlayacaktır. Cevaplarının altındaki 📜, sözlerinin alındığı mektupları gösterir."
 }

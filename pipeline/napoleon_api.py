@@ -20,6 +20,7 @@ import json
 import os
 import re
 import sys
+from urllib.parse import quote
 from pathlib import Path
 from threading import Lock
 
@@ -136,8 +137,32 @@ _TOME_META: dict[int, dict] = {
 
 _CHUNK_KEY_RE = re.compile(r'^correspondance_(\d+)_(\d+)$')
 
-def _gallica_url(chunk_key: str) -> str | None:
-    """Retourne l'URL Gallica pointant approximativement sur la bonne page."""
+_LETTER_NUM_RE = re.compile(r"^\s*(\d+)\s*\.\s*")
+_LAST_LETTER_TOME = 28   # tomes 29-32 (Œuvres de Sainte-Hélène) : pas de numérotation de lettres
+
+
+def _gallica_search_terms(title: str, tome: int, max_words: int = 6) -> str:
+    """Mots-clés pour le paramètre `.r=` de Gallica.
+
+    Tomes 1-28 : le numéro de la lettre (« 4891 »), très discriminant (la page
+    de la lettre + la table des matières), là où les mots du titre renvoient
+    des centaines de pages. Sinon : début du titre, sans ponctuation.
+    """
+    m = _LETTER_NUM_RE.match(title or "")
+    if m and tome <= _LAST_LETTER_TOME:
+        return m.group(1)
+    title = _LETTER_NUM_RE.sub("", title or "")
+    words = re.findall(r"[^\W\d_][\w'’-]*", title)          # mots uniquement (pas de chiffres ni ponctuation)
+    return " ".join(words[:max_words])
+
+
+def _gallica_url(chunk_key: str, title: str = "") -> str | None:
+    """Retourne l'URL Gallica pointant approximativement sur la bonne page.
+
+    La vue est estimée (voir _TOME_META) ; le titre de la lettre est passé en
+    recherche (`.r=`) pour que Gallica surligne les occurrences et propose les
+    pages où il apparaît, ce qui compense l'imprécision de l'estimation.
+    """
     m = _CHUNK_KEY_RE.match(chunk_key)
     if not m:
         return None
@@ -159,19 +184,29 @@ def _gallica_url(chunk_key: str) -> str | None:
         # chunk_num est un numéro de lettre → interpolation linéaire
         vue = round(offset + (chunk_num / max_letter) * (total_vues - offset)) + GALLICA_COVER_OFFSET
     vue = max(1, min(vue, total_vues + GALLICA_COVER_OFFSET))
-    return f"https://gallica.bnf.fr/ark:/12148/{meta['ark']}/f{vue}"
+    url = f"https://gallica.bnf.fr/ark:/12148/{meta['ark']}/f{vue}.image"
+    terms = _gallica_search_terms(title, tome)
+    if terms:
+        url += ".r=" + quote(terms)
+    return url
 
 
 def _get_sources(letter_ids: list[int]) -> list[dict]:
-    """Retourne date + début de texte + lien Gallica pour chaque lettre utilisée."""
+    """Retourne date + titre + début de texte + lien Gallica pour chaque lettre utilisée."""
     sources = []
     for lid in letter_ids:
-        row = conn.execute("SELECT date_iso, text, chunk_key FROM chunks WHERE id=?", (lid,)).fetchone()
+        row = conn.execute("SELECT date_iso, text, chunk_key, title FROM chunks WHERE id=?", (lid,)).fetchone()
         if row:
+            raw_title = (row[3] or "").strip()
+            title = raw_title
+            # « 21582. AU GÉNÉRAL COMTE BERTRAND, … » → « AU GÉNÉRAL COMTE BERTRAND, … »
+            if ". " in title[:8]:
+                title = title.split(". ", 1)[1]
             sources.append({
                 "date":    row[0] or "?",
+                "title":   title[:90],
                 "snippet": (row[1] or "").strip()[:100],
-                "url":     _gallica_url(row[2] or ""),
+                "url":     _gallica_url(row[2] or "", raw_title),   # numéro de lettre utile à la recherche
             })
     sources.sort(key=lambda s: s["date"])   # même ordre que les lettres des notes
     return sources

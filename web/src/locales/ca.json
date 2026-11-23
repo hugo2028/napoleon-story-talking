@@ -81,5 +81,9 @@
   "modelsLoaded": {
     "one": "{n} model disponible.",
     "other": "{n} models disponibles."
-  }
+  },
+  "newConversation": "↺ Nova conversa",
+  "confirmNew": "Voleu esborrar-ho tot? Torneu a clicar",
+  "stop": "■ Atura",
+  "welcome": "Napoleó us espera. Pregunteu-li sobre la seva vida, les seves campanyes o el seu regnat, o simplement saludeu-lo: començarà el relat. El 📜 sota les seves respostes indica les cartes d’on provenen les seves paraules."
 }

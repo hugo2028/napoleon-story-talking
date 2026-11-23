@@ -9,6 +9,8 @@ Usage :
     python scripts/translate_ui.py               # toutes les langues de i18n.js sans fichier de libellés
     python scripts/translate_ui.py ja ko         # seulement ces langues (réécrit leurs fichiers)
     python scripts/translate_ui.py --model gpt-4.1 ja   # avec un autre modèle que celui du .env
+    python scripts/translate_ui.py --missing     # seulement les libellés ajoutés depuis, dans toutes les
+                                                 # langues (les traductions existantes ne bougent pas)
 
 Chaque traduction est vérifiée : mêmes clés que l'anglais, {n} présent dans les pluriels, éléments
 techniques (chemins, commandes, symboles) conservés. Une langue qui échoue est signalée et non écrite.
@@ -85,6 +87,15 @@ def check(code: str, out: dict, ref: dict) -> list[str]:
 
 
 def translate(client, model: str, code: str, name: str, en: dict, fr: dict) -> tuple[str, str]:
+    path = LOCALES / f"{code}.json"
+    existing = json.loads(path.read_text(encoding="utf-8")) if MISSING_ONLY and path.exists() else {}
+    if existing:
+        # Mode --missing : on ne traduit que les clés absentes, puis on les ajoute au fichier.
+        todo = [k for k in en if k not in existing]
+        if not todo:
+            return code, "rien à traduire"
+        en = {k: en[k] for k in todo}
+        fr = {k: fr.get(k, en[k]) for k in todo}
     resp = client.chat.completions.create(
         model=model, temperature=0.2, response_format={"type": "json_object"},
         messages=[{"role": "user", "content": PROMPT.format(
@@ -94,11 +105,17 @@ def translate(client, model: str, code: str, name: str, en: dict, fr: dict) -> t
     problems = check(code, out, en)
     if problems:
         return code, "refusé : " + " ; ".join(problems[:6])
-    (LOCALES / f"{code}.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return code, "ok"
+    if existing:
+        out = {**existing, **{k: out[k] for k in en}}
+    path.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return code, f"ok ({len(en)} libellé(s) ajouté(s))" if existing else "ok"
+
+
+MISSING_ONLY = False
 
 
 def main() -> int:
+    global MISSING_ONLY
     load_dotenv(ROOT / ".env")
     key = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("LLM_BASE_URL") or None
@@ -112,7 +129,12 @@ def main() -> int:
         print("Aucun modèle configuré : réglez-le dans « Paramètres » de l'application ou dans .env.", file=sys.stderr)
         return 1
 
+    if "--missing" in args:
+        args.remove("--missing")
+        MISSING_ONLY = True
     langs = known_languages()
+    if MISSING_ONLY and not args:
+        args = [c for c in langs if c not in ("en", "fr")]
     wanted = args or [c for c in langs if not (LOCALES / f"{c}.json").exists()]
     unknown = [c for c in wanted if c not in langs]
     if unknown:
@@ -130,7 +152,7 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=6) as pool:
         for code, status in pool.map(lambda c: translate(client, model, c, langs[c], en, fr), wanted):
             print(f"  {code} ({langs[code]}) : {status}")
-            failed += status != "ok"
+            failed += status.startswith("refusé")
     return 1 if failed else 0
 
 

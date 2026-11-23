@@ -81,5 +81,9 @@
   "modelsLoaded": {
     "one": "{n} modelo disponible.",
     "other": "{n} modelos disponibles."
-  }
+  },
+  "newConversation": "↺ Nueva conversación",
+  "confirmNew": "¿Desea borrar todo? Haga clic de nuevo",
+  "stop": "■ Detener",
+  "welcome": "Napoleón le espera. Puede preguntarle sobre su vida, sus campañas o su reinado, o simplemente saludarle: él comenzará el relato. El 📜 bajo sus respuestas indica las cartas de donde provienen sus palabras."
 }

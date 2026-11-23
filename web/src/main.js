@@ -5,6 +5,8 @@ import { LANGS, t, getLang, getLangInfo, getSpeechInfo, setLang, applyStaticText
 import { DemoRecorder, recordingSupported } from './recorder.js'
 import { BrowserSpeech } from './browserSpeech.js'
 import { PROVIDERS, providerFromUrl } from './providers.js'
+import { Subtitles } from './subtitles.js'
+import './mobileViewport.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const avatarCanvas = document.getElementById('avatar-canvas')
@@ -21,9 +23,8 @@ const contextEpisode  = document.getElementById('context-episode')
 const contextPeriode  = document.getElementById('context-periode')
 const contextChapitre = document.getElementById('context-chapitre')
 const contextLettres  = document.getElementById('context-lettres')
-const startBtn     = document.getElementById('start-conversation-btn')
-const endBtn       = document.getElementById('end-conversation-btn')
-const resetBtn     = document.getElementById('reset-conversation-btn')
+const newBtn       = document.getElementById('new-conversation-btn')
+const subtitles    = new Subtitles(document.getElementById('subtitles'))
 const recordBtn    = document.getElementById('record-btn')
 const settingsBtn      = document.getElementById('settings-btn')
 const settingsDialog   = document.getElementById('settings-dialog')
@@ -122,8 +123,9 @@ async function initSpeech() {
   synth.onFaceFrames = (i, frames) => avatar?.addFaceFrames?.(i, frames)
   synth.onFaceClock  = (t0)        => avatar?.setFaceClock?.(t0)
   synth.onAction = (anim)  => avatar?.switchAnimation(anim)
-  synth.onStart  = () => { speaking = true;  avatar?.startTalking() }
-  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); setReady() }
+  synth.onWord   = (i) => subtitles.reach(i)
+  synth.onStart  = () => { speaking = true;  avatar?.startTalking(); updateControls() }
+  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); subtitles.finish(); setReady() }
   return true
 }
 
@@ -376,50 +378,60 @@ if (SHOW_RECORDER) {
 }
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
-startBtn.addEventListener('click', async () => {
-  if (!ready || pending || speaking) return
-  await startConversation()
-})
+// Pas de bouton « Commencer » : la première question ouvre la conversation. Une question posée
+// pendant que Napoléon parle l'interrompt. « Nouvelle conversation » efface tout (deux clics).
+const NEW_CONFIRM_MS = 4000
+let newConfirmTimer = null
 
-endBtn.addEventListener('click', () => {
-  if (!conversationActive) return
-  endConversation()
-})
-
-resetBtn.addEventListener('click', () => {
+newBtn.addEventListener('click', () => {
+  if (!newBtn.classList.contains('confirm')) {
+    newBtn.classList.add('confirm')
+    newBtn.textContent = t('confirmNew')
+    clearTimeout(newConfirmTimer)
+    newConfirmTimer = setTimeout(resetNewButton, NEW_CONFIRM_MS)
+    return
+  }
+  resetNewButton()
   resetConversation()
 })
 
+function resetNewButton() {
+  clearTimeout(newConfirmTimer)
+  newBtn.classList.remove('confirm')
+  newBtn.textContent = t('newConversation')
+}
+
+chatInput.addEventListener('input', updateControls)
+
 chatForm.addEventListener('submit', async (e) => {
   e.preventDefault()
+  if (!ready || pending) return
+  synth?.unlockAudio?.()   // geste de l'utilisateur : la voix pourra jouer ensuite (mobile)
   const text = chatInput.value.trim()
-  if (!text || speaking || pending || !conversationActive) return
+  if (speaking) stopSpeaking()
+  if (!text) return
   chatInput.value = ''
-
+  // Sur mobile, le clavier se ferme pour laisser voir Napoléon
+  if (coarsePointer()) chatInput.blur()
   await respond(text, true)
 })
 
-async function startConversation() {
-  conversationActive = true
-  conversationId = crypto.randomUUID?.() || String(Date.now())
-  history = []
-  clearNotes()
-  renderHistory()
-  persistConversation()
-  addBubble(t('started'), 'system')
-  updateControls()
-}
-
-function endConversation() {
-  conversationActive = false
-  pending = false
-  speaking = false
+/** Napoléon se tait (bouton ■ ou nouvelle question pendant qu'il parle). */
+function stopSpeaking() {
   synth?.stop()
   avatar?.stopTalking()
-  persistConversation()
-  addBubble(t('ended'), 'system')
-  setStatus(t('endedStatus'), true)
-  updateControls()
+  subtitles.finish()
+  setReady()
+}
+
+function coarsePointer() {
+  return window.matchMedia?.('(pointer: coarse)').matches
+}
+
+function ensureConversation() {
+  if (conversationActive && conversationId) return
+  conversationActive = true
+  conversationId = crypto.randomUUID?.() || String(Date.now())
 }
 
 function resetConversation() {
@@ -430,15 +442,19 @@ function resetConversation() {
   history = []
   synth?.stop()
   avatar?.stopTalking()
+  subtitles.clear()
   localStorage.removeItem(STORAGE_KEY)
   clearNotes()
   renderHistory()
-  setStatus(ready ? t('readyIdle') : t('initializing'), ready)
-  updateControls()
+  if (ready) setReady()
+  else updateControls()
 }
 
 async function respond(userText, showUser = true) {
+  ensureConversation()
   if (showUser) addBubble(userText, 'user')
+  chatLog.querySelector('.bubble-welcome')?.remove()
+  subtitles.clear()
 
   setStatus(t('thinking'), false)
   avatar?.startThinking?.()
@@ -496,6 +512,7 @@ async function respond(userText, showUser = true) {
 
   if (synth && speech) {
     setStatus(t('speaking'), false)
+    subtitles.show(stripPauses(speech))
     try {
       await synth.speak(speech, apiActions)
     } catch (err) {
@@ -503,6 +520,7 @@ async function respond(userText, showUser = true) {
       setStatus(t('ttsError') + (err.message || err), false)
       speaking = false
       avatar?.stopTalking()
+      subtitles.finish()
       setReady()
     }
   } else {
@@ -527,35 +545,42 @@ function addBubble(text, role, sources = null) {
     const btn = document.createElement('button')
     btn.className = 'source-toggle'
     btn.textContent = `📜 ${t('letters', sources.length)} · ${t('sources')}`
+    btn.type = 'button'
 
     const panel = document.createElement('div')
     panel.className = 'source-panel'
     panel.hidden = true
 
+    // Un clic déplie la liste ; chaque ligne (date, destinataire) est le lien vers Gallica.
     for (const s of sources) {
-      const item = document.createElement('div')
+      const item = document.createElement(s.url ? 'a' : 'div')
       item.className = 'source-item'
+      if (s.url) {
+        item.href = s.url
+        item.target = '_blank'
+        item.rel = 'noopener'
+      }
       const dateSpan = document.createElement('span')
       dateSpan.className = 'source-date'
-      dateSpan.textContent = s.date || '?'
-      const snippetSpan = document.createElement('span')
-      snippetSpan.className = 'source-snippet'
-      snippetSpan.textContent = s.snippet || ''
-      item.appendChild(dateSpan)
-      item.appendChild(snippetSpan)
+      dateSpan.textContent = formatDate(s.date) || s.date || '?'
+      const titleSpan = document.createElement('span')
+      titleSpan.className = 'source-title'
+      titleSpan.textContent = s.title || s.snippet || ''
+      item.append(dateSpan, titleSpan)
       if (s.url) {
-        const link = document.createElement('a')
-        link.className = 'source-link'
-        link.href = s.url
-        link.target = '_blank'
-        link.rel = 'noopener'
-        link.textContent = 'Gallica ↗'
-        item.appendChild(link)
+        const arrow = document.createElement('span')
+        arrow.className = 'source-link'
+        arrow.textContent = 'Gallica ↗'
+        item.appendChild(arrow)
       }
       panel.appendChild(item)
     }
 
-    btn.addEventListener('click', () => { panel.hidden = !panel.hidden })
+    btn.setAttribute('aria-expanded', 'false')
+    btn.addEventListener('click', () => {
+      panel.hidden = !panel.hidden
+      btn.setAttribute('aria-expanded', String(!panel.hidden))
+    })
     div.appendChild(btn)
     div.appendChild(panel)
   }
@@ -630,22 +655,25 @@ function setStatus(text, ready) {
 function setReady() {
   speaking = false
   pending = false
-  setStatus(conversationActive ? t('askQuestion') : t('readyIdle'), true)
+  setStatus(t('askQuestion'), true)
   updateControls()
 }
 
 function updateControls() {
-  const canStart = ready && !conversationActive && !pending && !speaking
-  const canInteract = ready && conversationActive && !pending && !speaking
-  startBtn.disabled = !canStart
-  endBtn.disabled = !conversationActive
-  resetBtn.disabled = !ready && history.length === 0
-  chatInput.disabled = !canInteract
-  sendBtn.disabled = !canInteract
-  chatInput.placeholder = conversationActive
-    ? t('placeholderActive')
-    : t('placeholderIdle')
-  if (canInteract) chatInput.focus()
+  const canType = ready && !pending
+  const typed = chatInput.value.trim().length > 0
+  chatInput.disabled = !canType
+  // Pendant que Napoléon parle, champ vide : le bouton l'arrête ; avec une question : elle l'interrompt.
+  const stopMode = speaking && !typed
+  sendBtn.disabled = !canType || (!typed && !speaking)
+  sendBtn.textContent = stopMode ? t('stop') : t('send')
+  sendBtn.classList.toggle('stop', stopMode)
+  newBtn.hidden = history.length === 0
+  newBtn.disabled = pending
+  if (newBtn.hidden) resetNewButton()
+  chatInput.placeholder = t('placeholderActive')
+  // Sur mobile, pas de focus automatique : le clavier s'ouvrirait et cacherait Napoléon.
+  if (canType && !speaking && !coarsePointer()) chatInput.focus()
 }
 
 function restoreConversation() {
@@ -653,8 +681,9 @@ function restoreConversation() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
     if (!Array.isArray(saved.history)) return
     history = saved.history.filter(isChatMessage).slice(-MAX_VISIBLE_MESSAGES)
-    conversationActive = Boolean(saved.active)
+    // Une conversation enregistrée continue : la question suivante y fait suite.
     conversationId = saved.conversationId || null
+    conversationActive = history.length > 0 && Boolean(conversationId)
   } catch (err) {
     console.warn('[Chat] Historique local illisible:', err)
     localStorage.removeItem(STORAGE_KEY)
@@ -678,7 +707,8 @@ function trimHistory() {
 function renderHistory() {
   chatLog.replaceChildren()
   if (history.length === 0) {
-    addBubble(t('empty'), 'system')
+    addBubble(t('welcome'), 'system')
+    chatLog.lastElementChild.classList.add('bubble-welcome')
     return
   }
 
@@ -690,9 +720,6 @@ function renderHistory() {
   if (lastAnn) {
     currentEpisode = lastAnn.episode
     updateAnnotation(lastAnn)
-  }
-  if (!conversationActive) {
-    addBubble(t('endedHistory'), 'system')
   }
 }
 

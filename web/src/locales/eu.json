@@ -79,5 +79,9 @@
   "missingKeys": "Ez dago eredurik konfiguratuta: aukeratu bat Ezarpenetan.",
   "modelsLoaded": {
     "other": "{n} eredu erabilgarri."
-  }
+  },
+  "newConversation": "↺ Elkarrizketa berria",
+  "confirmNew": "Dena garbitu? Sakatu berriro",
+  "stop": "■ Gelditu",
+  "welcome": "Enperadorea zain duzue. Galdetu iezaiozu bere bizitzaz, kanpainez edo agintaldiaz, edo agurtu besterik ez: berak hasiko du kontakizuna. Bere erantzunen azpiko 📜-ak hitzak jasotzen dituen gutunak erakusten dizkizu."
 }

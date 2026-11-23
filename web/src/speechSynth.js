@@ -3,6 +3,10 @@ import * as SpeechSDK from 'microsoft-cognitiveservices-speech-sdk'
 const MAX_ACTION_REPEATS = 3
 const PAUSE_RE = /\s*\[\s*pause\s*\]\s*/gi
 const PAUSE_MS = 700
+// Découpage pour la lecture : un premier morceau court (Napoléon commence vite à parler),
+// puis des morceaux plus longs, préparés pendant que le précédent est joué.
+const FIRST_SEGMENT_CHARS = 140
+const SEGMENT_CHARS = 380
 let tokenRefreshTimer = null   // renouvellement du jeton Azure (version en ligne)
 /** Texte sans balises [pause], pour l'affichage. */
 export function stripPauses(text = '') {
@@ -12,8 +16,8 @@ export function stripPauses(text = '') {
 /**
  * SpeechSynth — deux providers TTS au choix (contrôlé par TTS_PROVIDER dans .env) :
  *
- *  'azure'      → Azure Speech joue l'audio ET génère les visèmes en un seul appel.
- *                 Gratuit, pas de crédits consommés.
+ *  'azure'      → Azure Speech génère l'audio ET l'animation faciale, morceau par morceau ;
+ *                 l'audio est joué par un élément <audio>.
  *
  *  'elevenlabs' → ElevenLabs génère l'audio (with-timestamps) ; Azure Speech
  *                 synthétise en pull-stream muet pour capturer les visèmes.
@@ -24,7 +28,7 @@ export class SpeechSynth {
     this._config     = speechConfig
     this._provider   = provider   // 'azure' | 'elevenlabs'
     this.onViseme    = null
-    this.onWord      = null
+    this.onWord      = null   // (indexDuMotAffiché, nombreDeMotsAffichés) => void — sous-titres
     this.onStart     = null
     this.onEnd       = null
     this.onAction    = null   // (animationName: string) => void — déclenché mid-speech
@@ -34,6 +38,13 @@ export class SpeechSynth {
     this.onFaceReset  = null  // () => void
     this._timers     = []
     this._azureSynth = null
+    this._run        = 0      // change à chaque arrêt : les suites d'une ancienne phrase s'ignorent
+    // Lecture Azure par un élément <audio>
+    this._audio          = null
+    this._objectUrl      = null
+    this._segmentPlaying = false
+    this._syncTimer      = null
+    this._finish         = null
     // Web Audio (mode ElevenLabs uniquement)
     this._audioSource = null
     this._audioCtx    = null
@@ -81,7 +92,7 @@ export class SpeechSynth {
     config.speechSynthesisLanguage  = lang.locale
     config.speechSynthesisVoiceName = lang.voice
     config.speechSynthesisOutputFormat =
-      SpeechSDK.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3
+      SpeechSDK.SpeechSynthesisOutputFormat.Audio24Khz96KBitRateMonoMp3
 
     const provider = ttsProvider || 'azure'
     console.log(`[Speech] provider=${provider}, région=${effectiveRegion}`)
@@ -93,106 +104,181 @@ export class SpeechSynth {
     return this._speakAzure(text, actions)
   }
 
-  // ── Azure : un seul appel, audio + visèmes simultanés ────────────────────
+  // ── Azure : synthèse phrase par phrase, lecture par un élément <audio> ─────
+  //
+  // Chaque morceau est synthétisé en entier (audio + animation faciale + mots), puis joué par un
+  // <audio> pendant que le suivant se prépare. Plus fiable sur mobile que la lecture en flux du SDK
+  // (qui pouvait se couper), audible même iPhone en mode silencieux, et le visage suit l'horloge
+  // réelle de l'audio (il se fige si la lecture est interrompue, et repart avec elle).
 
-  _speakAzure(text, actions = []) {
+  /** À appeler pendant un geste de l'utilisateur (clic, envoi) : autorise la lecture audio sur mobile. */
+  unlockAudio() {
+    const audio = this._ensureAudio()
+    if (this._audioUnlocked || this._segmentPlaying) return
+    audio.src = silentWavUrl()
+    audio.play().then(() => { this._audioUnlocked = true }).catch(() => {})
+  }
+
+  _ensureAudio() {
+    if (!this._audio) {
+      const audio = new Audio()
+      audio.preload = 'auto'
+      audio.setAttribute('playsinline', '')
+      this._audio = audio
+      // Retour sur la page (appel, autre appli, écran verrouillé) : la phrase en cours reprend.
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this._segmentPlaying && audio.paused) {
+          audio.play().catch(() => {})
+        }
+      })
+    }
+    return this._audio
+  }
+
+  async _speakAzure(text, actions = []) {
     this.stop()
-    this._timers = []
+    const run = this._run
+    this._ensureAudio()
+    const segments = splitSegments(text)
+    if (!segments.length) { this.onEnd?.(); return }
+    const scheduler = this._createWordActionScheduler(actions)
+    const displayTotal = countWords(stripPauses(text))
 
-    const audioConfig = SpeechSDK.AudioConfig.fromDefaultSpeakerOutput()
-    const synth       = new SpeechSDK.SpeechSynthesizer(this._config, audioConfig)
-    this._azureSynth  = synth
+    const pull  = SpeechSDK.AudioOutputStream.createPullStream()
+    const synth = new SpeechSDK.SpeechSynthesizer(this._config, SpeechSDK.AudioConfig.fromStreamOutput(pull))
+    this._azureSynth = synth
+    const prepare = (i) => {
+      if (i >= segments.length) return null
+      const p = this._synthSegment(synth, segments[i].text)
+      p.catch(() => {})   // l'erreur est traitée quand on attend ce morceau
+      return p
+    }
 
-    let playbackStart    = null
-    const pending        = []
-    let maxAudioOffsetMs = 0
-    // Azure synthesisStarted fires before audio reaches speakers (~200ms buffer delay)
-    const AUDIO_BUFFER_MS = 200
-
-    const actionScheduler = this._createWordActionScheduler(actions, AUDIO_BUFFER_MS)
-    let wordCount = 0
+    let wordBase = 0
+    let displayBase = 0
+    let started = false
+    let next = prepare(0)
+    try {
+      for (let i = 0; i < segments.length; i++) {
+        const seg = await next
+        if (run !== this._run) return
+        next = prepare(i + 1)   // le morceau suivant se prépare pendant la lecture
+        if (!started) { started = true; this.onStart?.() }
+        const segDisplay = countWords(stripPauses(segments[i].text))
+        await this._playSegment(run, seg, { scheduler, wordBase, displayBase, segDisplay, displayTotal })
+        if (run !== this._run) return
+        wordBase += seg.words.length
+        displayBase += segDisplay
+        if (segments[i].pauseAfter && i < segments.length - 1) await this._wait(run, PAUSE_MS)
+        if (run !== this._run) return
+      }
+    } catch (err) {
+      if (run !== this._run) return   // interrompu volontairement : pas une erreur
+      throw err
+    } finally {
+      if (this._azureSynth === synth) {
+        try { synth.close() } catch {}
+        this._azureSynth = null
+      }
+    }
     this.onFaceReset?.()
+    this.onEnd?.()
+  }
 
-    const schedule = (id, ms) => {
-      maxAudioOffsetMs = Math.max(maxAudioOffsetMs, ms)
-      if (playbackStart === null) {
-        pending.push({ id, ms })
-      } else {
-        const delay = ms + AUDIO_BUFFER_MS - (performance.now() - playbackStart)
-        const t = setTimeout(() => this.onViseme?.(id), Math.max(0, delay))
-        this._timers.push(t)
-      }
-    }
-
-    const flushPending = () => {
-      for (const { id, ms } of pending) {
-        const delay = ms + AUDIO_BUFFER_MS - (performance.now() - playbackStart)
-        const t = setTimeout(() => this.onViseme?.(id), Math.max(0, delay))
-        this._timers.push(t)
-      }
-      pending.length = 0
-    }
-
-    synth.visemeReceived = (_, e) => {
-      schedule(e.visemeId, e.audioOffset / 10000)
-      if (e.animation) {
-        try {
-          const chunk = JSON.parse(e.animation)
-          if (chunk.BlendShapes?.length) this.onFaceFrames?.(chunk.FrameIndex ?? 0, chunk.BlendShapes)
-        } catch { /* image d'animation illisible : on garde les visèmes */ }
-      }
-    }
-
-    synth.wordBoundary = (_, e) => {
-      const ms = e.audioOffset / 10000
-      maxAudioOffsetMs = Math.max(maxAudioOffsetMs, ms)
-
-      if (isWordBoundary(e)) {
-        actionScheduler.onWord(wordCount, ms, playbackStart)
-        wordCount++
-      }
-
-      const t = setTimeout(
-        () => this.onWord?.(e.text, ms),
-        playbackStart ? Math.max(0, ms + AUDIO_BUFFER_MS - (performance.now() - playbackStart)) : 0
-      )
-      this._timers.push(t)
-    }
-
-    synth.synthesisStarted = () => {
-      playbackStart = performance.now()
-      this.onFaceClock?.(playbackStart + AUDIO_BUFFER_MS)
-      flushPending()
-      this.onStart?.()
-    }
-
-    synth.synthesisCompleted = () => {
-      if (playbackStart === null) {
-        playbackStart = performance.now()
-        this.onFaceClock?.(playbackStart + AUDIO_BUFFER_MS)
-        this.onStart?.()
-        flushPending()
-      }
-      const elapsed   = performance.now() - playbackStart
-      const remaining = Math.max(0, maxAudioOffsetMs - elapsed) + 250
-      const t = setTimeout(() => this.onEnd?.(), remaining)
-      this._timers.push(t)
-    }
-
+  /** Synthétise un morceau : audio complet, images faciales, visèmes et instants des mots. */
+  _synthSegment(synth, text) {
     return new Promise((resolve, reject) => {
+      const visemes = []
+      const words   = []
+      const face    = []
+      synth.visemeReceived = (_, e) => {
+        visemes.push({ id: e.visemeId, ms: e.audioOffset / 10000 })
+        if (e.animation) {
+          try {
+            const chunk = JSON.parse(e.animation)
+            if (chunk.BlendShapes?.length) face.push([chunk.FrameIndex ?? 0, chunk.BlendShapes])
+          } catch { /* image d'animation illisible : on garde les visèmes */ }
+        }
+      }
+      synth.wordBoundary = (_, e) => {
+        if (isWordBoundary(e)) words.push({ text: e.text, ms: e.audioOffset / 10000 })
+      }
       synth.speakSsmlAsync(
         this._toSsml(text),
         result => {
-          synth.close()
-          this._azureSynth = null
           if (result.reason === SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
-            resolve(result)
+            resolve({ audio: result.audioData, visemes, words, face })
           } else {
             reject(new Error(result.errorDetails || 'Azure TTS failed'))
           }
         },
-        err => { synth.close(); this._azureSynth = null; reject(err) }
+        err => reject(err instanceof Error ? err : new Error(String(err))),
       )
+    })
+  }
+
+  /** Joue un morceau ; se résout à la fin de sa lecture (ou à l'arrêt). */
+  _playSegment(run, seg, ctx) {
+    const audio = this._audio
+    if (this._objectUrl) URL.revokeObjectURL(this._objectUrl)
+    this._objectUrl = URL.createObjectURL(new Blob([seg.audio], { type: 'audio/mpeg' }))
+
+    this.onFaceReset?.()
+    for (const [index, frames] of seg.face) this.onFaceFrames?.(index, frames)
+
+    return new Promise((resolve, reject) => {
+      let scheduled = false
+      // Horloge du visage : l'image 0 correspond au début de l'audio, recalée sur sa position réelle.
+      const sync = () => this.onFaceClock?.(performance.now() - audio.currentTime * 1000)
+      const cleanup = () => {
+        audio.onplaying = audio.onpause = audio.onended = audio.onerror = null
+        clearInterval(this._syncTimer)
+        this._segmentPlaying = false
+        this._finish = null
+      }
+      this._finish = () => { cleanup(); resolve() }
+
+      audio.onplaying = () => {
+        sync()
+        clearInterval(this._syncTimer)
+        this._syncTimer = setInterval(sync, 250)
+        if (scheduled || run !== this._run) return
+        scheduled = true
+        const t0 = performance.now() - audio.currentTime * 1000
+        // Voix sans animation faciale : visèmes simples
+        if (!seg.face.length) {
+          for (const v of seg.visemes) this._at(t0 + v.ms, () => this.onViseme?.(v.id))
+        }
+        const n = seg.words.length
+        seg.words.forEach((w, i) => {
+          ctx.scheduler.onWord(ctx.wordBase + i, w.ms, t0)
+          // Mot affiché correspondant (sous-titres) : proportionnel dans le morceau
+          const shown = ctx.displayBase + Math.min(ctx.segDisplay - 1, Math.floor((i * ctx.segDisplay) / n))
+          this._at(t0 + w.ms, () => this.onWord?.(shown, ctx.displayTotal))
+        })
+      }
+      // Lecture interrompue (appel, autre appli…) : le visage se relâche au lieu de continuer seul.
+      audio.onpause = () => {
+        clearInterval(this._syncTimer)
+        if (!audio.ended) this.onFaceClock?.(null)
+      }
+      audio.onended = () => { cleanup(); resolve() }
+      audio.onerror = () => { cleanup(); reject(new Error('lecture audio impossible')) }
+
+      this._segmentPlaying = true
+      audio.src = this._objectUrl
+      audio.play().catch(err => { cleanup(); reject(err) })
+    })
+  }
+
+  _at(when, fn) {
+    this._timers.push(setTimeout(fn, Math.max(0, when - performance.now())))
+  }
+
+  _wait(run, ms) {
+    return new Promise(resolve => {
+      this._finish = () => { this._finish = null; resolve() }
+      this._timers.push(setTimeout(() => this._finish?.(), ms))
     })
   }
 
@@ -345,8 +431,13 @@ export class SpeechSynth {
   }
 
   stop() {
+    this._run++
     for (const t of (this._timers ?? [])) clearTimeout(t)
     this._timers = []
+    clearInterval(this._syncTimer)
+    if (this._audio && !this._audio.paused) this._audio.pause()
+    this._finish?.()
+    this.onFaceReset?.()
     if (this._azureSynth) {
       try { this._azureSynth.close() } catch {}
       this._azureSynth = null
@@ -371,6 +462,50 @@ export class SpeechSynth {
   </voice>
 </speak>`
   }
+}
+
+// ── Découpage du texte pour la lecture Azure ──────────────────────────────────
+
+/** Texte → morceaux à synthétiser ; `pauseAfter` : silence de respiration ([pause]) après le morceau. */
+function splitSegments(text) {
+  const parts = text.split(PAUSE_RE).map(p => p.trim()).filter(Boolean)
+  const out = []
+  parts.forEach((part, pi) => {
+    const sentences = part.match(/[^.!?…]+(?:[.!?…]+["»”)]*\s*|$)/g) || [part]
+    let current = ''
+    for (const sentence of sentences) {
+      const limit = out.length === 0 ? FIRST_SEGMENT_CHARS : SEGMENT_CHARS
+      if (current && (current + sentence).length > limit) {
+        out.push({ text: current.trim(), pauseAfter: false })
+        current = ''
+      }
+      current += sentence
+    }
+    if (current.trim()) out.push({ text: current.trim(), pauseAfter: false })
+    if (pi < parts.length - 1 && out.length) out[out.length - 1].pauseAfter = true
+  })
+  return out
+}
+
+function countWords(text) {
+  return text.split(/\s+/).filter(Boolean).length
+}
+
+let silentUrl = null
+/** Un court silence (WAV), joué pendant un geste de l'utilisateur pour autoriser l'audio sur mobile. */
+function silentWavUrl() {
+  if (silentUrl) return silentUrl
+  const samples = 800
+  const buf = new ArrayBuffer(44 + samples)
+  const v = new DataView(buf)
+  const str = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)) }
+  str(0, 'RIFF'); v.setUint32(4, 36 + samples, true); str(8, 'WAVE'); str(12, 'fmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true)
+  str(36, 'data'); v.setUint32(40, samples, true)
+  for (let i = 0; i < samples; i++) v.setUint8(44 + i, 128)
+  silentUrl = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+  return silentUrl
 }
 
 // ── Helpers alignement ElevenLabs ────────────────────────────────────────────

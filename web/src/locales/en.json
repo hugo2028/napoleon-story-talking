@@ -81,5 +81,9 @@
   "modelsLoaded": {
     "one": "{n} model available.",
     "other": "{n} models available."
-  }
+  },
+  "newConversation": "↺ New conversation",
+  "confirmNew": "Clear everything? Click again",
+  "stop": "■ Stop",
+  "welcome": "Napoleon is waiting for you. Ask him about his life, his campaigns or his reign, or simply say hello: he will begin the story. The 📜 under his answers lists the letters his words come from."
 }

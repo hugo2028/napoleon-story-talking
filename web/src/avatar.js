@@ -1,5 +1,6 @@
 import * as THREE from 'https://esm.sh/three@0.168.0'
 import { GLTFLoader } from 'https://esm.sh/three@0.168.0/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'https://esm.sh/three@0.168.0/examples/jsm/environments/RoomEnvironment.js'
 
 const avatarUrl = new URL('../avatar/avatar.glb', import.meta.url).href
 const DEFAULT_AVATAR_URL = import.meta.env.DEV
@@ -122,24 +123,41 @@ export class AvatarPlayer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.setSize(width, height)
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
+    // Rendu « cinéma » : les blancs de l'uniforme gardent leur relief au lieu de saturer.
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
+    this.renderer.toneMappingExposure = 0.92
     this.container.replaceChildren(this.renderer.domElement)
 
-    const hemi = new THREE.HemisphereLight(0xdde8ff, 0x1b1b22, 2.2)
+    // Éclairage d'ambiance (pièce virtuelle) : reflets et ombrages doux sur la peau et le tissu.
+    const pmrem = new THREE.PMREMGenerator(this.renderer)
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+    this.scene.environmentIntensity = 0.4
+    pmrem.dispose()
+
+    const hemi = new THREE.HemisphereLight(0xf2e6d0, 0x1a1612, 0.7)
     this.scene.add(hemi)
 
-    const key = new THREE.DirectionalLight(0xffffff, 2.4)
-    key.position.set(2, 4, 3)
+    // Lumière principale chaude, de trois quarts haut (comme une fenêtre ou une bougie haute)
+    const key = new THREE.DirectionalLight(0xffe9cf, 2.4)
+    key.position.set(2.2, 4, 3)
     this.scene.add(key)
 
-    const fill = new THREE.DirectionalLight(0x9eb8ff, 0.9)
+    // Débouchage froid et léger de l'autre côté
+    const fill = new THREE.DirectionalLight(0xb8c8ff, 0.55)
     fill.position.set(-3, 2, 2)
     this.scene.add(fill)
+
+    // Lumière de contour dorée derrière lui : la silhouette se détache du fond sombre
+    const rim = new THREE.DirectionalLight(0xffcf8a, 3.0)
+    rim.position.set(-1.5, 3, -4)
+    this.scene.add(rim)
 
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(url)
 
     this.avatarRoot = gltf.scene
     this.scene.add(this.avatarRoot)
+    this._addContactShadow()
 
     this._frameAvatar()
 
@@ -171,6 +189,34 @@ export class AvatarPlayer {
 
     window.addEventListener('resize', () => this._resize())
     this._tick()
+  }
+
+  /** Ombre douce au sol sous les pieds : le personnage est posé, il ne flotte plus. */
+  _addContactShadow() {
+    const box = new THREE.Box3().setFromObject(this.avatarRoot)
+    const size = new THREE.Vector3()
+    const center = new THREE.Vector3()
+    box.getSize(size)
+    box.getCenter(center)
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 128
+    const ctx = canvas.getContext('2d')
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
+    g.addColorStop(0, 'rgba(0,0,0,0.55)')
+    g.addColorStop(0.55, 'rgba(0,0,0,0.25)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 128, 128)
+    const texture = new THREE.CanvasTexture(canvas)
+    const radius = Math.max(size.x, size.z) * 0.9
+    const shadow = new THREE.Mesh(
+      new THREE.PlaneGeometry(radius * 2, radius * 1.2),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false })
+    )
+    shadow.rotation.x = -Math.PI / 2
+    shadow.position.set(center.x, box.min.y + 0.002, center.z)
+    shadow.renderOrder = -1
+    this.scene.add(shadow)
   }
 
   _frameAvatar() {

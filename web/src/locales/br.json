@@ -89,5 +89,9 @@
     "few": "{n} model hegerz.",
     "many": "{n} model hegerz.",
     "other": "{n} model hegerz."
-  }
+  },
+  "newConversation": "↺ Kentañ gaozeadenn nevez",
+  "confirmNew": "Dilemel pep tra ? Klikit adarre",
+  "stop": "■ Paouez",
+  "welcome": "An Impalaer a zo o c’hortoz ac’hanoc’h. Goulennit digantañ diwar e vuhez, e emgannoù pe e ren, pe lârit dezhañ demat : krogiñ a raio da gontañ. Ar 📜 dindan e respontoù a ziskouez lizheroù m’eo bet tapet e gomzoù dioute."
 }
