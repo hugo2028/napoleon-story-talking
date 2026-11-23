@@ -41,9 +41,12 @@ web/avatar/
 *.mp4
 *.mov
 
-# Corpus source et scripts de lots (non publiés), sauf la chronologie lue par l'API
+# Corpus source et scripts de lots (non publiés), sauf la chronologie et les pages Gallica lues par
+# l'API, et les tables des matières Gallica dont ces pages sont tirées (scripts/build_gallica_pages.py)
 napoleon-corpus/*
 !napoleon-corpus/metadata/
 napoleon-corpus/metadata/*
 !napoleon-corpus/metadata/events_timeline.json
+!napoleon-corpus/metadata/gallica_pages.json
+!napoleon-corpus/gallica_services/
 shards/
