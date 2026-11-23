@@ -185,11 +185,11 @@ Napoléon Bonaparte* and *Tendresses impériales*). The exact list of editions, 
 | Early writings (*Le Souper de Beaucaire*…) | 106 | 14,000 |
 
 The two databases used by the app are published in the
-[`data-v1`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v1) Release and
+[`data-v2`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v2) Release and
 downloaded into `data/rag/` by `scripts/download_data.py`:
 
-- `napoleon_clean.sqlite`: **25,843 passages**, dated and classified, including 21,358 letters, 1,973
-  orders, 1,356 bulletins and 162 proclamations, with their embeddings;
+- `napoleon_clean.sqlite`: **26,003 passages**, dated and classified, including 21,489 letters, 1,985
+  orders, 1,359 bulletins and 164 proclamations, with their embeddings;
 - `napoleon_memoirs.sqlite`: **4,238 passages** from the *Œuvres de Napoléon Bonaparte*, which the
   archivist consults as a counterpoint to the story.
 

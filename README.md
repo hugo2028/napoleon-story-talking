@@ -186,11 +186,11 @@ La liste exacte des éditions, avec leurs identifiants, est dans **[docs/CORPUS.
 | Écrits de jeunesse (*Le Souper de Beaucaire*…) | 106 | 14 000 |
 
 Les deux bases utilisées par l'application sont publiées dans la Release
-[`data-v1`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v1) et téléchargées
+[`data-v2`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v2) et téléchargées
 dans `data/rag/` par `scripts/download_data.py` :
 
-- `napoleon_clean.sqlite` : **25 843 passages** datés et classés, dont 21 358 lettres, 1 973 ordres,
-  1 356 bulletins et 162 proclamations, avec leurs embeddings ;
+- `napoleon_clean.sqlite` : **26 003 passages** datés et classés, dont 21 489 lettres, 1 985 ordres,
+  1 359 bulletins et 164 proclamations, avec leurs embeddings ;
 - `napoleon_memoirs.sqlite` : **4 238 passages** des *Œuvres de Napoléon Bonaparte*, que l'archiviste
   consulte en contrepoint du récit.
 

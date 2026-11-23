@@ -17,13 +17,13 @@ import sys
 import urllib.request
 from pathlib import Path
 
-RELEASE_URL = "https://github.com/hugo2028/napoleon-story-talking/releases/download/data-v1"
+RELEASE_URL = "https://github.com/hugo2028/napoleon-story-talking/releases/download/data-v2"
 DEST = Path(__file__).resolve().parent.parent / "data" / "rag"
 
 # nom du fichier → (taille en octets, empreinte SHA-256)
 FILES = {
     "napoleon_clean.sqlite": (
-        245_301_248, "56d7a79c882d2a57354b5d6cbca87399881245bf41ed3492a6857c282818f36f"),
+        246_747_136, "b38be0b05c34b3cd3f963807499572e0018eca543f40156f7b42bea561c14622"),
     "napoleon_memoirs.sqlite": (
         39_256_064, "a1f8ba7ee127ebf2a5e6440ffcf95c1575b139d465f997f2bb08839fda3fcf18"),
 }
