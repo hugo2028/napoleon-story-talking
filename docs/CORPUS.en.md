@@ -62,8 +62,11 @@ images: their quality is far higher than raw OCR.
   warns that it "may contain a number of errors". The file is an HTML page that also carries the catalogue
   record (title, author, publisher, date, shelfmark, identifier).
 - **Gutenberg**: the books were downloaded as HTML.
-- The raw files were filed by collection in `napoleon-corpus/sources/`. They are no longer versioned (removed
-  from the repository in July 2026) but can be downloaded again from the identifiers above.
+- The raw files were filed by collection in `napoleon-corpus/sources/`. They are published with the
+  repository (about 60 MB, see `napoleon-corpus/sources/README.md` for reuse conditions) and can still be
+  downloaded from the identifiers above.
+- The file originally downloaded for volume 10 of the *Correspondance* was in fact a second copy of volume 9
+  (identifier `bpt6k9634014c`). It was replaced in November 2026 by the real volume 10 (`bpt6k9636651b`).
 
 ## 3. Exploration and extraction
 

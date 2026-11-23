@@ -63,8 +63,12 @@ images de Gallica : leur qualité est bien supérieure à l'OCR brut.
   Gallica prévient lui-même qu'il « peut comporter un certain nombre d'erreurs ». Le fichier obtenu est une
   page HTML qui contient aussi la notice du document (titre, auteur, éditeur, date, cote, identifiant).
 - **Gutenberg** : les livres ont été téléchargés au format HTML.
-- Les fichiers bruts ont été rangés par collection dans `napoleon-corpus/sources/`. Ils ne sont plus versionnés
-  (retirés du dépôt en juillet 2026) mais restent téléchargeables à partir des identifiants ci-dessus.
+- Les fichiers bruts ont été rangés par collection dans `napoleon-corpus/sources/`. Ils sont publiés avec le
+  dépôt (environ 60 Mo, voir `napoleon-corpus/sources/README.md` pour les conditions de réutilisation) et
+  restent téléchargeables à partir des identifiants ci-dessus.
+- Le fichier du tome 10 de la *Correspondance* téléchargé à l'origine était en réalité une seconde copie du
+  tome 9 (identifiant `bpt6k9634014c`). Il a été remplacé en novembre 2026 par le vrai tome 10
+  (`bpt6k9636651b`).
 
 ## 3. L'exploration et l'extraction
 
