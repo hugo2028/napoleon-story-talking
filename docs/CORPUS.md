@@ -193,6 +193,49 @@ d'Italie, Égypte, Consulat, Empire, Sainte-Hélène).
 - `napoleon_memoirs.sqlite` : les 4 238 passages des *Œuvres de Napoléon Bonaparte* (Gutenberg), sans
   exigence de date, que l'archiviste consulte en contrepoint du récit.
 
+### Les liens vers Gallica
+
+Chaque lettre de la *Correspondance* citée par l'application renvoie à sa page dans l'édition imprimée,
+sur Gallica :
+
+```text
+https://gallica.bnf.fr/ark:/12148/<identifiant du tome>/f<vue>.image.r=<début du titre>
+```
+
+- `f<vue>` est le numéro d'**image** dans le document numérisé, pas le numéro de page imprimée : les
+  couvertures et pages liminaires décalent les deux (la page 375 du tome 1 est l'image 405).
+- `.r=` fait surligner par Gallica les trois premiers mots du titre, c'est-à-dire le destinataire
+  (« AU CITOYEN BARTHÉLÉMY »). Il ne fait que surligner : il ne déplace pas le lecteur vers la lettre.
+
+**Tomes 1 à 15 : page exacte, lue dans les tables de Gallica.** Gallica publie la table des matières de
+chaque tome par son API Document (service `Toc`, documenté sur
+[api.bnf.fr](https://api.bnf.fr/fr/api-document-de-gallica)). Pour ces tomes, la table des pièces donne,
+pour chaque lettre, son numéro et l'image où elle commence. Les tables ont été enregistrées depuis un
+navigateur dans `napoleon-corpus/gallica_services/` (Gallica filtre les appels automatisés), puis
+`scripts/build_gallica_pages.py` en tire `napoleon-corpus/metadata/gallica_pages.json`
+(tome → numéro de lettre → image), que l'application lit au démarrage.
+
+- Les numéros mal lus par l'OCR dans les tables (« 104499 » pour « 10449 ») sont écartés : on ne garde que
+  la plus longue suite de lignes où numéros et images augmentent ensemble.
+- Quelques lettres manquent dans les tables de Gallica elles-mêmes (tome 1 : n° 438 à 458). Quand le trou
+  est petit (40 lettres au plus), elles sont placées entre leurs deux voisines connues ; sinon on n'invente
+  rien.
+- Résultat : **99,5 %** des passages des tomes 1 à 15 pointent sur la page exacte. Contrôle à la main :
+  la lettre 468 (« Au citoyen Barthélemy », 20 mai 1796) tombe bien page 375, image 405.
+
+**Tomes 16 à 32 : page estimée.** Gallica n'y publie pas de table des pièces : seulement un index
+analytique par thèmes (tomes 16, 18, 22, 24, 25, 27, 28), les grandes parties du volume (17, 19, 20, 21,
+23), une erreur (26), et les tomes 29 à 32 (*Œuvres de Sainte-Hélène*) ne numérotent pas les lettres.
+L'image est alors estimée par interpolation dans le tome (table `_TOME_META` de
+`pipeline/napoleon_api.py`) ; elle peut être décalée de plusieurs dizaines de pages, et le titre surligné
+aide à retrouver la lettre.
+
+**Pourquoi pas une recherche au moment du clic.** Le service `ContentSearch` de la même API trouve la page
+exacte d'un titre (`"AU CITOYEN BARTHELEMY"` → image 405), mais Gallica bloque les appels venant d'un
+serveur (protection Cloudflare) et n'autorise pas une page d'un autre site à lire ses réponses (CORS). Un
+lien ne peut pas non plus lancer la recherche interne du lecteur Gallica. La page doit donc être connue à
+l'avance.
+
 ## 8. Limites
 
 - **Une correction par IA non vérifiée par un humain.** Les corrections d'OCR et les décisions de garder ou
@@ -213,8 +256,8 @@ d'Italie, Égypte, Consulat, Empire, Sainte-Hélène).
 - **Des textes d'attribution discutable.** Certains petits recueils (opuscules de circonstance, textes
   publiés après la chute de l'Empire) mériteraient une vérification de leur authenticité ; les bulletins
   et certains rapports ne sont pas toujours de la main de Napoléon.
-- **Des liens Gallica approximatifs.** Quand le numéro de page d'une lettre n'est pas connu, la page
-  Gallica est estimée par interpolation dans le tome.
+- **Des liens Gallica approximatifs pour les tomes 16 à 32.** Gallica n'y fournit pas de table des
+  lettres : la page est estimée par interpolation dans le tome (voir « Les liens vers Gallica »).
 
 ## 9. Ce qu'un travail plus long, rigoureux et humain permettrait
 
@@ -226,7 +269,8 @@ d'Italie, Égypte, Consulat, Empire, Sainte-Hélène).
   fiabilité** (date lue, date déduite, date approximative) au lieu d'un simple « fiable ».
 - **Découper par lettre, pas par longueur** : conserver chaque lettre entière et l'encoder en XML-TEI
   (date, lieu, destinataire, page de l'édition), le format de référence des éditions numériques savantes.
-- **Lier chaque lettre à sa page exacte** dans Gallica, en alignant le texte avec l'OCR page par page.
+- **Lier chaque lettre des tomes 16 à 32 à sa page exacte** dans Gallica, en alignant le texte avec l'OCR
+  page par page, ou en obtenant de la BnF un accès à la recherche dans les documents (`ContentSearch`).
 - **Repérer les doublons** entre collections (une même lettre peut figurer dans la *Correspondance* et
   dans un recueil particulier).
 - **Identifier les personnes et les lieux** et les relier à des référentiels (data.bnf.fr, Wikidata), pour

@@ -188,6 +188,46 @@ Empire, Saint Helena).
 - `napoleon_memoirs.sqlite`: the 4,238 passages of the *Œuvres de Napoléon Bonaparte* (Gutenberg), with no
   date requirement, which the archivist consults as a counterpoint to the story.
 
+### Links to Gallica
+
+Each letter of the *Correspondance* quoted by the application links to its page in the printed edition,
+on Gallica:
+
+```text
+https://gallica.bnf.fr/ark:/12148/<volume identifier>/f<view>.image.r=<start of the title>
+```
+
+- `f<view>` is the **image** number in the digitised document, not the printed page number: covers and
+  front matter shift the two (printed page 375 of volume 1 is image 405).
+- `.r=` makes Gallica highlight the first three words of the title, i.e. the recipient
+  ("AU CITOYEN BARTHÉLÉMY"). It only highlights: it does not move the reader to the letter.
+
+**Volumes 1 to 15: exact page, read from Gallica's tables.** Gallica publishes each volume's table of
+contents through its Document API (`Toc` service, documented on
+[api.bnf.fr](https://api.bnf.fr/fr/api-document-de-gallica)). For these volumes, the table of documents
+gives each letter's number and the image where it starts. The tables were saved from a browser into
+`napoleon-corpus/gallica_services/` (Gallica filters automated requests), then
+`scripts/build_gallica_pages.py` turns them into `napoleon-corpus/metadata/gallica_pages.json`
+(volume → letter number → image), which the application reads at startup.
+
+- Numbers misread by OCR in the tables ("104499" for "10449") are discarded: only the longest run of rows
+  where numbers and images increase together is kept.
+- A few letters are missing from Gallica's own tables (volume 1: nos. 438 to 458). When the gap is small
+  (40 letters at most), they are placed between their two known neighbours; otherwise nothing is invented.
+- Result: **99.5%** of the passages of volumes 1 to 15 point to the exact page. Checked by hand: letter 468
+  ("Au citoyen Barthélemy", 20 May 1796) lands on page 375, image 405.
+
+**Volumes 16 to 32: estimated page.** Gallica publishes no table of documents for them: only a thematic
+analytical index (volumes 16, 18, 22, 24, 25, 27, 28), the main parts of the volume (17, 19, 20, 21, 23),
+an error (26), and volumes 29 to 32 (*Œuvres de Sainte-Hélène*) do not number the letters. The image is
+then estimated by interpolation within the volume (`_TOME_META` table in `pipeline/napoleon_api.py`); it
+can be off by several dozen pages, and the highlighted title helps find the letter.
+
+**Why not search at click time.** The `ContentSearch` service of the same API finds the exact page of a
+title (`"AU CITOYEN BARTHELEMY"` → image 405), but Gallica blocks requests coming from a server (Cloudflare
+protection) and does not let a page from another site read its answers (CORS). Nor can a link trigger the
+Gallica reader's own search. The page must therefore be known in advance.
+
 ## 8. Limits
 
 - **AI corrections not checked by a human.** OCR corrections and keep-or-reject decisions were made by a
@@ -208,8 +248,8 @@ Empire, Saint Helena).
 - **Texts of debatable attribution.** Some small collections (occasional pamphlets, texts published after
   the fall of the Empire) would deserve an authenticity check; bulletins and some reports were not always
   written by Napoleon himself.
-- **Approximate Gallica links.** When a letter's page number is not known, the Gallica page is estimated by
-  interpolation within the volume.
+- **Approximate Gallica links for volumes 16 to 32.** Gallica provides no table of letters for them: the
+  page is estimated by interpolation within the volume (see "Links to Gallica").
 
 ## 9. What longer, rigorous, human work would allow
 
@@ -220,7 +260,8 @@ Empire, Saint Helena).
   inferred, approximate date) instead of a simple "reliable".
 - **Split by letter, not by length**: keep each letter whole and encode it in TEI XML (date, place,
   recipient, page of the edition), the reference format for scholarly digital editions.
-- **Link each letter to its exact page** in Gallica, by aligning the text with the page-by-page OCR.
+- **Link each letter of volumes 16 to 32 to its exact page** in Gallica, by aligning the text with the
+  page-by-page OCR, or by obtaining from the BnF access to in-document search (`ContentSearch`).
 - **Detect duplicates** across collections (the same letter can appear in the *Correspondance* and in a
   separate collection).
 - **Identify people and places** and link them to authority files (data.bnf.fr, Wikidata), to resolve

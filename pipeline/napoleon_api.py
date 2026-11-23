@@ -138,30 +138,36 @@ _TOME_META: dict[int, dict] = {
 _CHUNK_KEY_RE = re.compile(r'^correspondance_(\d+)_(\d+)$')
 
 _LETTER_NUM_RE = re.compile(r"^\s*(\d+)\s*\.\s*")
-_LAST_LETTER_TOME = 28   # tomes 29-32 (Œuvres de Sainte-Hélène) : pas de numérotation de lettres
 
 
-def _gallica_search_terms(title: str, tome: int, max_words: int = 6) -> str:
-    """Mots-clés pour le paramètre `.r=` de Gallica.
+def _gallica_search_terms(title: str, tome: int, max_words: int = 3) -> str:
+    """Mots-clés pour le paramètre `.r=` de Gallica : début du titre, sans numéro ni ponctuation.
 
-    Tomes 1-28 : le numéro de la lettre (« 4891 »), très discriminant (la page
-    de la lettre + la table des matières), là où les mots du titre renvoient
-    des centaines de pages. Sinon : début du titre, sans ponctuation.
+    « 468. AU CITOYEN BARTHÉLÉMY, MINISTRE… » → « AU CITOYEN BARTHÉLÉMY ». Le numéro seul
+    (« 468 ») ne menait pas à la lettre : Gallica le trouve aussi dans les dates, les
+    sommes, les renvois… alors que le destinataire tombe sur la bonne page.
     """
-    m = _LETTER_NUM_RE.match(title or "")
-    if m and tome <= _LAST_LETTER_TOME:
-        return m.group(1)
     title = _LETTER_NUM_RE.sub("", title or "")
     words = re.findall(r"[^\W\d_][\w'’-]*", title)          # mots uniquement (pas de chiffres ni ponctuation)
     return " ".join(words[:max_words])
 
 
-def _gallica_url(chunk_key: str, title: str = "") -> str | None:
-    """Retourne l'URL Gallica pointant approximativement sur la bonne page.
+# Vue exacte de chaque lettre, lue dans les tables des matières de Gallica
+# (scripts/build_gallica_pages.py) : {"1": {"468": 405, ...}, ...}
+_GALLICA_PAGES_PATH = ROOT / "napoleon-corpus" / "metadata" / "gallica_pages.json"
+try:
+    _GALLICA_PAGES: dict[str, dict[str, int]] = json.loads(_GALLICA_PAGES_PATH.read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    _GALLICA_PAGES = {}
+print(f"Pages Gallica exactes : {len(_GALLICA_PAGES)} tome(s) — {', '.join(sorted(_GALLICA_PAGES, key=int)) or 'aucun'}")
 
-    La vue est estimée (voir _TOME_META) ; le titre de la lettre est passé en
-    recherche (`.r=`) pour que Gallica surligne les occurrences et propose les
-    pages où il apparaît, ce qui compense l'imprécision de l'estimation.
+
+def _gallica_url(chunk_key: str, title: str = "") -> str | None:
+    """Retourne l'URL Gallica de la page où commence la lettre.
+
+    Si la table des matières du tome est connue (_GALLICA_PAGES), la vue est exacte.
+    Sinon elle est estimée (voir _TOME_META). Dans les deux cas, le début du titre est
+    passé en `.r=` pour que Gallica le surligne sur la page.
     """
     m = _CHUNK_KEY_RE.match(chunk_key)
     if not m:
@@ -177,7 +183,11 @@ def _gallica_url(chunk_key: str, title: str = "") -> str | None:
     # qui apparaissent en f1 et f2 dans le viewer web → décalage systématique de +2.
     GALLICA_COVER_OFFSET = 2
 
-    if max_letter <= total_vues:
+    num = _LETTER_NUM_RE.match(title or "")
+    exact = _GALLICA_PAGES.get(str(tome), {}).get(num.group(1)) if num else None
+    if exact:
+        vue = exact
+    elif max_letter <= total_vues:
         # chunk_num est un numéro de page imprimée (ex: tome 32 = Précis des guerres)
         vue = chunk_num + offset + GALLICA_COVER_OFFSET
     else:
