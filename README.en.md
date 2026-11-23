@@ -193,12 +193,15 @@ downloaded into `data/rag/` by `scripts/download_data.py`:
 - `napoleon_memoirs.sqlite`: **4,238 passages** from the *Œuvres de Napoléon Bonaparte*, which the
   archivist consults as a counterpoint to the story.
 
-Each letter from the *Correspondance* links to the matching page of its volume on Gallica. The repository
-contains only what runs the app: the raw corpus, the extraction and cleaning scripts and the fine-tuning
-experiments are not included.
+Each letter from the *Correspondance* links to the matching page of its volume on Gallica. The **raw
+sources** (Gallica text exports and Gutenberg HTML books, about 60 MB) are published in
+[`napoleon-corpus/sources/`](napoleon-corpus/sources/README.md). The extraction and cleaning scripts and
+the fine-tuning experiments are not included.
 
 ## License
 
 The code is released under the [MIT](LICENSE) license. The historical texts in the RAG databases come
-from Gallica (BnF) and remain subject to its reuse terms. The 3D Napoleon model shown in the videos is
+from Gallica (BnF) and Project Gutenberg: public-domain texts whose files remain subject to Gallica's
+reuse terms (free non-commercial use with source credit) and to the Project Gutenberg license (see
+[`napoleon-corpus/sources/README.md`](napoleon-corpus/sources/README.md)). The 3D Napoleon model shown in the videos is
 not covered by this license and is not distributed.

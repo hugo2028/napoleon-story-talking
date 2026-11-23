@@ -49,4 +49,5 @@ napoleon-corpus/metadata/*
 !napoleon-corpus/metadata/events_timeline.json
 !napoleon-corpus/metadata/gallica_pages.json
 !napoleon-corpus/gallica_services/
+!napoleon-corpus/sources/
 shards/

@@ -194,12 +194,15 @@ dans `data/rag/` par `scripts/download_data.py` :
 - `napoleon_memoirs.sqlite` : **4 238 passages** des *Œuvres de Napoléon Bonaparte*, que l'archiviste
   consulte en contrepoint du récit.
 
-Chaque lettre de la *Correspondance* renvoie à la page correspondante du tome sur Gallica. Le dépôt ne
-contient que ce qui fait tourner l'application : le corpus brut, les scripts d'extraction et de nettoyage
+Chaque lettre de la *Correspondance* renvoie à la page correspondante du tome sur Gallica. Les **sources
+brutes** (exports texte de Gallica et livres HTML de Gutenberg, environ 60 Mo) sont publiées dans
+[`napoleon-corpus/sources/`](napoleon-corpus/sources/README.md). Les scripts d'extraction et de nettoyage
 et les expériences de fine-tuning ne sont pas inclus.
 
 ## Licence
 
 Le code est distribué sous licence [MIT](LICENSE). Les textes historiques des bases RAG proviennent de
-Gallica (BnF) et restent soumis à ses conditions de réutilisation. Le modèle 3D de Napoléon visible dans
+Gallica (BnF) et du Projet Gutenberg : textes du domaine public, dont les fichiers restent soumis aux
+conditions de réutilisation de Gallica (usage non commercial libre avec mention de la source) et à la
+licence du Projet Gutenberg (voir [`napoleon-corpus/sources/README.md`](napoleon-corpus/sources/README.md)). Le modèle 3D de Napoléon visible dans
 les vidéos n'est pas couvert par cette licence et n'est pas distribué.
