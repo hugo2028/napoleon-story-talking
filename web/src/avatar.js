@@ -1,6 +1,6 @@
-import * as THREE from 'https://esm.sh/three@0.168.0'
-import { GLTFLoader } from 'https://esm.sh/three@0.168.0/examples/jsm/loaders/GLTFLoader.js'
-import { RoomEnvironment } from 'https://esm.sh/three@0.168.0/examples/jsm/environments/RoomEnvironment.js'
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 const avatarUrl = new URL('../avatar/avatar.glb', import.meta.url).href
 // Décor de Longwood : lumière précalculée dans Blender (scripts/build_longwood_scene.py), affichée telle quelle
@@ -222,6 +222,8 @@ export class AvatarPlayer {
     this.scene.add(this._makeSky())
     this._matchLightsToDecor()
     this._addDecorLife()
+    // Le titre superposé passe à l'encre brune sur le papier peint clair (index.html, .with-decor)
+    this.container.parentElement?.classList.add('with-decor')
   }
 
   /** Ciel du soir vu par la fenêtre : mer sombre, horizon embrasé, bleu de nuit en haut. */
