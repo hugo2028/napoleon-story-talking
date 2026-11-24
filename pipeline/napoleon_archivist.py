@@ -24,7 +24,7 @@ from difflib import SequenceMatcher
 
 import numpy as np
 
-from napoleon_agent import cosine_sim, embed_question, fetch_chunks
+from napoleon_agent import NAPOLEON_FICHE, cosine_sim, embed_question, fetch_chunks
 from llm_connector import parse_json_object
 
 AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1")
@@ -187,8 +187,21 @@ Ne propose pas un épisode de mémoire, sans lettre pour l'appuyer.
    Au tour suivant, si le visiteur accepte l'épisode proposé, construis le plan de CET épisode \
 en y intégrant la lettre amorce.
 
+8. Napoléon parle depuis Sainte-Hélène, au printemps 1821 : il ne sait rien de ce qui vient après \
+(sa mort, la suite de l'histoire, les inventions, les pays et les personnes d'après). \
+   - Une question sur un fait de sa propre vie que les lettres ne couvrent pas (sa naissance, ses parents, \
+ses frères et sœurs, ses études, ses mariages, son fils, son exil et ses compagnons) : consulte \
+fiche_personnelle, puis repondre_librement avec dans « faits » les identifiants des faits qui répondent. \
+Les lettres restent la source à privilégier quand elles existent : la fiche complète, elle ne remplace pas.
+   - Une question sur ce qui est postérieur à 1821 ou étranger à son temps : repondre_librement, sans lettre \
+ni fait, avec pour consigne que Napoléon ne sait pas de quoi parle le visiteur et le dit en homme de son temps, \
+sans faire semblant de savoir, puis ramène la conversation vers sa vie.
+   - Une question à laquelle ni les lettres ni la fiche ne répondent : repondre_librement, sans lettre ni fait, \
+avec pour consigne de ne pas la traiter sur le fond et de proposer un sujet dont tu as vérifié les lettres. \
+Ne demande jamais au narrateur de répondre de mémoire.
+
 Règles :
-- Tout ce que Napoléon racontera doit venir des lettres servies : choisis-les avec soin.
+- Tout ce que Napoléon racontera doit venir des lettres servies ou des faits de la fiche transmis : choisis-les avec soin.
 - Ne sers jamais une lettre déjà racontée, sauf si le visiteur le demande expressément.
 - Sois efficace : une enquête complète tient en 3 à 8 appels d'outils ; un tour de suite en 0 à 2.
 - Termine TOUJOURS par servir_tour ou repondre_librement.
@@ -242,6 +255,12 @@ TOOLS = [
         {"requete": {"type": "string"},
          "limite": {"type": "integer", "description": "1-8, défaut 4."}},
         ["requete"]),
+    _fn("fiche_personnelle",
+        "Fiche de ce que Napoléon sait de sa propre vie sans ses lettres, au printemps 1821 à Sainte-Hélène : "
+        "naissance, famille, jeunesse, mariages et enfants, grandes dates, l'exil et ses compagnons, et les limites "
+        "de ce qu'il sait. Chaque fait a un identifiant (f1, f2…) à transmettre dans repondre_librement.faits. "
+        "À consulter seulement quand la question porte sur ces sujets ou que les lettres n'y répondent pas.",
+        {"rubrique": {"type": "string", "description": "Optionnel : filtre sur une rubrique (ex. « famille », « exil »)."}}),
     _fn("fixer_plan",
         "Fixe ou révise le plan du récit. Remplace tous les chapitres NON racontés par ceux fournis "
         "(les chapitres déjà racontés sont conservés).",
@@ -273,6 +292,9 @@ TOOLS = [
                       "et s'il relance ou non, en une ou deux phrases."},
          "lettres": {"type": "array", "items": {"type": "integer"},
                      "description": "Optionnel : 1 à 3 lettres sur lesquelles Napoléon fonde sa réponse (conversation libre)."},
+         "faits": {"type": "array", "items": {"type": "string"},
+                   "description": "Optionnel : 1 à 6 identifiants de faits de la fiche personnelle (f1, f2…) "
+                                  "sur lesquels Napoléon fonde sa réponse."},
          "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."}},
         ["consigne"]),
 ]
@@ -470,6 +492,14 @@ class Archivist:
         return [{"id": l["id"], "date": l["date"], "titre": l["titre"], "extrait": l["extrait"],
                  "phrase_citable": l["phrase_citable"]} for l in letters]
 
+    def t_fiche_personnelle(self, state, rubrique=None):
+        faits = NAPOLEON_FICHE
+        if rubrique:
+            r = rubrique.strip().lower()
+            faits = [f for f in faits if r in f["rubrique"].lower()] or faits
+        return {"rubriques": sorted({f["rubrique"] for f in NAPOLEON_FICHE}),
+                "faits": [{"id": f["id"], "rubrique": f["rubrique"], "texte": f["texte"]} for f in faits]}
+
     def t_memoires(self, state, requete, limite=4):
         if self.m_emb is None:
             return {"erreur": "mémoires indisponibles"}
@@ -646,8 +676,14 @@ class Archivist:
             inconnues = [l for l in demandees if l not in connues]
             if inconnues:
                 return {"_erreur": f"lettres inconnues {inconnues} : sers des identifiants trouvés par tes recherches."}
+            fiche = {f["id"]: f["texte"] for f in NAPOLEON_FICHE}
+            faits_demandes = [str(i).strip() for i in (args.get("faits") or [])][:6]
+            faits_inconnus = [i for i in faits_demandes if i not in fiche]
+            if faits_inconnus:
+                return {"_erreur": f"faits inconnus {faits_inconnus} : utilise les identifiants de fiche_personnelle."}
             return {"type": "libre", "consigne": args.get("consigne", ""),
                     "lettres": demandees,
+                    "faits": [fiche[i] for i in faits_demandes],
                     "citations": self._choisir_citations(
                         state, demandees, "Napoléon répond à son visiteur : " + args.get("consigne", ""))
                     if demandees else [],
@@ -758,10 +794,16 @@ class Archivist:
                     parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », "
                                  "si elles servent ta réponse. Ne cite rien d'autre entre guillemets :\n"
                                  + "\n".join(f"- « {c['texte']} »" for c in decision["citations"]))
+            if decision.get("faits"):
+                parts.append("Faits de ta fiche personnelle — ce que tu sais de ta propre vie sans tes lettres. "
+                             "Tu peux t'appuyer dessus, sans rien y ajouter :\n"
+                             + "\n".join(f"- {f}" for f in decision["faits"]))
             parts.append(f"Consigne de l'archiviste : {decision['consigne']}")
             if not decision.get("lettres"):
                 parts.append("Aucune autre lettre n'est fournie : n'avance aucun fait historique précis "
-                             "qui ne figure pas ci-dessus.")
+                             "qui ne figure pas ci-dessus. Si rien ci-dessus ne répond à la question, ne la traite "
+                             "pas sur le fond : dis-le en une phrase, en personnage, puis ramène ton visiteur vers "
+                             "ce dont tu as la trace.")
             parts.append(f"Message du visiteur : {user_message}")
             return "\n\n---\n\n".join(parts)
 

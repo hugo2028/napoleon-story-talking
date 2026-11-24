@@ -183,26 +183,30 @@ def _format_animation_prompt(names: list[str]) -> str:
 ANIMATION_PROMPT = _format_animation_prompt(AVATAR_GESTURE_ANIMATIONS)
 
 # ---------------------------------------------------------------------------
-# Repères biographiques injectés dans le system prompt
+# Fiche de ce que Napoléon sait de lui-même à Sainte-Hélène (hors lettres), injectée dans le system prompt
 # ---------------------------------------------------------------------------
 
-NAPOLEON_BASELINE = """\
-Repères chronologiques de ta vie :
-- 1769-08-15 : naissance à Ajaccio, Corse (famille Bonaparte, petite noblesse)
-- 1779-1785  : école militaire de Brienne puis Paris
-- 1785       : sous-lieutenant d'artillerie
-- 1793       : siège de Toulon — commandement artillerie, première gloire militaire
-- 1796-1797  : première campagne d'Italie
-- 1798-1799  : campagne d'Égypte
-- 1799-11-09 : coup d'État du 18 Brumaire, Premier Consul
-- 1804-12-02 : sacre comme Empereur des Français
-- 1805       : Austerlitz
-- 1806-1807  : campagne de Prusse et Pologne
-- 1812       : campagne de Russie — désastre
-- 1813       : Leipzig — défaite
-- 1814       : abdication, exil à l'île d'Elbe
-- 1815       : Cent-Jours, Waterloo, exil définitif à Sainte-Hélène
-- 1821-05-05 : mort à Sainte-Hélène"""
+FICHE_FILE = ROOT / "napoleon-corpus" / "metadata" / "napoleon_fiche.md"
+
+
+def load_fiche() -> list[dict]:
+    """Faits de la fiche : une entrée par ligne « - … », avec un identifiant (f1, f2…) et sa rubrique « ## … ».
+    Le reste du fichier est de la documentation. Pas injectée dans chaque prompt : l'archiviste la consulte
+    (outil fiche_personnelle) et ne transmet au narrateur que les faits utiles au tour."""
+    try:
+        text = FICHE_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    faits, rubrique = [], ""
+    for line in text.splitlines():
+        if line.startswith("## "):
+            rubrique = line[3:].strip()
+        elif line.startswith("- "):
+            faits.append({"id": f"f{len(faits) + 1}", "rubrique": rubrique, "texte": line[2:].strip()})
+    return faits
+
+
+NAPOLEON_FICHE = load_fiche()
 
 SYSTEM_PROMPT = f"""\
 Tu es Napoléon Bonaparte à Sainte-Hélène. Tu racontes ta vie à ton interlocuteur \
@@ -241,8 +245,13 @@ N'emploie jamais le "tu" ou le "vous" pour t'adresser à Joséphine, à tes gén
 figurant dans tes lettres — seul ton interlocuteur du moment peut être interpellé.
 
 Règles absolues :
+- Tu vis au printemps 1821, à Sainte-Hélène. Tu ignores tout ce qui s'est passé après, y compris ta propre mort. \
+Si ton visiteur évoque une invention, un pays, un événement ou une personne postérieurs à ton temps, \
+tu ne sais pas de quoi il parle : réponds en homme de 1821, sans jamais faire semblant de savoir.
 - Tout fait précis — nom, date, lieu, chiffre, événement — doit figurer explicitement \
-dans les lettres fournies. N'invente rien, n'ajoute aucun détail tiré de ta connaissance générale.
+dans les lettres fournies ou dans les faits de ta fiche personnelle quand le tour t'en donne. \
+N'invente rien, n'ajoute aucun détail \
+tiré de ta connaissance générale.
 - Il en va de même des idées : ne dis que ce que disent les lettres. Pas de développement, de \
 commentaire, de morale ni de conclusion de ton cru ; reformule fidèlement, sans amplifier.
 - Si les lettres disponibles ne couvrent pas la question posée, dis-le en restant en personnage \
@@ -250,7 +259,9 @@ et sans méta-commentaire : "Mes souvenirs de cette période sont flous sur ce p
 "Je n'ai plus trace précise de cet événement…" Puis rattache-toi \
 à ce que tes lettres disent réellement.
 - Ne mentionne jamais un nom propre, une bataille, un amiral, un chiffre qui ne figure \
-pas dans les lettres du contexte.
+ni dans les lettres du contexte ni dans ta fiche personnelle.
+- Une question à laquelle ni tes lettres ni ta fiche ne répondent, tu ne la traites pas sur le fond : \
+dis-le en restant en personnage, en une phrase, puis ramène ton visiteur vers ce dont tu as la trace.
 - Sois concis : 4 à 6 phrases maximum par réponse. C'est une conversation, pas un discours. \
 Laisse ton interlocuteur réagir, poser des questions, demander la suite.
 - Termine chaque réponse en suivant la consigne « Suite du récit » du tour : \
@@ -272,8 +283,6 @@ Varie les animations autant que possible et évite de répéter mécaniquement l
 N'utilise [anim:waiting] que si aucune animation ne convient vraiment au segment. \
 Exemple : [anim:emotion_angry_gesture] La situation était critique. [anim:head_nod_hard_emphatic] Mais j'ai cru en mes soldats. [anim:emotion_cocky_confident] Nous avons tenu.
 - Prose continue, style oral — pas de listes ni de tirets.
-
-{NAPOLEON_BASELINE}
 """
 
 # ---------------------------------------------------------------------------

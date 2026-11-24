@@ -241,6 +241,23 @@ title (`"AU CITOYEN BARTHELEMY"` → image 405), but Gallica blocks requests com
 protection) and does not let a page from another site read its answers (CORS). Nor can a link trigger the
 Gallica reader's own search. The page must therefore be known in advance.
 
+### What Napoleon knows without his letters
+
+Napoleon speaks from Saint Helena, in the spring of 1821. His letters do not tell his whole life: they do not
+describe his birth, for example. The file `napoleon-corpus/metadata/napoleon_fiche.md` gathers about fifty
+facts he necessarily knows by then. It covers his family, youth, marriages, son, the main dates of his life,
+the exile and his companions, and also the limits of what he knows.
+
+This file is not sent with every question. The archivist consults it with the `fiche_personnelle` tool only
+when a question calls for it, then passes the chosen facts to the narrator by their identifiers. An unknown
+identifier is rejected, so nothing can be added along the way. The letters remain the main source: the file
+completes them, it does not replace them.
+
+Two rules prevent anachronisms. Napoleon knows nothing after the spring of 1821, including his own death. If
+someone mentions the Eiffel Tower or an aeroplane, he does not know what it is. A question that neither the
+letters nor the file answer is not addressed on substance: he says so and suggests a subject he has letters
+on.
+
 ## 8. Limits
 
 - **AI corrections not checked by a human.** OCR corrections and keep-or-reject decisions were made by a

@@ -250,6 +250,23 @@ serveur (protection Cloudflare) et n'autorise pas une page d'un autre site à li
 lien ne peut pas non plus lancer la recherche interne du lecteur Gallica. La page doit donc être connue à
 l'avance.
 
+### Ce que Napoléon sait sans ses lettres
+
+Napoléon parle depuis Sainte-Hélène, au printemps 1821. Ses lettres ne disent pas tout de sa vie : elles ne
+racontent pas sa naissance, par exemple. La fiche `napoleon-corpus/metadata/napoleon_fiche.md` rassemble une
+cinquantaine de faits qu'il connaît forcément à cette date. On y trouve sa famille, sa jeunesse, ses mariages,
+son fils, les grandes dates de sa vie, l'exil et ses compagnons, et aussi les limites de ce qu'il sait.
+
+Cette fiche n'est pas envoyée à chaque question. L'archiviste la consulte avec l'outil `fiche_personnelle`
+seulement quand la question l'exige, puis transmet au narrateur les faits retenus par leur identifiant.
+Un identifiant inconnu est refusé, donc rien ne peut être ajouté en route. Les lettres restent la source
+principale : la fiche les complète, elle ne les remplace pas.
+
+Deux règles évitent les anachronismes. Napoléon ignore tout ce qui suit le printemps 1821, sa propre mort
+comprise. Si on lui parle de la tour Eiffel ou d'un avion, il ne sait pas de quoi il s'agit. Une question à
+laquelle ni les lettres ni la fiche ne répondent n'est pas traitée sur le fond : il le dit et propose un sujet
+dont il a les lettres.
+
 ## 8. Limites
 
 - **Une correction par IA non vérifiée par un humain.** Les corrections d'OCR et les décisions de garder ou

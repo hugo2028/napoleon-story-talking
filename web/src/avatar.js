@@ -3,6 +3,13 @@ import { GLTFLoader } from 'https://esm.sh/three@0.168.0/examples/jsm/loaders/GL
 import { RoomEnvironment } from 'https://esm.sh/three@0.168.0/examples/jsm/environments/RoomEnvironment.js'
 
 const avatarUrl = new URL('../avatar/avatar.glb', import.meta.url).href
+// Décor de Longwood : lumière précalculée dans Blender (scripts/build_longwood_scene.py), affichée telle quelle
+const decorUrl = new URL('../decor/longwood.glb', import.meta.url).href
+
+// Points du décor, en coordonnées three.js (Blender x, y, z → three x, z, -y)
+const DECOR_CHANDELIER = new THREE.Vector3(0, 2.75, -1.2)
+const DECOR_DESK_FLAME = new THREE.Vector3(1.97, 1.09, -1.93)
+const DECOR_FIRE = new THREE.Vector3(-3.1, 0.5, 0.4)
 const DEFAULT_AVATAR_URL = import.meta.env.DEV
   ? `${avatarUrl}?t=${Date.now()}`
   : avatarUrl
@@ -151,6 +158,10 @@ export class AvatarPlayer {
     const rim = new THREE.DirectionalLight(0xffcf8a, 3.0)
     rim.position.set(-1.5, 3, -4)
     this.scene.add(rim)
+    this.lights = { hemi, key, fill, rim }
+
+    // Le décor se charge en parallèle de l'avatar ; s'il manque, le fond uni reste.
+    this._loadDecor().catch(err => console.info('[Décor] non chargé, fond uni conservé :', err?.message || err))
 
     const loader = new GLTFLoader()
     const gltf = await loader.loadAsync(url)
@@ -189,6 +200,138 @@ export class AvatarPlayer {
 
     window.addEventListener('resize', () => this._resize())
     this._tick()
+  }
+
+  /**
+   * Décor de Longwood : un seul maillage dont la texture contient déjà la lumière (précalculée dans
+   * Blender). Affiché sans éclairage ni tone mapping, il ne coûte presque rien, même sur mobile.
+   */
+  async _loadDecor(url = decorUrl) {
+    const gltf = await new GLTFLoader().loadAsync(url)
+    const materials = []
+    gltf.scene.traverse(obj => {
+      if (!obj.isMesh) return
+      const map = obj.material?.map || null
+      if (map) map.colorSpace = THREE.SRGBColorSpace
+      obj.material = new THREE.MeshBasicMaterial({ map, toneMapped: false })
+      materials.push(obj.material)
+    })
+    this.decorRoot = gltf.scene
+    this.decorMaterials = materials
+    this.scene.add(gltf.scene)
+    this.scene.add(this._makeSky())
+    this._matchLightsToDecor()
+    this._addDecorLife()
+  }
+
+  /** Ciel du soir vu par la fenêtre : mer sombre, horizon embrasé, bleu de nuit en haut. */
+  _makeSky() {
+    const c = document.createElement('canvas')
+    c.width = 4
+    c.height = 256
+    const ctx = c.getContext('2d')
+    const g = ctx.createLinearGradient(0, 256, 0, 0)           // du bas (mer) vers le haut (ciel)
+    g.addColorStop(0.0, '#05080e')
+    g.addColorStop(0.36, '#121a26')
+    g.addColorStop(0.365, '#d98a4a')
+    g.addColorStop(0.45, '#9a6058')
+    g.addColorStop(0.62, '#3a3a64')
+    g.addColorStop(1.0, '#141a34')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 4, 256)
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    const sky = new THREE.Mesh(new THREE.PlaneGeometry(6, 4.2),
+      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }))
+    sky.position.set(-2.0, 2.0, -5.1)                           // 2,5 m derrière la fenêtre du mur du fond
+    return sky
+  }
+
+  /** Les lumières de l'avatar reprennent celles du décor : feu et lustre chauds, fenêtre froide derrière lui. */
+  _matchLightsToDecor() {
+    const { hemi, key, fill, rim } = this.lights
+    hemi.color.set(0xf5e2c0)
+    hemi.groundColor.set(0x2a2016)
+    hemi.intensity = 0.55
+    key.color.set(0xffe4c8)                  // cheminée (à gauche) et lustre
+    key.intensity = 1.9
+    key.position.set(-2.4, 3.4, 2.6)
+    fill.color.set(0xc4d0ff)                 // reflet froid des murs côté droit
+    fill.intensity = 0.4
+    fill.position.set(3, 2, 2.5)
+    rim.color.set(0xa8b8ff)                  // jour finissant par la fenêtre, derrière à gauche
+    rim.intensity = 2.0
+    rim.position.set(-2, 2.2, -3)
+    const top = new THREE.DirectionalLight(0xffcf8a, 1.3)   // lustre, au-dessus et derrière lui
+    top.position.set(0.2, 3.4, -1.4)
+    this.scene.add(top)
+    // Feu de cheminée : une lumière qui vacille sur Napoléon (côté gauche, bas)
+    this.fireLight = new THREE.PointLight(0xff9a50, 2.2, 9, 1.6)
+    this.fireLight.position.copy(DECOR_FIRE)
+    this.scene.add(this.fireLight)
+  }
+
+  /** Flammes vivantes (lustre, bougie du bureau) et éclats du cristal du lustre, par-dessus la texture figée. */
+  _addDecorLife() {
+    const glow = (inner, outer) => {
+      const c = document.createElement('canvas')
+      c.width = c.height = 64
+      const g = c.getContext('2d').createRadialGradient(32, 32, 0, 32, 32, 32)
+      g.addColorStop(0, inner)
+      g.addColorStop(0.35, outer)
+      g.addColorStop(1, 'rgba(0,0,0,0)')
+      const ctx = c.getContext('2d')
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, 64, 64)
+      const tex = new THREE.CanvasTexture(c)
+      tex.colorSpace = THREE.SRGBColorSpace
+      return tex
+    }
+    const flameTex = glow('rgba(255,236,190,1)', 'rgba(255,150,50,0.35)')
+    const sparkTex = glow('rgba(255,255,255,1)', 'rgba(210,225,255,0.25)')
+    const sprite = (tex, pos, size) => {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false,
+      }))
+      s.position.copy(pos)
+      s.scale.setScalar(size)
+      this.scene.add(s)
+      return s
+    }
+    this.decorFlames = []
+    for (let k = 0; k < 8; k++) {           // 8 bougies sur la couronne du lustre
+      const a = (k / 8) * Math.PI * 2
+      const p = DECOR_CHANDELIER.clone().add(new THREE.Vector3(0.3 * Math.cos(a), 0.07, -0.3 * Math.sin(a)))
+      this.decorFlames.push({ sprite: sprite(flameTex, p, 0.09), size: 0.09, phase: Math.random() * 10 })
+    }
+    this.decorFlames.push({ sprite: sprite(flameTex, DECOR_DESK_FLAME, 0.08), size: 0.08, phase: 3.1 })
+    // Éclats : quelques points du cône de pampilles qui scintillent tour à tour
+    this.decorSparkles = []
+    for (let k = 0; k < 26; k++) {
+      const a = Math.random() * Math.PI * 2
+      const h = Math.random()                                  // 0 = couronne, 1 = sommet
+      const r = 0.3 - 0.24 * h
+      const p = DECOR_CHANDELIER.clone().add(new THREE.Vector3(r * Math.cos(a), -0.02 + 0.52 * h, -r * Math.sin(a)))
+      const s = sprite(sparkTex, p, 0.05)
+      s.material.opacity = 0
+      this.decorSparkles.push({ sprite: s, speed: 0.6 + Math.random() * 1.4, phase: Math.random() * 10 })
+    }
+  }
+
+  _updateDecor(t) {
+    if (!this.decorMaterials) return
+    // Respiration lente et irrégulière de la lumière du feu et des bougies
+    const flicker = 0.5 * Math.sin(t * 7.3) + 0.3 * Math.sin(t * 13.1 + 1.3) + 0.2 * Math.sin(t * 23.7 + 0.4)
+    const room = 0.985 + 0.015 * flicker
+    for (const m of this.decorMaterials) m.color.setScalar(room)
+    if (this.fireLight) this.fireLight.intensity = 2.2 * (0.85 + 0.15 * flicker)
+    for (const f of this.decorFlames) {
+      const w = 0.88 + 0.12 * Math.sin(t * 11 + f.phase) * Math.sin(t * 5.3 + f.phase * 2)
+      f.sprite.scale.set(f.size * w, f.size * w * 1.25, 1)
+    }
+    for (const s of this.decorSparkles) {
+      s.sprite.material.opacity = Math.pow(Math.max(0, Math.sin(t * s.speed + s.phase)), 24)
+    }
   }
 
   /** Ombre douce au sol sous les pieds : le personnage est posé, il ne flotte plus. */
@@ -299,6 +442,7 @@ export class AvatarPlayer {
     this._updateProceduralState()
     this._updateMorphs(dt)
     this._applyHeadOffsets(dt)
+    this._updateDecor(this.elapsed)
     this._updateCamera(dt)
     this.renderer.render(this.scene, this.camera)
   }
