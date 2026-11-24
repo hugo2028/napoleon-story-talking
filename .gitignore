@@ -31,6 +31,8 @@ napoleon-corpus/sources/texts/
 # Modèles 3D et rendus : non distribués (fournissez votre propre avatar, voir README)
 web/avatar/
 *.glb
+# sauf le décor de Longwood, construit par scripts/build_longwood_scene.py (publiable)
+!web/decor/longwood.glb
 *.gltf
 *.fbx
 *.blend
@@ -48,6 +50,7 @@ napoleon-corpus/*
 napoleon-corpus/metadata/*
 !napoleon-corpus/metadata/events_timeline.json
 !napoleon-corpus/metadata/gallica_pages.json
+!napoleon-corpus/metadata/napoleon_fiche.md
 !napoleon-corpus/gallica_services/
 !napoleon-corpus/sources/
 shards/
