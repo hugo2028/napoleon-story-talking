@@ -74,8 +74,15 @@ L'agent choisit lui-même trois éléments de mise en scène.
   - Pluie pour un deuil.
   - Orage pour une bataille ou un désastre : des éclairs illuminent la pièce, suivis du tonnerre.
 - **Le tableau mural.** Un tableau de feutre vert remplace la porte, sans utilité dans le récit.
-  - À gauche, une carte de l'Europe dessinée à la plume s'éclaire sur la région de l'épisode (champ `carte`) :
-    Italie, Égypte, Autriche, Russie, Espagne, Waterloo, Elbe…
+  - À gauche est épinglée une vraie carte de 1815 : *Carte de l'Europe dans son état actuel, comprenant en outre
+    une partie de l'Asie, de l'Afrique et la mer Méditerranée*, d'Eustache Hérisson (Paris, Desray et J. Goujon,
+    1815). Elle est conservée à la BnF (Cartes et plans, GE C-8218, [Gallica](https://gallica.bnf.fr/ark:/12148/btv1b530930058))
+    et versée dans le domaine public sur Wikimedia Commons.
+  - Les capitales y sont repérées à l'encre brune. La région de l'épisode (champ `carte` : Italie, Égypte,
+    Autriche, Russie, Espagne, Waterloo, Elbe…) s'éclaire, et ses villes et batailles ressortent en rouge.
+  - La carte est recadrée et calée par `scripts/build_map_places.py`. Dix villes repères, relevées sur la gravure,
+    servent à ajuster la correspondance entre longitude-latitude et position sur l'image. Le script en déduit la
+    place des 39 lieux affichés (`web/src/mapPlaces.js`), à 1 % près environ.
   - À droite, les lettres de la réponse sont épinglées : date, destinataire, premiers mots et cachet de cire.
     Elles changent à chaque réponse.
 

@@ -161,9 +161,11 @@ AVATAR_ANIMATIONS = _load_avatar_animation_names()
 # Les animations "idle_*" servent de posture de repos côté frontend : on ne les
 # propose pas au LLM comme gestes. "waiting" est un geste neutre virtuel (le
 # frontend ne joue rien de particulier) utilisé quand aucun geste ne convient.
+# Gestes retirés des choix du narrateur (ils restent dans le modèle) : la confidence penchée sonnait faux.
+EXCLUDED_GESTURES = {"gesture_telling_secret"}
 AVATAR_GESTURE_ANIMATIONS = [
     name for name in AVATAR_ANIMATIONS
-    if not name.startswith("idle_")
+    if not name.startswith("idle_") and name not in EXCLUDED_GESTURES
 ]
 if "waiting" not in AVATAR_GESTURE_ANIMATIONS:
     AVATAR_GESTURE_ANIMATIONS.append("waiting")

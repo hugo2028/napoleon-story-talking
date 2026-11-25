@@ -74,8 +74,15 @@ The agent itself chooses three elements of staging.
   - Rain for mourning.
   - Storm for a battle or a disaster: lightning lights up the room, followed by thunder.
 - **The wall board.** A green baize board replaces the door, which served no purpose in the story.
-  - On the left, a pen-drawn map of Europe lights up on the region of the episode (`carte` field): Italy, Egypt,
-    Austria, Russia, Spain, Waterloo, Elba…
+  - On the left hangs a real map from 1815: *Carte de l'Europe dans son état actuel, comprenant en outre une partie
+    de l'Asie, de l'Afrique et la mer Méditerranée* by Eustache Hérisson (Paris, Desray and J. Goujon, 1815). It is
+    held by the BnF (Cartes et plans, GE C-8218, [Gallica](https://gallica.bnf.fr/ark:/12148/btv1b530930058)) and
+    released into the public domain on Wikimedia Commons.
+  - The capitals are marked in brown ink. The region of the episode (`carte` field: Italy, Egypt, Austria, Russia,
+    Spain, Waterloo, Elba…) lights up, and its towns and battles stand out in red.
+  - The map is cropped and georeferenced by `scripts/build_map_places.py`. Ten reference cities, read off the
+    engraving, are used to fit the mapping from longitude and latitude to position on the image. The script derives
+    from it the position of the 39 places shown (`web/src/mapPlaces.js`), to within about 1%.
   - On the right, the letters of the answer are pinned up: date, addressee, first words and wax seal. They change
     with each answer.
 
