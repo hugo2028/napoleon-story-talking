@@ -6,6 +6,7 @@ import { DemoRecorder, recordingSupported } from './recorder.js'
 import { BrowserSpeech } from './browserSpeech.js'
 import { PROVIDERS, providerFromUrl } from './providers.js'
 import { Subtitles } from './subtitles.js'
+import { Ambience } from './ambience.js'
 import './mobileViewport.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ const contextLettres  = document.getElementById('context-lettres')
 const newBtn       = document.getElementById('new-conversation-btn')
 const subtitles    = new Subtitles(document.getElementById('subtitles'))
 const recordBtn    = document.getElementById('record-btn')
+const ambienceBtn  = document.getElementById('ambience-btn')
 const settingsBtn      = document.getElementById('settings-btn')
 const settingsDialog   = document.getElementById('settings-dialog')
 const settingsForm     = document.getElementById('settings-form')
@@ -61,6 +63,8 @@ let avatar   = null
 if (import.meta.env.DEV) window.__napoleon = { get avatar() { return avatar } }
 let synth    = null
 let speaking = false
+// Plans du narrateur ([cam:…]) → modes de caméra de l'avatar (avatar.js, _setCameraTargets)
+const CAMERA_SHOTS = { large: 'default', rapproche: 'closeup', visage: 'face' }
 let pending  = false
 let ready    = false
 let conversationActive = false
@@ -93,6 +97,10 @@ async function init() {
     return
   }
 
+  updateNightfall()
+  restoreScene()
+  if (avatar) avatar.onLightning = () => ambience.thunder()
+  if (import.meta.env.DEV) window.__avatar = avatar   // essais dans la console (développement seulement)
   const status = await refreshConfigStatus()
   await initSpeech()
   ready = true
@@ -122,10 +130,14 @@ async function initSpeech() {
   synth.onFaceReset  = ()          => avatar?.resetFace?.()
   synth.onFaceFrames = (i, frames) => avatar?.addFaceFrames?.(i, frames)
   synth.onFaceClock  = (t0)        => avatar?.setFaceClock?.(t0)
-  synth.onAction = (anim)  => avatar?.switchAnimation(anim)
+  synth.onAction = (anim)  => {
+    // « cam:<plan> » : plan de caméra choisi par le narrateur ; sinon un geste de l'avatar
+    if (anim?.startsWith('cam:')) avatar?.setCameraMode?.(CAMERA_SHOTS[anim.slice(4)] || 'default')
+    else avatar?.switchAnimation(anim)
+  }
   synth.onWord   = (i) => subtitles.reach(i)
-  synth.onStart  = () => { speaking = true;  avatar?.startTalking(); updateControls() }
-  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); subtitles.finish(); setReady() }
+  synth.onStart  = () => { speaking = true;  avatar?.startTalking(); ambience.setSpeaking(true); updateControls() }
+  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); ambience.setSpeaking(false); subtitles.finish(); setReady() }
   return true
 }
 
@@ -395,6 +407,64 @@ newBtn.addEventListener('click', () => {
   resetConversation()
 })
 
+// ── Ambiance : son de Longwood et soir qui tombe ─────────────────────────────
+const ambience = new Ambience()
+const AMBIENCE_KEY = 'napoleon.ambience'
+const NIGHT_AFTER_ANSWERS = 10   // la nuit est tombée après une dizaine de réponses
+
+function ambienceWanted() {
+  try { return localStorage.getItem(AMBIENCE_KEY) !== 'off' } catch { return true }
+}
+
+function renderAmbienceButton() {
+  const on = ambienceWanted()
+  ambienceBtn.textContent = t(on ? 'ambienceOn' : 'ambienceOff')
+  ambienceBtn.setAttribute('aria-pressed', String(on))
+  ambienceBtn.classList.toggle('muted', !on)
+}
+
+ambienceBtn.addEventListener('click', () => {
+  const on = !ambienceWanted()
+  try { localStorage.setItem(AMBIENCE_KEY, on ? 'on' : 'off') } catch {}
+  if (on) ambience.start()
+  else ambience.stop()
+  renderAmbienceButton()
+})
+
+// Le navigateur n'autorise le son qu'après un geste de l'utilisateur : premier clic ou première touche.
+function unlockAmbience() {
+  if (ambienceWanted() && !ambience.enabled) ambience.start()
+}
+document.addEventListener('pointerdown', unlockAmbience, { capture: true })
+document.addEventListener('keydown', unlockAmbience, { capture: true })
+renderAmbienceButton()
+
+/** Mise en scène de l'archiviste : temps derrière la fenêtre (image et son), région éclairée sur la carte. */
+function applyScene(scene) {
+  if (!scene) return
+  avatar?.applyScene?.(scene)
+  if (scene.meteo) ambience.setWeather(scene.meteo)
+}
+
+/** Reprise d'une conversation enregistrée : la dernière mise en scène connue de chaque élément. */
+function restoreScene() {
+  const scene = {}
+  for (const m of history) {
+    if (m.role !== 'assistant' || !m.scene) continue
+    if (m.scene.meteo) scene.meteo = m.scene.meteo
+    if (m.scene.carte) scene.carte = m.scene.carte
+  }
+  const last = [...history].reverse().find((m) => m.role === 'assistant')
+  if (last?.sources) scene.lettres = last.sources
+  applyScene(scene)
+}
+
+/** Au fil des réponses, le crépuscule laisse place à la nuit (ciel, lumière de la fenêtre, bougies). */
+function updateNightfall() {
+  const answers = history.filter((m) => m.role === 'assistant').length
+  avatar?.setNightfall?.(Math.min(1, answers / NIGHT_AFTER_ANSWERS))
+}
+
 function resetNewButton() {
   clearTimeout(newConfirmTimer)
   newBtn.classList.remove('confirm')
@@ -440,6 +510,8 @@ function resetConversation() {
   speaking = false
   conversationId = null
   history = []
+  updateNightfall()
+  applyScene({ reset: true, meteo: 'clair' })
   synth?.stop()
   avatar?.stopTalking()
   subtitles.clear()
@@ -471,6 +543,7 @@ async function respond(userText, showUser = true) {
   let apiSources  = null
   let apiActions  = []
   let apiAnnotation = null
+  let apiScene = null
   try {
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -485,6 +558,7 @@ async function respond(userText, showUser = true) {
     apiSources  = data.sources ?? null
     apiActions  = data.actions ?? []
     apiAnnotation = data.annotation ?? null
+    apiScene = data.scene ?? null
   } catch (err) {
     speech = err.message === 'missing_llm' ? t('missingKeys') : t('commsDown')
     if (err.message === 'missing_llm') openSettings()
@@ -492,7 +566,9 @@ async function respond(userText, showUser = true) {
   }
 
   avatar?.stopThinking?.()
-  history.push({ role: 'assistant', content: speech, sources: apiSources, annotation: apiAnnotation })
+  history.push({ role: 'assistant', content: speech, sources: apiSources, annotation: apiAnnotation, scene: apiScene })
+  updateNightfall()
+  applyScene({ ...apiScene, lettres: apiSources || [] })
   trimHistory()
   persistConversation()
   addBubble(speech, 'napoleon', apiSources)

@@ -282,6 +282,11 @@ Fais correspondre l'animation au sens du segment : affirmation, refus, doute, fi
 Varie les animations autant que possible et évite de répéter mécaniquement le même mouvement. \
 N'utilise [anim:waiting] que si aucune animation ne convient vraiment au segment. \
 Exemple : [anim:emotion_angry_gesture] La situation était critique. [anim:head_nod_hard_emphatic] Mais j'ai cru en mes soldats. [anim:emotion_cocky_confident] Nous avons tenu.
+- Mise en scène : tu peux aussi choisir le plan de la caméra avec une balise [cam:plan], placée comme les \
+balises d'animation au début d'un segment : [cam:large] (plan d'ensemble : récits de batailles, transitions, \
+la pièce), [cam:rapproche] (buste : la conversation ordinaire), [cam:visage] (gros plan : un aveu, un regret, \
+une émotion forte, une citation qui compte). Une à trois balises [cam:] par réponse au plus, jamais deux \
+de suite au même plan ; le gros plan reste rare et bref, reviens ensuite à un plan plus large.
 - Prose continue, style oral — pas de listes ni de tirets.
 """
 

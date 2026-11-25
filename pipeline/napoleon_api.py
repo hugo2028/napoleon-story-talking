@@ -223,7 +223,9 @@ def _get_sources(letter_ids: list[int]) -> list[dict]:
 
 
 _ALLOWED_ANIMATIONS = set(AVATAR_GESTURE_ANIMATIONS)
-_ANIM_TAG_RE = re.compile(r"\s*\[anim:([^\]]+)\]\s*", re.IGNORECASE)
+_ANIM_TAG_RE = re.compile(r"\s*\[((?:anim|cam):[^\]]+)\]\s*", re.IGNORECASE)
+# Plans de caméra que le narrateur peut demander ([cam:…]) ; transmis à l'interface comme « cam:<plan> »
+_CAMERA_SHOTS = {"large": "large", "rapproche": "rapproche", "rapproché": "rapproche", "visage": "visage"}
 _MAX_ACTION_REPEATS = 3
 _PAUSE_TOKEN = "[pause]"   # respiration du récit : silence SSML côté frontend, masquée à l'affichage
 _PAUSE_RE = re.compile(r"\s*\[\s*pause\s*\]\s*", re.IGNORECASE)
@@ -237,6 +239,9 @@ def _cap_repeated_actions(actions: list[dict]) -> list[dict]:
     capped = []
     for action in actions:
         animation = action["animation"]
+        if animation.startswith("cam:"):        # les plans de caméra ne sont pas des gestes : jamais remplacés
+            capped.append(action)
+            continue
         counts[animation] = counts.get(animation, 0) + 1
         if counts[animation] > _MAX_ACTION_REPEATS:
             capped.append({**action, "animation": "waiting"})
@@ -246,14 +251,14 @@ def _cap_repeated_actions(actions: list[dict]) -> list[dict]:
 
 def _parse_actions(raw: str) -> tuple[str, list[dict]]:
     """
-    Extrait les balises d'animation [anim:nom exact] du texte LLM.
-    Retourne (texte_propre, [{word_start, animation}, ...]).
+    Extrait les balises d'animation [anim:nom exact] et de caméra [cam:plan] du texte LLM.
+    Retourne (texte_propre, [{word_start, animation}, ...]) ; un plan de caméra a pour animation « cam:<plan> ».
     word_start = index du premier mot de ce segment dans le texte propre (0-based).
     Le texte propre est stocké dans l'historique LLM pour ne pas polluer les tours suivants.
     """
     actions = []
     clean_words: list[str] = []
-    pending_anim: str | None = None
+    pending: list[str] = []      # balises en attente du premier mot prononcé qui suit (geste et/ou plan)
 
     # Normaliser les variantes ([Pause], [ pause ]) en un mot isolé « [pause] »
     raw = _PAUSE_RE.sub(f" {_PAUSE_TOKEN} ", raw)
@@ -263,21 +268,28 @@ def _parse_actions(raw: str) -> tuple[str, list[dict]]:
         text = parts[i] or ""
         words = text.split()
         spoken = [w for w in words if w.lower() != _PAUSE_TOKEN]
-        if pending_anim and spoken:
+        if pending and spoken:
             # word_start compte les mots prononcés : les balises [pause] ne génèrent pas
             # d'événement wordBoundary côté Azure et ne doivent pas décaler les gestes.
             spoken_so_far = sum(1 for w in clean_words if w.lower() != _PAUSE_TOKEN)
-            actions.append({"word_start": spoken_so_far, "animation": pending_anim})
-            pending_anim = None
+            actions.extend({"word_start": spoken_so_far, "animation": tag} for tag in pending)
+            pending = []
         clean_words.extend(words)
 
         if i + 1 >= len(parts):
             continue
-        candidate = (parts[i + 1] or "").strip()
-        pending_anim = candidate if candidate in _ALLOWED_ANIMATIONS else None
+        kind, _, value = (parts[i + 1] or "").strip().partition(":")
+        value = value.strip()
+        if kind.lower() == "cam":
+            shot = _CAMERA_SHOTS.get(value.lower())
+            if shot:
+                pending = [t for t in pending if not t.startswith("cam:")] + [f"cam:{shot}"]
+        elif value in _ALLOWED_ANIMATIONS:
+            pending = [t for t in pending if t.startswith("cam:")] + [value]
 
     clean_text = " ".join(clean_words)
-    if not actions and clean_text.split() and "waiting" in _ALLOWED_ANIMATIONS:
+    if not any(not a["animation"].startswith("cam:") for a in actions) and clean_text.split() \
+            and "waiting" in _ALLOWED_ANIMATIONS:
         actions.append({"word_start": 0, "animation": "waiting"})
     return clean_text, _cap_repeated_actions(actions)
 
@@ -1027,6 +1039,7 @@ def _chat_autonome(frontend_conv_id: str | None, user_message: str, lang: str = 
         "chapitre":        decision["chapitre"]["titre"] if decision["type"] == "tour" else None,
         "pistes":          [p["titre"] for p in decision.get("pistes", [])] if decision["type"] == "tour" else [],
         "annotation":      _annotation_traduite(archivist.annotation(state, decision), lang),
+        "scene":           decision.get("scene") or {},   # temps derrière la fenêtre, région de la carte
     })
 
 

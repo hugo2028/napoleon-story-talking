@@ -533,7 +533,7 @@ function capRepeatedActions(actions = []) {
   const counts = new Map()
   return actions.map(action => {
     const animation = action?.animation
-    if (!animation) return action
+    if (!animation || animation.startsWith('cam:')) return action   // plan de caméra : jamais plafonné
     const count = (counts.get(animation) || 0) + 1
     counts.set(animation, count)
     if (count > MAX_ACTION_REPEATS) {

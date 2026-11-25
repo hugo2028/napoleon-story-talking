@@ -2,7 +2,7 @@
 dans une texture (« bake ») et l'exporte en GLB pour web/decor/longwood.glb.
 
 Inspiré des pièces de Longwood telles qu'on les visite : papier peint jaune pâle semé de petits motifs,
-moulures blanches, porte blanche, cheminée de marbre noir sous un grand miroir doré, velours vert,
+moulures blanches, cheminée de marbre noir sous un grand miroir doré, velours vert,
 lustre de cristal à bougies, carrelage clair à médaillons. Tout est construit ici, par code : aucun modèle,
 aucune photo ni texture externe. Le décor peut donc être publié avec le dépôt (contrairement au modèle
 de Napoléon).
@@ -41,14 +41,17 @@ SIZE = _opt("--size", 2048)
 SAMPLES = _opt("--samples", 256)
 
 # Dimensions de la pièce (m)
-X0, X1 = -3.6, 3.6       # murs gauche / droit
+X0, X1 = -3.1, 3.1       # murs gauche / droit : tout le mur du fond tient dans le cadre de l'app (écran large)
 Y_BACK = 2.6             # mur du fond
 Y_FRONT = -12.0          # la pièce s'étend derrière la caméra (qui recule de moitié en plus sur mobile)
 H = 3.4                  # hauteur sous plafond
 RAIL = 0.85              # hauteur de la cimaise
-WIN_X, WIN_W, WIN_Z, WIN_H = -2.0, 1.2, 0.8, 2.0      # fenêtre du mur du fond (centre x, largeur, allège, hauteur)
-DOOR_X, DOOR_W, DOOR_H = 1.25, 1.0, 2.3               # porte du mur du fond
+WIN_X, WIN_W, WIN_Z, WIN_H = -1.75, 1.1, 0.8, 2.0      # fenêtre du mur du fond (centre x, largeur, allège, hauteur)
+BOARD = (1.45, 1.55)          # centre (x, hauteur) du tableau mural (carte et lettres), ajouté par l'app
 FIRE_Y = -0.4                                         # cheminée, sur le mur gauche
+LUSTRE = (1.75, 1.3, 2.5)     # lustre au-dessus du bureau, hors de l'axe du titre, entier dans le cadre
+DESK = (2.0, 1.85)            # bureau (centre du plateau), entier dans le cadre
+CANDLE = (DESK[0] - 0.4, DESK[1] + 0.15, 1.09)   # flamme de la bougie du bureau
 
 
 # ── Utilitaires ─────────────────────────────────────────────────────────────
@@ -148,6 +151,12 @@ def material(name, color, rough=0.7, noise=0.0, noise_scale=6.0, emission=None, 
     if emission:
         bsdf.inputs["Emission Color"].default_value = (*emission, 1)
         bsdf.inputs["Emission Strength"].default_value = strength
+        # Ces surfaces brillent mais n'éclairent pas la pièce (les lampes s'en chargent) : sans cela, Cycles
+        # échantillonne chaque petite pampille comme une source de lumière et le bake devient très long.
+        try:
+            m.cycles.emission_sampling = "NONE"
+        except AttributeError:
+            pass
     return m
 
 
@@ -298,7 +307,8 @@ def build():
         "velours": material("velours", (0.012, 0.075, 0.035), rough=0.9, noise=0.35, noise_scale=12),
         "acajou": material("acajou", (0.12, 0.045, 0.02), rough=0.3, noise=0.3, noise_scale=14),
         "dore": material("dore", (0.55, 0.38, 0.12), rough=0.3),
-        "cristal": material("cristal", (0.60, 0.60, 0.58), rough=0.1),
+        # cristal : léger éclat propre, sinon ces fils très fins sortent sombres de la texture précalculée
+        "cristal": material("cristal", (0.75, 0.75, 0.72), rough=0.1, emission=(1.0, 0.9, 0.75), strength=0.6),
         "miroir": material("miroir", (0.10, 0.10, 0.09), rough=0.08),
         "papier": material("papier", (0.80, 0.74, 0.60), rough=0.9, noise=0.15, noise_scale=20),
         "cuir": material("cuir", (0.06, 0.10, 0.05), rough=0.6),
@@ -319,18 +329,15 @@ def build():
     box("sol", (0, YM, -0.05), (W, D, 0.1), M["carrelage"])
     box("plafond", (0, YM, H + 0.05), (W, D, 0.1), M["plafond"])
 
-    # Mur du fond, en morceaux autour de la fenêtre et de la porte
+    # Mur du fond, en morceaux autour de la fenêtre (à droite, le tableau mural est ajouté par l'app)
     wl, wr = WIN_X - WIN_W / 2, WIN_X + WIN_W / 2
     wb, wt = WIN_Z, WIN_Z + WIN_H
-    dl, dr = DOOR_X - DOOR_W / 2, DOOR_X + DOOR_W / 2
     yb = Y_BACK + t / 2
     pp = M["papier_peint"]
     box("fond_gauche", ((X0 + wl) / 2, yb, H / 2), (wl - X0, t, H), pp)
-    box("fond_milieu", ((wr + dl) / 2, yb, H / 2), (dl - wr, t, H), pp)
-    box("fond_droite", ((dr + X1) / 2, yb, H / 2), (X1 - dr, t, H), pp)
+    box("fond_droite", ((wr + X1) / 2, yb, H / 2), (X1 - wr, t, H), pp)
     box("fond_allege", (WIN_X, yb, wb / 2), (WIN_W, t, wb), pp)
     box("fond_linteau", (WIN_X, yb, (wt + H) / 2), (WIN_W, t, H - wt), pp)
-    box("porte_imposte", (DOOR_X, yb, (DOOR_H + H) / 2), (DOOR_W, t, H - DOOR_H), pp)
     box("mur_gauche", (X0 - t / 2, YM, H / 2), (t, D, H), M["papier_peint_cote"])
     box("mur_droit", (X1 + t / 2, YM, H / 2), (t, D, H), M["papier_peint_cote"])
 
@@ -342,8 +349,7 @@ def build():
         box(f"cimaise_{tag}", (cx, Y_BACK - 0.02, RAIL), (w, 0.04, 0.05), M["blanc"])
         box(f"plinthe_{tag}", (cx, Y_BACK - 0.02, 0.08), (w, 0.04, 0.16), M["blanc"])
     mouldings_back(X0, wl - 0.1, "a")
-    mouldings_back(wr + 0.1, dl - 0.1, "b")
-    mouldings_back(dr + 0.1, X1, "c")
+    mouldings_back(wr + 0.1, X1, "b")
     box("corniche_fond", (0, Y_BACK - 0.08, H - 0.1), (W, 0.16, 0.2), M["blanc"])
     box("corniche_fond_2", (0, Y_BACK - 0.16, H - 0.03), (W, 0.12, 0.06), M["blanc"])
     for side, x, s in (("g", X0, 1), ("d", X1, -1)):
@@ -375,18 +381,6 @@ def build():
     drape("tenture_d", (wr + 0.22, Y_BACK - 0.12, (wt + 0.3) / 2), 0.42, wt + 0.3, M["velours"])
     box("tringle", (WIN_X, Y_BACK - 0.16, wt + 0.38), (WIN_W + 0.9, 0.04, 0.04), M["dore"])
 
-    # Porte blanche à panneaux, chambranle
-    box("porte", (DOOR_X, Y_BACK + 0.02, DOOR_H / 2), (DOOR_W, 0.05, DOOR_H), M["blanc"])
-    box("porte_fente", (DOOR_X, Y_BACK - 0.006, DOOR_H / 2), (0.012, 0.01, DOOR_H - 0.02), M["suie"])
-    for sx in (-0.25, 0.25):
-        for z0, z1 in ((0.18, 0.95), (1.1, 2.1)):
-            box(f"porte_panneau_{sx}_{z0}", (DOOR_X + sx, Y_BACK - 0.01, (z0 + z1) / 2), (0.36, 0.02, z1 - z0),
-                M["blanc"])
-    for sx in (-1, 1):
-        box(f"chambranle_{sx}", (DOOR_X + sx * (DOOR_W / 2 + 0.05), Y_BACK - 0.02, DOOR_H / 2 + 0.05),
-            (0.1, 0.05, DOOR_H + 0.1), M["blanc"])
-    box("chambranle_h", (DOOR_X, Y_BACK - 0.02, DOOR_H + 0.08), (DOOR_W + 0.2, 0.05, 0.12), M["blanc"])
-    sphere("poignee", (DOOR_X - 0.4, Y_BACK - 0.04, 1.0), 0.025, M["dore"])
 
     # Cheminée de marbre noir et grand miroir doré, sur le mur gauche
     fx = X0 + 0.18
@@ -404,43 +398,47 @@ def build():
     for dy in (-0.55, 0.55):
         cyl(f"chem_bougeoir_{dy}", (fx + 0.04, FIRE_Y + dy, 1.26), 0.02, 0.2, M["dore"], verts=10)
 
-    # Canapé de velours vert, au fond à gauche, contre le mur gauche
-    sx, sy = X0 + 0.42, 1.55
-    box("canape_assise", (sx, sy, 0.42), (0.7, 1.7, 0.16), M["velours"], bevel=0.05)
-    box("canape_dossier", (X0 + 0.12, sy, 0.75), (0.16, 1.7, 0.55), M["velours"], bevel=0.05)
-    for dy in (-0.85, 0.85):
-        box(f"canape_accoudoir_{dy}", (sx, sy + dy, 0.6), (0.7, 0.12, 0.3), M["velours"], bevel=0.05)
-    for ddx in (-0.3, 0.3):
-        for dy in (-0.8, 0.8):
-            cyl(f"canape_pied_{ddx}_{dy}", (sx + ddx, sy + dy, 0.17), 0.03, 0.34, M["acajou"], verts=8)
+    # Commode d'acajou dans le coin gauche du mur du fond, buste et chandeliers dessus
+    kx, ky = (X0 + WIN_X - WIN_W / 2) / 2 - 0.05, Y_BACK - 0.3
+    kw = (WIN_X - WIN_W / 2) - X0 - 0.45
+    box("commode", (kx, ky, 0.45), (kw, 0.5, 0.86), M["acajou"], bevel=0.01)
+    box("commode_plateau", (kx, ky - 0.01, 0.9), (kw + 0.06, 0.54, 0.04), M["marbre_noir"])
+    for z in (0.22, 0.48, 0.74):
+        box(f"commode_tiroir_{z}", (kx, ky - 0.255, z), (kw - 0.08, 0.01, 0.2), M["acajou"])
+        sphere(f"commode_bouton_{z}", (kx, ky - 0.265, z), 0.015, M["dore"])
+    cyl("buste_socle", (kx, ky, 0.97), 0.07, 0.1, M["marbre_noir"])
+    cone("buste_epaules", (kx, ky, 1.07), 0.04, 0.12, 0.1, M["blanc"], verts=20)
+    sphere("buste", (kx, ky, 1.2), 0.065, M["blanc"], scale=(1, 0.9, 1.25))
+    for k, ox in enumerate((-kw / 2 + 0.08, kw / 2 - 0.08)):
+        cyl(f"commode_chandelier_{k}", (kx + ox, ky - 0.05, 1.03), 0.02, 0.22, M["dore"], verts=10)
 
     # Guéridon à gauche de Napoléon, avec un vase
-    cyl("gueridon_plateau", (-1.6, 0.9, 0.74), 0.3, 0.035, M["acajou"], verts=32)
-    cyl("gueridon_pied", (-1.6, 0.9, 0.37), 0.03, 0.72, M["acajou"], verts=10)
-    cyl("gueridon_base", (-1.6, 0.9, 0.03), 0.18, 0.05, M["acajou"], verts=20)
-    cone("vase", (-1.6, 0.9, 0.86), 0.05, 0.03, 0.2, M["blanc"], verts=16)
+    cyl("gueridon_plateau", (-1.35, 0.9, 0.74), 0.3, 0.035, M["acajou"], verts=32)
+    cyl("gueridon_pied", (-1.35, 0.9, 0.37), 0.03, 0.72, M["acajou"], verts=10)
+    cyl("gueridon_base", (-1.35, 0.9, 0.03), 0.18, 0.05, M["acajou"], verts=20)
+    cone("vase", (-1.35, 0.9, 0.86), 0.05, 0.03, 0.2, M["blanc"], verts=16)
 
     # Bureau d'acajou à droite, papiers, livres, bougeoir, pendule
-    dx, dy = 2.45, 1.75
-    box("bureau_plateau", (dx, dy, 0.76), (1.3, 0.7, 0.05), M["acajou"], bevel=0.012)
-    box("bureau_sous_main", (dx, dy - 0.02, 0.787), (0.7, 0.42, 0.005), M["cuir"])
-    box("bureau_ceinture", (dx, dy, 0.68), (1.22, 0.64, 0.12), M["acajou"])
-    for ox in (-0.58, 0.58):
-        for oy in (-0.28, 0.28):
+    dx, dy = DESK
+    box("bureau_plateau", (dx, dy, 0.76), (1.1, 0.6, 0.05), M["acajou"], bevel=0.012)
+    box("bureau_sous_main", (dx, dy - 0.02, 0.787), (0.6, 0.38, 0.005), M["cuir"])
+    box("bureau_ceinture", (dx, dy, 0.68), (1.02, 0.54, 0.12), M["acajou"])
+    for ox in (-0.48, 0.48):
+        for oy in (-0.23, 0.23):
             cyl(f"pied_{ox}_{oy}", (dx + ox, dy + oy, 0.31), 0.028, 0.62, M["acajou"], verts=10)
     for k, (ox, oy, rz) in enumerate(((-0.2, -0.05, 0.1), (0.0, 0.02, -0.15), (0.15, -0.08, 0.3))):
         box(f"feuille_{k}", (dx + ox, dy + oy, 0.792 + 0.002 * k), (0.21, 0.29, 0.002), M["papier"], rot_z=rz)
     for k, (h, mat) in enumerate(((0.06, "livre_rouge"), (0.07, "livre_brun"))):
-        box(f"livre_{k}", (dx + 0.45, dy + 0.12, 0.785 + 0.065 * k + h / 2 - 0.02), (0.26, 0.19, h), M[mat],
+        box(f"livre_{k}", (dx + 0.36, dy + 0.1, 0.785 + 0.065 * k + h / 2 - 0.02), (0.26, 0.19, h), M[mat],
             rot_z=0.08 * (k - 1))
-    cyl("encrier", (dx + 0.25, dy + 0.2, 0.82), 0.035, 0.06, M["dore"])
-    cx, cy = dx - 0.48, dy + 0.18
+    cyl("encrier", (dx + 0.18, dy + 0.17, 0.82), 0.035, 0.06, M["dore"])
+    cx, cy = CANDLE[0], CANDLE[1]
     cyl("bougeoir_pied", (cx, cy, 0.795), 0.06, 0.02, M["dore"])
     cyl("bougeoir_tige", (cx, cy, 0.86), 0.012, 0.12, M["dore"])
     cyl("bougie", (cx, cy, 1.0), 0.018, 0.14, M["cire"], verts=12)
     sphere("flamme", (cx, cy, 1.09), 0.012, M["flamme"], scale=(1, 1, 2.2))
-    # Fauteuil Empire : acajou et velours vert, de biais devant le bureau
-    ch_x, ch_y, ang = dx - 0.85, dy - 0.55, math.radians(30)
+    # Fauteuil Empire : acajou et velours vert, derrière le bureau, tourné vers la pièce
+    ch_x, ch_y, ang = dx + 0.05, dy + 0.5, math.radians(180)
 
     def rot_pt(px, py):
         return (ch_x + px * math.cos(ang) - py * math.sin(ang), ch_y + px * math.sin(ang) + py * math.cos(ang))
@@ -453,7 +451,7 @@ def build():
             cyl(f"fauteuil_pied_{px}_{py}", (*rot_pt(px, py), 0.21), 0.022, 0.42, M["acajou"], verts=8)
 
     # Lustre de cristal à bougies, devant le mur du fond, au-dessus de la pièce
-    lx, ly, lz = 0.0, 1.2, 2.75
+    lx, ly, lz = LUSTRE
     cyl("lustre_tige", (lx, ly, (lz + H) / 2 + 0.2), 0.012, H - lz - 0.2, M["dore"], verts=8)
     # Pampilles : rangs de fils de cristal tendus en cône au-dessus de la couronne, gouttes et coupe dessous
     for tier, (r_top, r_bot, z_top, z_bot, n) in enumerate(((0.06, 0.30, lz + 0.5, lz - 0.02, 28),
@@ -463,7 +461,7 @@ def build():
             x0, y0 = lx + r_top * math.cos(a), ly + r_top * math.sin(a)
             x1, y1 = lx + r_bot * math.cos(a), ly + r_bot * math.sin(a)
             length = math.dist((x0, y0, z_top), (x1, y1, z_bot))
-            o = cyl(f"pampille_{tier}_{k}", ((x0 + x1) / 2, (y0 + y1) / 2, (z_top + z_bot) / 2), 0.004, length,
+            o = cyl(f"pampille_{tier}_{k}", ((x0 + x1) / 2, (y0 + y1) / 2, (z_top + z_bot) / 2), 0.006, length,
                     M["cristal"], verts=5)
             o.rotation_mode = "QUATERNION"
             o.rotation_quaternion = Vector((x0 - x1, y0 - y1, z_top - z_bot)).to_track_quat("Z", "Y")
@@ -522,9 +520,28 @@ def lights():
     add("feu", "AREA", (X0 + 0.35, FIRE_Y, 0.35), 240, (1.0, 0.45, 0.15),
         rot=(0, math.radians(90), 0), size=(0.9, 0.5))
     add("feu_lueur", "POINT", (X0 + 0.6, FIRE_Y, 0.4), 50, (1.0, 0.5, 0.2), radius=0.3)
-    add("lustre", "POINT", (0.0, 1.2, 2.72), 110, (1.0, 0.68, 0.36), radius=0.25)
-    add("bougie", "POINT", (1.97, 1.93, 1.1), 12, (1.0, 0.66, 0.3), radius=0.02)
+    add("lustre", "POINT", (LUSTRE[0], LUSTRE[1], LUSTRE[2] - 0.03), 110, (1.0, 0.68, 0.36), radius=0.25)
+    add("bougie", "POINT", (CANDLE[0], CANDLE[1], CANDLE[2] + 0.01), 12, (1.0, 0.66, 0.3), radius=0.02)
     add("ambiance", "AREA", (0, -2.0, H - 0.3), 3, (1.0, 0.85, 0.65), size=(4, 4))
+
+
+def anchors():
+    """Repères (objets vides) exportés dans le GLB, lus par web/src/avatar.js : lustre, bougie du bureau,
+    feu de cheminée, centre du ciel derrière la fenêtre. L'app suit ainsi la disposition sans coordonnées
+    recopiées à la main."""
+    points = {
+        "ancre_lustre": LUSTRE,
+        "ancre_bougie": CANDLE,
+        "ancre_feu": (X0 + 0.3, FIRE_Y, 0.5),
+        "ancre_ciel": (WIN_X, Y_BACK + 2.5, WIN_Z + WIN_H / 2 + 0.2),
+        "ancre_tableau": (BOARD[0], Y_BACK - 0.02, BOARD[1]),
+    }
+    out = []
+    for name, loc in points.items():
+        o = bpy.data.objects.new(name, None)
+        o.location = loc
+        out.append(link(o))
+    return out
 
 
 def shadow_proxy():
@@ -540,7 +557,7 @@ def camera():
     cam_data.sensor_fit = "VERTICAL"
     cam_data.angle_y = math.radians(30)
     cam = bpy.data.objects.new("camera", cam_data)
-    cam.location = (0, -6.7, 1.28)
+    cam.location = (0, -5.4, 1.28)          # comme l'app : Napoléon cadré en pied (web/src/avatar.js)
     cam.rotation_euler = (math.radians(90), 0, 0)
     link(cam)
     bpy.context.scene.camera = cam
@@ -566,7 +583,7 @@ def preview():
     camera()
     cycles(min(SAMPLES, 96))
     scn = bpy.context.scene
-    scn.render.resolution_x, scn.render.resolution_y = 1280, 800
+    scn.render.resolution_x, scn.render.resolution_y = 1150, 780   # panneau de l'avatar sur ordinateur
     out = OUT_DIR / "longwood_preview.png"
     scn.render.filepath = str(out)
     bpy.ops.render.render(write_still=True)
@@ -669,6 +686,8 @@ def bake():
 
     bpy.ops.object.select_all(action="DESELECT")
     room.select_set(True)
+    for anchor in anchors():
+        anchor.select_set(True)
     glb = OUT_DIR / "longwood.glb"
     bpy.ops.export_scene.gltf(filepath=str(glb), use_selection=True, export_format="GLB",
                               export_image_format="JPEG", export_jpeg_quality=88,

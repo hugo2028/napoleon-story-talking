@@ -89,6 +89,18 @@
       text-shadow: 0 0 8px rgba(255, 243, 214, 0.7);
     }
 
+    /* Ambiance coupée : bouton estompé */
+    #ambience-btn.muted { opacity: 0.55; text-decoration: line-through; }
+
+    /* Vignette : les bords de l'image s'assombrissent, le regard va à Napoléon */
+    #avatar-canvas::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(8, 6, 4, 0.5) 100%);
+    }
+
     /* Status bar */
     #status-bar {
       position: absolute;
@@ -831,7 +843,35 @@
         opacity: 0;
         transition: opacity 0.4s, height 0.3s;
       }
-      #subtitles.visible { height: 2.8em; opacity: 1; }
+      #subtitles.visible { height: 2.8em; opacity: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+      /* Petit chevron : le texte se déplie au toucher */
+      #subtitles.visible::after {
+        content: '⌄';
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        font-size: 14px;
+        line-height: 1;
+        color: var(--gold-dim);
+        pointer-events: none;
+      }
+      /* Déplié : tout le texte, sur fond sombre, défilement au doigt */
+      #subtitles.visible.expanded {
+        height: auto;
+        max-height: 42vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+        scrollbar-color: var(--gold-dim) transparent;
+        padding: 10px 14px 18px;
+        border-radius: 10px;
+        background: rgba(12, 10, 8, 0.82);
+        text-align: left;
+        color: var(--text);
+      }
+      #subtitles.expanded::after { content: '⌃'; position: sticky; display: block; text-align: right; bottom: -12px; }
+      #subtitles.expanded .subtitles-inner { transform: none !important; }
       .subtitles-inner { position: relative; transition: transform 0.45s ease; }
       .subtitles-inner span { transition: color 0.2s; }
       .subtitles-inner span.said { color: var(--text); }
@@ -913,12 +953,13 @@
           <button type="button" id="settings-btn" class="chat-action" data-i18n="settings">⚙ Paramètres</button>
           <button type="button" id="new-conversation-btn" class="chat-action" data-i18n="newConversation" hidden>↺ Nouvelle conversation</button>
           <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
+          <button type="button" id="ambience-btn" class="chat-action" aria-pressed="true">♪ Ambiance</button>
         </div>
       </div>
     </div>
 
     <!-- Sous-titres défilants (mobile) -->
-    <div id="subtitles" aria-hidden="true"></div>
+    <div id="subtitles" aria-expanded="false" aria-label="Texte de la réponse : toucher pour le lire en entier"></div>
 
     <div id="chat-log"></div>
 

@@ -247,7 +247,7 @@ app.post('/api/chat', async (req, res) => {
       console.error('[Agent]', data)
       return res.status(pyRes.status).json({ error: data.error || 'Erreur agent', code: data.error })
     }
-    res.json({ speech: data.speech || '', conversation_id: data.conversation_id, event: data.event, turn: data.turn, doc_count: data.doc_count ?? null, context: data.context ?? null, sources: data.sources ?? null, actions: data.actions ?? null, annotation: data.annotation ?? null })
+    res.json({ speech: data.speech || '', conversation_id: data.conversation_id, event: data.event, turn: data.turn, doc_count: data.doc_count ?? null, context: data.context ?? null, sources: data.sources ?? null, actions: data.actions ?? null, annotation: data.annotation ?? null, scene: data.scene ?? null })
   } catch (err) {
     console.error('[Agent]', err.message)
     res.status(500).json({ error: err.message })

@@ -200,6 +200,12 @@ sans faire semblant de savoir, puis ramène la conversation vers sa vie.
 avec pour consigne de ne pas la traiter sur le fond et de proposer un sujet dont tu as vérifié les lettres. \
 Ne demande jamais au narrateur de répondre de mémoire.
 
+9. Mise en scène : avec servir_tour ou repondre_librement, tu peux régler le décor de Longwood pour ce tour.
+   - meteo : le temps derrière la fenêtre, accordé au ton (brume pour l'exil et les regrets, orage pour une bataille
+ou un désastre, pluie pour un deuil, clair pour un récit serein). Change-le quand le ton change, pas à chaque tour.
+   - carte : la région de l'épisode raconté, qui s'éclaire sur la carte murale ; à renseigner dès qu'un récit
+se situe quelque part (italie, egypte, autriche, russie, espagne, belgique…).
+
 Règles :
 - Tout ce que Napoléon racontera doit venir des lettres servies ou des faits de la fiche transmis : choisis-les avec soin.
 - Ne sers jamais une lettre déjà racontée, sauf si le visiteur le demande expressément.
@@ -210,6 +216,21 @@ Règles :
 # ---------------------------------------------------------------------------
 # Schémas d'outils (OpenAI function calling)
 # ---------------------------------------------------------------------------
+
+# Mise en scène choisie par l'archiviste à chaque tour (affichée par l'interface, jamais racontée)
+METEOS = ["clair", "brume", "pluie", "orage"]
+CARTES = ["corse", "france", "italie", "egypte", "espagne", "autriche", "prusse", "pologne", "allemagne", "russie", "belgique", "angleterre", "elbe", "sainte_helene"]
+_SCENE = {
+    "meteo": {"type": "string", "enum": METEOS,
+               "description": "Le temps derrière la fenêtre de Longwood, accordé au ton du tour : clair (récit serein), "
+                              "brume (exil, mélancolie, souvenirs flous), pluie (tristesse, deuil, attente), "
+                              "orage (bataille, colère, désastre). Facultatif : sans valeur, le temps ne change pas."},
+    "carte": {"type": "string", "enum": CARTES,
+               "description": "Région à éclairer sur la carte murale : le lieu de l'épisode raconté (ex. italie pour "
+                              "1796, autriche pour Austerlitz, russie pour 1812, belgique pour Waterloo). "
+                              "Facultatif : sans valeur, la carte reste comme elle est."},
+}
+
 
 def _fn(name, description, properties=None, required=None):
     return {"type": "function", "function": {
@@ -283,7 +304,8 @@ TOOLS = [
          "memoires": {"type": "array", "items": {"type": "integer"}, "description": "0 à 2 passages des Œuvres de Napoléon (outil memoires)."},
          "pistes": {"type": "array", "items": {"type": "string"}, "description": "0 à 2 identifiants de chapitres non racontés : les variantes du moment suivant."},
          "transition": {"type": "string", "description": "Si aucune piste : moment de la vie vers lequel proposer d'enchaîner."},
-         "note": {"type": "string", "description": "Consigne courte au narrateur (angle, émotion, lien avec la demande)."}},
+         "note": {"type": "string", "description": "Consigne courte au narrateur (angle, émotion, lien avec la demande)."},
+         **_SCENE},
         ["chapitre", "lettres", "pistes"]),
     _fn("repondre_librement",
         "Termine le tour hors du récit guidé : salutation, échange, question hors correspondance, "
@@ -295,7 +317,8 @@ TOOLS = [
          "faits": {"type": "array", "items": {"type": "string"},
                    "description": "Optionnel : 1 à 6 identifiants de faits de la fiche personnelle (f1, f2…) "
                                   "sur lesquels Napoléon fonde sa réponse."},
-         "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."}},
+         "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."},
+         **_SCENE},
         ["consigne"]),
 ]
 
@@ -659,6 +682,13 @@ class Archivist:
         return {"type": "libre", "consigne": "Réponds brièvement et invite le visiteur à préciser sa question."}
 
     def _finalize(self, state, name, args) -> dict | None:
+        decision = self._finalize_core(state, name, args)
+        if decision and "_erreur" not in decision:
+            decision["scene"] = {k: v for k, v in (("meteo", args.get("meteo")), ("carte", args.get("carte")))
+                                 if v in (METEOS if k == "meteo" else CARTES)}
+        return decision
+
+    def _finalize_core(self, state, name, args) -> dict | None:
         if name == "repondre_librement":
             amorce = args.get("lettre_amorce")
             meta = self._meta([int(amorce)]) if amorce else {}

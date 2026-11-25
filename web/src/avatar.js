@@ -1,15 +1,21 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { Weather, WallBoard } from './decorScene.js'
 
 const avatarUrl = new URL('../avatar/avatar.glb', import.meta.url).href
 // Décor de Longwood : lumière précalculée dans Blender (scripts/build_longwood_scene.py), affichée telle quelle
 const decorUrl = new URL('../decor/longwood.glb', import.meta.url).href
 
-// Points du décor, en coordonnées three.js (Blender x, y, z → three x, z, -y)
-const DECOR_CHANDELIER = new THREE.Vector3(0, 2.75, -1.2)
-const DECOR_DESK_FLAME = new THREE.Vector3(1.97, 1.09, -1.93)
-const DECOR_FIRE = new THREE.Vector3(-3.1, 0.5, 0.4)
+// Repères du décor : lus dans le GLB (objets « ancre_* » du script Blender) ; ces valeurs ne servent que
+// si un ancien fichier n'en contient pas. Coordonnées three.js (Blender x, y, z → three x, z, -y).
+const DECOR_ANCHOR_DEFAULTS = {
+  lustre: new THREE.Vector3(1.75, 2.5, -1.3),
+  bougie: new THREE.Vector3(1.6, 1.09, -2.0),
+  feu: new THREE.Vector3(-2.8, 0.5, 0.4),
+  ciel: new THREE.Vector3(-1.75, 2.0, -5.1),
+  tableau: new THREE.Vector3(1.45, 1.55, -2.62),
+}
 const DEFAULT_AVATAR_URL = import.meta.env.DEV
   ? `${avatarUrl}?t=${Date.now()}`
   : avatarUrl
@@ -218,35 +224,81 @@ export class AvatarPlayer {
     })
     this.decorRoot = gltf.scene
     this.decorMaterials = materials
+    gltf.scene.updateMatrixWorld(true)
+    this.decorAnchors = Object.fromEntries(Object.entries(DECOR_ANCHOR_DEFAULTS).map(([name, fallback]) => {
+      const node = gltf.scene.getObjectByName(`ancre_${name}`)
+      return [name, node ? node.getWorldPosition(new THREE.Vector3()) : fallback.clone()]
+    }))
     this.scene.add(gltf.scene)
     this.scene.add(this._makeSky())
+    // Temps derrière la fenêtre et carte murale, réglés par l'archiviste (setWeather, highlightMap)
+    this.weather = new Weather(this.scene, this.decorAnchors.ciel)
+    this.weather.onLightning = () => this.onLightning?.()
+    // Tableau mural (carte et lettres racontées), là où était la porte
+    this.wallMap = new WallBoard(this.scene, this.decorAnchors.tableau.clone().add(new THREE.Vector3(0, 0, 0.02)))
+    if (this._pendingScene) this.applyScene(this._pendingScene)
     this._matchLightsToDecor()
     this._addDecorLife()
     // Le titre superposé passe à l'encre brune sur le papier peint clair (index.html, .with-decor)
     this.container.parentElement?.classList.add('with-decor')
   }
 
-  /** Ciel du soir vu par la fenêtre : mer sombre, horizon embrasé, bleu de nuit en haut. */
+  /**
+   * Ciel vu par la fenêtre : le crépuscule (mer sombre, horizon embrasé) et, par-dessus, la nuit étoilée
+   * dont l'opacité suit setNightfall().
+   */
   _makeSky() {
-    const c = document.createElement('canvas')
-    c.width = 4
-    c.height = 256
-    const ctx = c.getContext('2d')
-    const g = ctx.createLinearGradient(0, 256, 0, 0)           // du bas (mer) vers le haut (ciel)
-    g.addColorStop(0.0, '#05080e')
-    g.addColorStop(0.36, '#121a26')
-    g.addColorStop(0.365, '#d98a4a')
-    g.addColorStop(0.45, '#9a6058')
-    g.addColorStop(0.62, '#3a3a64')
-    g.addColorStop(1.0, '#141a34')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, 4, 256)
-    const tex = new THREE.CanvasTexture(c)
-    tex.colorSpace = THREE.SRGBColorSpace
-    const sky = new THREE.Mesh(new THREE.PlaneGeometry(6, 4.2),
-      new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }))
-    sky.position.set(-2.0, 2.0, -5.1)                           // 2,5 m derrière la fenêtre du mur du fond
-    return sky
+    const paint = (stops, stars = 0) => {
+      const c = document.createElement('canvas')
+      c.width = 128
+      c.height = 256
+      const ctx = c.getContext('2d')
+      const g = ctx.createLinearGradient(0, 256, 0, 0)         // du bas (mer) vers le haut (ciel)
+      for (const [pos, color] of stops) g.addColorStop(pos, color)
+      ctx.fillStyle = g
+      ctx.fillRect(0, 0, 128, 256)
+      for (let k = 0; k < stars; k++) {                         // étoiles, au-dessus de l'horizon
+        const a = 0.35 + Math.random() * 0.65
+        ctx.fillStyle = `rgba(235,238,255,${a})`
+        ctx.fillRect(Math.random() * 128, Math.random() * 256 * 0.6, Math.random() < 0.15 ? 1.6 : 1, 1)
+      }
+      const tex = new THREE.CanvasTexture(c)
+      tex.colorSpace = THREE.SRGBColorSpace
+      return tex
+    }
+    const dusk = paint([[0, '#05080e'], [0.36, '#121a26'], [0.365, '#d98a4a'], [0.45, '#9a6058'],
+      [0.62, '#3a3a64'], [1, '#141a34']])
+    const night = paint([[0, '#020308'], [0.36, '#070b14'], [0.365, '#1c2236'], [0.42, '#141a2c'],
+      [1, '#05070f']], 90)
+    const group = new THREE.Group()
+    const plane = (map, opacity) => new THREE.Mesh(new THREE.PlaneGeometry(6, 4.2),
+      new THREE.MeshBasicMaterial({ map, toneMapped: false, transparent: opacity < 1, opacity, depthWrite: false }))
+    group.add(plane(dusk, 1))
+    this.nightSky = plane(night, 0)
+    this.nightSky.position.z = 0.01
+    group.add(this.nightSky)
+    group.position.copy(this.decorAnchors.ciel)                 // 2,5 m derrière la fenêtre du mur du fond
+    return group
+  }
+
+  /**
+   * Le soir tombe (0 = crépuscule, 1 = nuit) : le ciel s'assombrit et s'étoile, la pièce et la lumière froide
+   * de la fenêtre baissent, les bougies prennent le relais. La transition prend une vingtaine de secondes.
+   */
+  setNightfall(value) {
+    this.nightTarget = THREE.MathUtils.clamp(value, 0, 1)
+  }
+
+  /**
+   * Mise en scène choisie par l'archiviste : { meteo: clair|brume|pluie|orage, carte: région }.
+   * Avant le chargement du décor, elle est gardée et appliquée dès qu'il arrive.
+   */
+  applyScene(scene = {}) {
+    if (!this.weather) { this._pendingScene = { ...this._pendingScene, ...scene }; return }
+    if (scene.meteo) this.weather.set(scene.meteo)
+    if (scene.carte) this.wallMap.highlight(scene.carte)
+    if (scene.lettres) this.wallMap.showLetters(scene.lettres)
+    if (scene.reset) { this.weather.set('clair'); this.wallMap.clear() }
   }
 
   /** Les lumières de l'avatar reprennent celles du décor : feu et lustre chauds, fenêtre froide derrière lui. */
@@ -264,12 +316,12 @@ export class AvatarPlayer {
     rim.color.set(0xa8b8ff)                  // jour finissant par la fenêtre, derrière à gauche
     rim.intensity = 2.0
     rim.position.set(-2, 2.2, -3)
-    const top = new THREE.DirectionalLight(0xffcf8a, 1.3)   // lustre, au-dessus et derrière lui
-    top.position.set(0.2, 3.4, -1.4)
+    const top = new THREE.DirectionalLight(0xffcf8a, 1.3)   // lustre, au-dessus du bureau, derrière lui à droite
+    top.position.copy(this.decorAnchors.lustre).add(new THREE.Vector3(-0.2, 0.8, 0))
     this.scene.add(top)
     // Feu de cheminée : une lumière qui vacille sur Napoléon (côté gauche, bas)
     this.fireLight = new THREE.PointLight(0xff9a50, 2.2, 9, 1.6)
-    this.fireLight.position.copy(DECOR_FIRE)
+    this.fireLight.position.copy(this.decorAnchors.feu)
     this.scene.add(this.fireLight)
   }
 
@@ -303,36 +355,78 @@ export class AvatarPlayer {
     this.decorFlames = []
     for (let k = 0; k < 8; k++) {           // 8 bougies sur la couronne du lustre
       const a = (k / 8) * Math.PI * 2
-      const p = DECOR_CHANDELIER.clone().add(new THREE.Vector3(0.3 * Math.cos(a), 0.07, -0.3 * Math.sin(a)))
+      const p = this.decorAnchors.lustre.clone().add(new THREE.Vector3(0.3 * Math.cos(a), 0.07, -0.3 * Math.sin(a)))
       this.decorFlames.push({ sprite: sprite(flameTex, p, 0.09), size: 0.09, phase: Math.random() * 10 })
     }
-    this.decorFlames.push({ sprite: sprite(flameTex, DECOR_DESK_FLAME, 0.08), size: 0.08, phase: 3.1 })
+    this.decorFlames.push({ sprite: sprite(flameTex, this.decorAnchors.bougie, 0.08), size: 0.08, phase: 3.1 })
+    // Poussières en suspension : dans la lumière de la fenêtre, et autour de la bougie du bureau
+    const win = this.decorAnchors.ciel
+    const candle = this.decorAnchors.bougie
+    const count = 140
+    const positions = new Float32Array(count * 3)
+    this.dustDrift = []
+    for (let i = 0; i < count; i++) {
+      const nearCandle = i % 5 === 0
+      const d = nearCandle
+        ? { x: candle.x + (Math.random() - 0.5) * 0.7, y: candle.y + Math.random() * 0.8, z: candle.z + (Math.random() - 0.5) * 0.6 }
+        : { x: win.x + (Math.random() - 0.5) * 1.3, y: 0.4 + Math.random() * 2.2, z: -2.4 + Math.random() * 2.4 }
+      d.s = 0.08 + Math.random() * 0.2
+      d.p = Math.random() * 10
+      this.dustDrift.push(d)
+      positions.set([d.x, d.y, d.z], i * 3)
+    }
+    const dustGeo = new THREE.BufferGeometry()
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    this.dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({
+      map: sparkTex, color: 0xffe2b8, size: 0.018, sizeAttenuation: true, transparent: true, opacity: 0.55,
+      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+    }))
+    this.scene.add(this.dust)
+
     // Éclats : quelques points du cône de pampilles qui scintillent tour à tour
     this.decorSparkles = []
     for (let k = 0; k < 26; k++) {
       const a = Math.random() * Math.PI * 2
       const h = Math.random()                                  // 0 = couronne, 1 = sommet
       const r = 0.3 - 0.24 * h
-      const p = DECOR_CHANDELIER.clone().add(new THREE.Vector3(r * Math.cos(a), -0.02 + 0.52 * h, -r * Math.sin(a)))
+      const p = this.decorAnchors.lustre.clone().add(new THREE.Vector3(r * Math.cos(a), -0.02 + 0.52 * h, -r * Math.sin(a)))
       const s = sprite(sparkTex, p, 0.05)
       s.material.opacity = 0
       this.decorSparkles.push({ sprite: s, speed: 0.6 + Math.random() * 1.4, phase: Math.random() * 10 })
     }
   }
 
-  _updateDecor(t) {
+  _updateDecor(t, dt = 1 / 60) {
     if (!this.decorMaterials) return
+    const lightning = this.weather ? this.weather.update(t, dt) : 0
     // Respiration lente et irrégulière de la lumière du feu et des bougies
     const flicker = 0.5 * Math.sin(t * 7.3) + 0.3 * Math.sin(t * 13.1 + 1.3) + 0.2 * Math.sin(t * 23.7 + 0.4)
-    const room = 0.985 + 0.015 * flicker
+    this.night = THREE.MathUtils.lerp(this.night ?? 0, this.nightTarget ?? 0, 0.002)   // ~20 s de transition
+    const night = this.night
+    const room = (0.985 + 0.015 * flicker) * (1 - 0.24 * night) + 0.35 * lightning
     for (const m of this.decorMaterials) m.color.setScalar(room)
+    this.wallMap?.update(t, dt, room)
+    if (this.weather) this.weather.fog.material.color.set(0x5d6672).multiplyScalar(1 - 0.6 * night)
+    if (this.nightSky) this.nightSky.material.opacity = night
+    if (this.lights) this.lights.rim.intensity = 2.0 * (1 - 0.55 * night) + 6 * lightning   // l'éclair le découpe
     if (this.fireLight) this.fireLight.intensity = 2.2 * (0.85 + 0.15 * flicker)
     for (const f of this.decorFlames) {
       const w = 0.88 + 0.12 * Math.sin(t * 11 + f.phase) * Math.sin(t * 5.3 + f.phase * 2)
-      f.sprite.scale.set(f.size * w, f.size * w * 1.25, 1)
+      const s = f.size * w * (1 + 0.3 * night)                  // la nuit, les flammes rayonnent davantage
+      f.sprite.scale.set(s, s * 1.25, 1)
     }
     for (const s of this.decorSparkles) {
       s.sprite.material.opacity = Math.pow(Math.max(0, Math.sin(t * s.speed + s.phase)), 24)
+    }
+    if (this.dust) {
+      const pos = this.dust.geometry.attributes.position
+      for (let i = 0; i < pos.count; i++) {
+        const d = this.dustDrift[i]
+        pos.setXYZ(i, d.x + 0.06 * Math.sin(t * d.s + d.p), d.y + 0.08 * Math.sin(t * d.s * 0.7 + d.p * 2),
+          d.z + 0.06 * Math.cos(t * d.s * 0.8 + d.p))
+      }
+      pos.needsUpdate = true
+      this.dust.material.opacity = 0.55 - 0.25 * night         // moins de lumière du jour, moins de poussière visible
     }
   }
 
@@ -374,17 +468,20 @@ export class AvatarPlayer {
   _setCameraTargets(mode = 'default', snap = false) {
     const center = this.frameCenter
     const size = this.frameSize
-    const isClose = mode === 'closeup'
+    const isFace = mode === 'face'                 // gros plan : le visage (aveu, regret, émotion)
+    const isClose = mode === 'closeup' || isFace   // plan rapproché : le buste
     // Écran en hauteur (mobile) : les repères couvrent le haut et les commandes le bas de l'image ;
     // la caméra recule pour que Napoléon tienne en entier dans la zone dégagée.
     const portrait = this.camera && this.camera.aspect < 0.8
-    const focusY = center.y + size.y * (isClose ? 0.22 : portrait ? 0.04 : 0.12)
-    const distance = isClose
-      ? Math.max(2.2, size.y * 0.48 + 0.85)
-      : Math.max(5.4, size.y * 1.3 + 2.7) * (portrait ? 1.5 : 1)
+    const focusY = center.y + size.y * (isFace ? 0.32 : isClose ? 0.22 : portrait ? 0.04 : 0.12)
+    const distance = isFace
+      ? Math.max(1.25, size.y * 0.3 + 0.6) * (portrait ? 1.25 : 1)
+      : isClose
+        ? Math.max(2.2, size.y * 0.48 + 0.85)
+        : Math.max(5.4, size.y * 1.3 + 2.7) * (portrait ? 1.5 : 1)
 
     this.cameraMode = mode
-    this.cameraFovTarget = isClose ? 26 : 30
+    this.cameraFovTarget = isFace ? 24 : isClose ? 26 : 30
     this.cameraLookTarget.set(center.x, focusY, center.z)
     this.cameraPosTarget.set(center.x, focusY + (isClose ? 0.05 : 0), center.z + distance)
 
@@ -444,7 +541,7 @@ export class AvatarPlayer {
     this._updateProceduralState()
     this._updateMorphs(dt)
     this._applyHeadOffsets(dt)
-    this._updateDecor(this.elapsed)
+    this._updateDecor(this.elapsed, dt)
     this._updateCamera(dt)
     this.renderer.render(this.scene, this.camera)
   }
@@ -455,6 +552,10 @@ export class AvatarPlayer {
     this.cameraLookCurrent.lerp(this.cameraLookTarget, ease)
     this.cameraFovCurrent = THREE.MathUtils.lerp(this.cameraFovCurrent, this.cameraFovTarget, ease)
     this.camera.position.copy(this.cameraPosCurrent)
+    // Légère dérive, comme une caméra tenue qui respire : donne de la profondeur au décor
+    const t = this.elapsed
+    this.camera.position.x += 0.035 * Math.sin(t * 0.13) + 0.012 * Math.sin(t * 0.41)
+    this.camera.position.y += 0.018 * Math.sin(t * 0.09 + 1.1)
     this.camera.fov = this.cameraFovCurrent
     this.camera.updateProjectionMatrix()
     this.camera.lookAt(this.cameraLookCurrent)
