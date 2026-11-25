@@ -1,83 +1,97 @@
-# Napoléon — l'Empereur raconte sa vie, lettre après lettre
+# Napoléon par ses lettres
 
-Un avatar conversationnel de Napoléon Bonaparte, exilé à Sainte-Hélène, qui **revit sa vie au présent,
-lettre après lettre, dans l'ordre où il l'a écrite**. Chaque réponse est construite à partir de sa
-correspondance datée, citée mot pour mot et reliée à sa source sur Gallica (BnF).
+**Découvrir Napoléon à travers sa correspondance.** Plus de 15 000 lettres, ordres et billets, écrits
+de sa main ou dictés entre 1795 et 1815, que Napoléon vous fait parcourir lui-même :
+exilé à Longwood, au printemps 1821, il rouvre ses lettres et les revit avec vous. Chaque mot cité est
+le sien, daté et relié à la page de l'édition originale sur Gallica (BnF).
 
 **[English version](README.en.md)**
 
 ## Démo
 
-Napoléon accueille le visiteur sur son île et ouvre la conversation sur une lettre tirée au hasard : le
-14 avril 1806, au prince Eugène, à Milan. Le visiteur choisit d'en savoir plus, et le récit suit la vie de
-famille à la cour de Milan, des conseils à Eugène jusqu'à la lettre du 3 juin 1806 à la princesse
-Augusta.
+Napoléon accueille le visiteur et ouvre la conversation sur une lettre tirée au hasard : le 14 avril
+1806, au prince Eugène, à Milan. Le visiteur choisit d'en savoir plus, et les lettres suivantes déroulent
+la vie de famille à la cour de Milan, des conseils à Eugène jusqu'à la lettre du 3 juin 1806 à la
+princesse Augusta.
 
 https://github.com/user-attachments/assets/22e0ff95-b3ee-4123-b69f-fea35fa892fd
 
+## Pourquoi ses lettres
+
+Napoléon a écrit, ou dicté, des dizaines de milliers de lettres. Elles ont été rassemblées sous le
+Second Empire dans les 32 tomes de la *Correspondance de Napoléon Iᵉʳ*, et presque personne ne les lit :
+on les consulte, on les cite, mais on ne les parcourt pas.
+
+Pourtant, c'est là qu'on le voit le mieux. Des mémoires ou un livre d'histoire racontent après coup :
+l'auteur connaît la fin, il résume et il justifie. Une lettre est écrite *dans* le moment, avec ce que
+Napoléon sait ce jour-là, sans connaître la suite. On y trouve le général qui fixe la marche d'une
+division à l'heure près, l'administrateur qui contrôle le prix du pain, le chef de famille qui sermonne
+ses frères, l'amoureux qui écrit à Joséphine. Le ton change selon le destinataire, et c'est tout un
+homme qui apparaît.
+
+Ce projet en fait une conversation : on n'a pas besoin de savoir quoi chercher. Une lettre ouvre la
+discussion, on suit le fil qui intéresse, et Napoléon relie les lettres entre elles, au présent, date
+après date.
+
+## Ce que l'on découvre
+
+Les lettres viennent surtout de la *Correspondance de Napoléon Iᵉʳ*, complétée par les lettres à
+Joséphine, la correspondance avec la marine et des lettres inédites. Ses correspondants les plus
+fréquents, d'après les en-têtes (chiffres approximatifs) :
+
+| Destinataire | Lettres | Ce qu'elles montrent |
+|---|---:|---|
+| Berthier, son chef d'état-major | ≈ 2 000 | la guerre au jour le jour : marches, ordres, effectifs |
+| Clarke, ministre de la Guerre | ≈ 800 | l'armée vue de Paris : conscription, places fortes, Espagne |
+| Eugène de Beauharnais, vice-roi d'Italie | ≈ 600 | un beau-fils qu'il forme au gouvernement, lettre après lettre |
+| Decrès, ministre de la Marine | ≈ 600 | la flotte, le blocus, l'obsession de l'Angleterre |
+| Talleyrand, ministre des Relations extérieures | ≈ 470 | la diplomatie, de Campo-Formio à Tilsit |
+| le Directoire exécutif | ≈ 300 | le jeune général d'Italie et d'Égypte face à ses maîtres |
+| Joséphine | ≈ 160 | la passion de 1796, puis la tendresse et l'éloignement |
+| Joseph, Murat, Cambacérès, Fouché… | des centaines | la famille, l'Empire en coulisses |
+
+Les années les plus denses sont 1805 à 1807 (Austerlitz, Iéna, Tilsit) et 1813 : plus de 1 000 lettres
+par an.
+
+## Comment on les découvre
+
+- **Une lettre tirée au sort pour commencer.** Napoléon vient de la relire et en parle : on entre dans le
+  jour où elle a été écrite. On peut aussi lui demander directement une période, une bataille ou une
+  personne.
+- **Un récit qui avance date après date.** Un archiviste (agent autonome, `gpt-4.1`) cherche dans les
+  lettres, les situe dans la chronologie et propose la suite en deux variantes, par exemple deux lettres
+  ou deux regards sur le même jour. Le visiteur choisit : chaque conversation suit son propre chemin dans
+  la correspondance.
+- **Des citations exactes.** Le narrateur (`gpt-4.1-mini`) raconte uniquement ce que disent les lettres
+  servies. Les phrases citées sont retrouvées par algorithme dans le texte et restituées à l'identique.
+- **La source toujours à portée.** À l'écran, la date, le destinataire, la période et le chapitre
+  avancent avec le récit, et chaque réplique renvoie à la page du tome sur Gallica.
+- **Un homme de 1821.** Napoléon parle depuis Longwood au printemps 1821 et ignore tout ce qui suit. Ce
+  qu'il sait sans ses lettres (famille, grandes dates, exil) vient d'une fiche courte et vérifiée ; à
+  une question que ni ses lettres ni cette fiche n'éclairent, il ne répond pas sur le fond.
+- **Une présence, dans 25 langues.** Napoléon parle, choisit ses gestes et, avec le modèle 3D, apparaît
+  dans un salon inspiré de Longwood. Le corpus reste en français ; la conversation se tient dans la
+  langue choisie, citations traduites comprises.
+
 ## La démarche
 
-Le projet est parti d'une question simple : peut-on faire parler Napoléon **sans lui prêter un seul mot
-qu'il n'a pas écrit** ? Il est passé par trois étapes.
+Le projet est parti d'une question : peut-on faire parler Napoléon **sans lui prêter un seul mot qu'il
+n'a pas écrit** ?
 
-**1. Constituer le corpus.** Les écrits de Napoléon ont été extraits d'éditions numérisées par Gallica
-et par le Projet Gutenberg, avec un extracteur par type de document : les 32 tomes de la
-*Correspondance*, les bulletins de la Grande Armée, les proclamations, les lettres à Joséphine, les écrits
-de jeunesse, les récits de campagne et les *Œuvres de Napoléon Bonaparte*. Chaque lettre devient une unité, avec sa date (y compris les dates du calendrier
-républicain), son lieu et son destinataire : **52 000 passages, 7,9 millions de mots**. Un nettoyage par
-LLM, volontairement conservateur, corrige les erreurs d'OCR et rejette les passages inexploitables ; les
-lettres dont la date entre en conflit avec leur contenu sont reprises ou écartées. Le détail complet
-(sources exactes, choix, nettoyage, dates, limites) est dans **[docs/CORPUS.md](docs/CORPUS.md)**.
+**1. Rassembler les lettres.** Elles ont été extraites des éditions numérisées par Gallica et par le
+Projet Gutenberg, avec un extracteur par type de document. Chaque lettre devient une unité avec sa date
+(calendrier républicain compris), son lieu et son destinataire. Un nettoyage par LLM, volontairement
+conservateur, corrige l'OCR ; les lettres dont la date contredit le contenu sont reprises ou écartées.
+Le détail est dans **[docs/CORPUS.md](docs/CORPUS.md)**.
 
-**2. Essayer le fine-tuning, et en mesurer les limites.** Un Mistral-7B a été affiné (QLoRA), d'abord par
-pré-entraînement continu sur le corpus, puis par instruction, avec des exemples où Napoléon refuse les
-anachronismes. Le modèle prend bien la voix de l'Empereur, mais les évaluations montrent qu'**une voix
-n'est pas une source** : sans affinage, le modèle de base attribue le Code civil à Jean-Jacques Rousseau ;
-affiné, il répond avec style mais sans pouvoir dire d'où vient ce qu'il affirme.
+**2. Constater qu'une voix n'est pas une source.** Un Mistral-7B affiné sur le corpus (QLoRA) prend bien
+le ton de l'Empereur, mais il ne peut pas dire d'où vient ce qu'il affirme. Une conversation qui veut
+faire découvrir des lettres doit pouvoir les montrer.
 
-**3. Faire parler les archives elles-mêmes, dans l'ordre du temps.** D'où le choix final : un RAG sur les
-lettres, dont chaque passage est daté, classé (lettre, ordre, bulletin, proclamation, rapport d'un tiers)
-et marqué selon la fiabilité de sa date, et un **agent** qui enquête dans ces archives et les déroule
-chronologiquement avant que Napoléon ne prenne la parole.
-
-## Une approche nouvelle : revivre l'histoire au présent
-
-**L'idée centrale : des sources datées, prises dans l'ordre chronologique, pour un récit immersif au
-présent.**
-
-Des mémoires ou un livre d'histoire racontent après coup. L'auteur sait déjà comment tout finit : il
-résume, réordonne, justifie, et le lecteur reçoit un passé déjà interprété. Une lettre, elle, est écrite
-*dans* le moment, avec ce que Napoléon sait ce jour-là, ses ordres, ses inquiétudes et ses espoirs,
-sans connaître la suite.
-
-Ce projet s'appuie donc sur la correspondance comme sur une **ligne du temps** : chaque lettre est datée,
-située et placée dans l'ordre chronologique. Le récit peut alors avancer comme les événements eux-mêmes,
-date après date. Napoléon ne se souvient pas, il revit : « Le 17 février 1799, devant El-Arich, j'écris
-au général Dugua… ». Le visiteur traverse les jours au rythme où ils ont été vécus, et l'issue reste
-ouverte. Les textes écrits après coup (les *Œuvres de Napoléon Bonaparte*) ne servent qu'en
-contrepoint, quand ils apportent quelque chose au moment raconté.
-
-Tout le reste découle de ce choix :
-
-- **La date comme matériau.** Chaque passage est daté, y compris les dates du calendrier républicain,
-  et marqué selon la fiabilité de sa date. Les lettres dont la date contredit le contenu sont écartées :
-  sans chronologie sûre, pas de récit au présent.
-- **Un archiviste qui suit le fil du temps.** Un agent autonome (`gpt-4.1`) situe l'épisode dans la
-  chronologie, explore la période et choisit les lettres. Il bâtit ensuite un plan en *moments*
-  successifs, du premier ordre aux conséquences. Chaque moment a deux variantes, par exemple deux lettres
-  ou deux regards sur le même jour. Le visiteur choisit et l'autre chemin est abandonné : chaque
-  conversation suit un chemin unique dans le temps.
-- **Un narrateur qui raconte sans rien ajouter.** Le narrateur (`gpt-4.1-mini`) revit les lettres
-  servies, ancrées par leur date dite à voix haute, sans développer au-delà de ce qu'elles disent.
-- **Des citations exactes.** Les phrases citées sont retrouvées par algorithme dans le texte de la lettre
-  et restituées à l'identique : le visiteur entend les mots écrits ce jour-là.
-- **Le hasard des archives comme porte d'entrée.** La conversation s'ouvre sur une lettre tirée au sort,
-  comme si Napoléon venait de la relire, et l'on plonge dans le jour où elle a été écrite.
-- **Le temps rendu visible.** À l'écran, l'épisode, la période, le chapitre et les dates des lettres
-  racontées avancent avec le récit. Chaque réplique renvoie à la page de l'édition sur Gallica.
-- **Une présence incarnée, dans 25 langues.** Napoléon parle, avec la voix de synthèse du navigateur,
-  et choisit ses gestes. Le corpus reste en français ; la conversation se tient dans la langue choisie,
-  citations traduites comprises (voir « Langues » plus bas).
+**3. Faire parler les lettres elles-mêmes.** D'où le choix final : un RAG sur la correspondance, où
+chaque passage est daté, classé (lettre, ordre, bulletin, proclamation, rapport d'un tiers) et marqué
+selon la fiabilité de sa date, et un agent qui enquête dans ces archives avant que Napoléon ne prenne la
+parole. Les textes écrits après coup (les *Œuvres de Napoléon Bonaparte*) ne servent qu'en contrepoint.
 
 ## Architecture
 
@@ -186,11 +200,12 @@ La liste exacte des éditions, avec leurs identifiants, est dans **[docs/CORPUS.
 | Écrits de jeunesse (*Le Souper de Beaucaire*…) | 106 | 14 000 |
 
 Les deux bases utilisées par l'application sont publiées dans la Release
-[`data-v2`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v2) et téléchargées
+[`data-v3`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v3) et téléchargées
 dans `data/rag/` par `scripts/download_data.py` :
 
-- `napoleon_clean.sqlite` : **26 003 passages** datés et classés, dont 21 489 lettres, 1 985 ordres,
-  1 359 bulletins et 164 proclamations, avec leurs embeddings ;
+- `napoleon_clean.sqlite` : **26 003 passages** datés et classés, avec leurs embeddings. Une lettre longue
+  y occupe plusieurs passages : ils forment environ 14 100 lettres, 1 340 ordres, 1 340 bulletins et
+  80 proclamations ;
 - `napoleon_memoirs.sqlite` : **4 238 passages** des *Œuvres de Napoléon Bonaparte*, que l'archiviste
   consulte en contrepoint du récit.
 

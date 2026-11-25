@@ -1,8 +1,9 @@
-# Napoleon — the Emperor tells his life, letter by letter
+# Napoleon through his letters
 
-A conversational avatar of Napoleon Bonaparte, in exile on Saint Helena, who **relives his life in the
-present tense, letter by letter, in the order he wrote them**. Every answer is built from his dated
-correspondence, quoted verbatim and linked to its source on Gallica, the digital library of the
+**Discover Napoleon through his correspondence.** More than 15,000 letters, orders and notes, written
+in his own hand or dictated between 1795 and 1815, which Napoleon walks you through himself: in exile
+at Longwood, in the spring of 1821, he reopens his letters and relives them with you. Every quoted word
+is his own, dated and linked to the page of the original edition on Gallica, the digital library of the
 Bibliothèque nationale de France (BnF).
 
 **[Version française](README.md)**
@@ -15,69 +16,79 @@ letters are shown on screen, and the Gallica sources are attached to each answer
 
 https://github.com/user-attachments/assets/9c04a932-a738-41c5-9ea5-bf15ac72cdc3
 
+## Why his letters
+
+Napoleon wrote, or dictated, tens of thousands of letters. They were gathered under the Second Empire in
+the 32 volumes of the *Correspondance de Napoléon Iᵉʳ*, and almost nobody reads them: people look things
+up in them and quote them, but nobody reads through them.
+
+Yet this is where he shows best. Memoirs and history books tell the story afterwards: the author knows
+the ending, summarises and justifies. A letter is written *in* the moment, with what Napoleon knows that
+day, without knowing what comes next. In them you find the general who sets a division's march to the
+hour, the administrator who checks the price of bread, the head of the family who lectures his brothers,
+the lover writing to Joséphine. The tone changes with each correspondent, and a whole man emerges.
+
+This project turns them into a conversation, so you don't need to know what to look for. A letter opens
+the discussion, you follow whichever thread interests you, and Napoleon links the letters together, in
+the present tense, date after date.
+
+## What you discover
+
+Most letters come from the *Correspondance de Napoléon Iᵉʳ*, completed by the letters to Joséphine, the
+naval correspondence and unpublished letters. His most frequent correspondents, according to the letter
+headings (approximate figures):
+
+| Correspondent | Letters | What they show |
+|---|---:|---|
+| Berthier, his chief of staff | ≈ 2,000 | war day by day: marches, orders, troop strengths |
+| Clarke, Minister of War | ≈ 800 | the army seen from Paris: conscription, fortresses, Spain |
+| Eugène de Beauharnais, Viceroy of Italy | ≈ 600 | a stepson he trains in government, letter after letter |
+| Decrès, Minister of the Navy | ≈ 600 | the fleet, the blockade, the obsession with England |
+| Talleyrand, Minister of Foreign Affairs | ≈ 470 | diplomacy, from Campo Formio to Tilsit |
+| the Executive Directory | ≈ 300 | the young general of Italy and Egypt facing his masters |
+| Joséphine | ≈ 160 | the passion of 1796, then tenderness and distance |
+| Joseph, Murat, Cambacérès, Fouché… | hundreds | the family, the Empire behind the scenes |
+
+The busiest years are 1805 to 1807 (Austerlitz, Jena, Tilsit) and 1813: more than 1,000 letters a year.
+
+## How you discover them
+
+- **A letter drawn at random to begin.** Napoleon has just reread it and talks about it: you step into
+  the day it was written. You can also ask him directly about a period, a battle or a person.
+- **A story that moves forward date by date.** An archivist (autonomous agent, `gpt-4.1`) searches the
+  letters, places them in the timeline and offers what comes next in two variants, for example two
+  letters or two views of the same day. The visitor chooses: each conversation follows its own path
+  through the correspondence.
+- **Exact quotations.** The narrator (`gpt-4.1-mini`) tells only what the letters served say. Quoted
+  sentences are located by an algorithm in the letter text and reproduced word for word.
+- **The source always at hand.** On screen, the date, correspondent, period and chapter move forward
+  with the story, and every reply links to the page of the volume on Gallica.
+- **A man of 1821.** Napoleon speaks from Longwood in the spring of 1821 and knows nothing of what
+  follows. What he knows without his letters (family, key dates, exile) comes from a short, checked fact
+  sheet; a question that neither his letters nor that sheet can answer is not treated on substance.
+- **A presence, in 25 languages.** Napoleon speaks, chooses his gestures and, with the 3D model, appears
+  in a drawing room inspired by Longwood. The corpus stays in French; the conversation is held in the
+  chosen language, translated quotations included.
+
 ## How the project came about
 
-The project started from a simple question: can Napoleon be made to speak **without putting a single
-word in his mouth that he did not write**? It went through three stages.
+The project started from one question: can Napoleon be made to speak **without putting a single word
+in his mouth that he did not write**?
 
-**1. Building the corpus.** Napoleon's writings were extracted from editions digitised by Gallica and
-by Project Gutenberg, with one extractor per type of document: the 32 volumes of the *Correspondance*,
-the bulletins of the Grande Armée, the proclamations, the letters to Joséphine, his early writings, the
-campaign narratives and the *Œuvres de Napoléon Bonaparte*. Each letter becomes a unit with its date (including French Republican calendar dates), its
-place and its recipient: **52,000 passages, 7.9 million words**. A deliberately conservative LLM
-cleaning pass fixes OCR errors and rejects unusable passages, and letters whose date conflicts with
-their content are either recovered or set aside. The full detail (exact sources, choices, cleaning, dates, limits)
-is in **[docs/CORPUS.en.md](docs/CORPUS.en.md)**.
+**1. Gathering the letters.** They were extracted from editions digitised by Gallica and by Project
+Gutenberg, with one extractor per type of document. Each letter becomes a unit with its date (French
+Republican calendar included), place and correspondent. A deliberately conservative LLM cleaning pass
+fixes OCR errors; letters whose date contradicts their content are reworked or dropped. Full details
+are in **[docs/CORPUS.en.md](docs/CORPUS.en.md)**.
 
-**2. Trying fine-tuning, and finding its limits.** A Mistral-7B model was fine-tuned (QLoRA), first with
-continued pre-training on the corpus, then with instruction tuning, including examples in which Napoleon
-refuses anachronisms. The model picks up the Emperor's voice well, but the evaluations show that **a
-voice is not a source**: without fine-tuning, the base model attributes the Civil Code to Jean-Jacques
-Rousseau; once fine-tuned, it answers with style but cannot say where its claims come from.
+**2. Finding that a voice is not a source.** A Mistral-7B fine-tuned on the corpus (QLoRA) captures the
+Emperor's tone well, but cannot say where what it states comes from. A conversation meant to help people
+discover letters has to be able to show them.
 
-**3. Letting the archives speak, in the order of time.** Hence the final design: a retrieval-augmented
-generation (RAG) system over the letters, where every passage is dated, classified (letter, order,
-bulletin, proclamation, third-party report) and flagged by how reliable its date is, plus an **agent**
-that searches these archives and unfolds them chronologically before Napoleon speaks.
-
-## A new approach: reliving history in the present tense
-
-**The core idea: dated sources, taken in chronological order, make an immersive present-tense
-narrative possible.**
-
-Memoirs and history books tell the story after the fact. Their author already knows how everything
-ends: they summarise, reorder and justify, and the reader receives a past that has already been
-interpreted. A letter is written *in* the moment, with what Napoleon knows that day, his orders, his
-worries and his hopes, without knowing what comes next.
-
-This project therefore treats the correspondence as a **timeline**: every letter is dated, located and
-placed in chronological order. The story can then move forward the way events did, date after date.
-Napoleon does not remember, he relives: "On 17 February 1799, before El-Arish, I write to General
-Dugua…". The visitor moves through the days at the pace they were lived, and the outcome stays open.
-Texts written after the fact (the *Œuvres de Napoléon Bonaparte*) are used only as a counterpoint,
-when they add something to the moment being told.
-
-Everything else follows from that choice:
-
-- **The date as raw material.** Every passage is dated, including French Republican calendar dates, and
-  flagged by how reliable its date is. Letters whose date contradicts their content are set aside:
-  without a sound chronology, there is no present-tense narrative.
-- **An archivist that follows the thread of time.** An autonomous agent (`gpt-4.1`) places the episode
-  in the chronology, explores the period and chooses the letters. It then builds a plan of successive
-  *moments*, from the first orders to the consequences. Each moment has two variants, such as two
-  letters or two perspectives on the same day. The visitor chooses, and the other path is dropped, so
-  each conversation follows its own path through time.
-- **A narrator that adds nothing.** The narrator (`gpt-4.1-mini`) relives the letters it is given,
-  anchored by their dates spoken aloud, without going beyond what they say.
-- **Exact quotations.** Quoted sentences are found by an algorithm in the text of the letter and
-  reproduced exactly: the visitor hears the words written that day.
-- **The chance of the archives as a way in.** The conversation opens on a letter drawn at random, as if
-  Napoleon had just been rereading it, and plunges into the day it was written.
-- **Time made visible.** On screen, the episode, period, chapter and dates of the letters being told
-  move forward with the story. Each answer links to the page of the edition on Gallica.
-- **An embodied presence, in 25 languages.** Napoleon speaks, with the browser's speech synthesis, and
-  chooses his gestures. The corpus stays in French; the conversation is held in the chosen language,
-  quotations included (see "Languages" below).
+**3. Letting the letters speak for themselves.** Hence the final choice: a RAG over the correspondence,
+where every passage is dated, classified (letter, order, bulletin, proclamation, third-party report) and
+flagged by how reliable its date is, and an agent that investigates these archives before Napoleon
+speaks. Texts written after the fact (the *Œuvres de Napoléon Bonaparte*) only serve as a counterpoint.
 
 ## Architecture
 
@@ -185,11 +196,12 @@ Napoléon Bonaparte* and *Tendresses impériales*). The exact list of editions, 
 | Early writings (*Le Souper de Beaucaire*…) | 106 | 14,000 |
 
 The two databases used by the app are published in the
-[`data-v2`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v2) Release and
+[`data-v3`](https://github.com/hugo2028/napoleon-story-talking/releases/tag/data-v3) Release and
 downloaded into `data/rag/` by `scripts/download_data.py`:
 
-- `napoleon_clean.sqlite`: **26,003 passages**, dated and classified, including 21,489 letters, 1,985
-  orders, 1,359 bulletins and 164 proclamations, with their embeddings;
+- `napoleon_clean.sqlite`: **26,003 passages**, dated and classified, with their embeddings. A long letter
+  takes up several passages: together they make about 14,100 letters, 1,340 orders, 1,340 bulletins and
+  80 proclamations;
 - `napoleon_memoirs.sqlite`: **4,238 passages** from the *Œuvres de Napoléon Bonaparte*, which the
   archivist consults as a counterpoint to the story.
 
