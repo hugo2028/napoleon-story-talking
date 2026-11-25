@@ -24,6 +24,7 @@ const contextEpisode  = document.getElementById('context-episode')
 const contextPeriode  = document.getElementById('context-periode')
 const contextChapitre = document.getElementById('context-chapitre')
 const contextLettres  = document.getElementById('context-lettres')
+const contextLacune   = document.getElementById('context-lacune')
 const newBtn       = document.getElementById('new-conversation-btn')
 const subtitles    = new Subtitles(document.getElementById('subtitles'))
 const recordBtn    = document.getElementById('record-btn')
@@ -720,6 +721,11 @@ function updateAnnotation(ann) {
     li.append(date, document.createTextNode(` ${l.titre || ''}`))
     contextLettres.appendChild(li)
   }
+  // Lacune des archives entre la lettre précédente et celles de ce tour
+  const lacune = ann.lacune
+  contextLacune.textContent = lacune
+    ? t('archiveGap').replace('{from}', formatDate(lacune.du)).replace('{to}', formatDate(lacune.au))
+    : ''
   refreshNotesVisibility()
 }
 

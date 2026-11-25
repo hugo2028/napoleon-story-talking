@@ -85,5 +85,8 @@
   "newConversation": "↺ Nova conversa",
   "confirmNew": "Voleu esborrar-ho tot? Torneu a clicar",
   "stop": "■ Atura",
-  "welcome": "Napoleó us espera. Pregunteu-li sobre la seva vida, les seves campanyes o el seu regnat, o simplement saludeu-lo: començarà el relat. El 📜 sota les seves respostes indica les cartes d’on provenen les seves paraules."
+  "welcome": "Napoleó us espera. Pregunteu-li sobre la seva vida, les seves campanyes o el seu regnat, o simplement saludeu-lo: començarà el relat. El 📜 sota les seves respostes indica les cartes d’on provenen les seves paraules.",
+  "ambienceOn": "♪ Ambient",
+  "ambienceOff": "♪ Ambient desactivat",
+  "archiveGap": "No es conserven cartes des de {from} fins a {to}"
 }

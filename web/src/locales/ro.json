@@ -91,5 +91,8 @@
   "newConversation": "↺ Conversație nouă",
   "confirmNew": "Ștergeți totul? Faceți clic din nou",
   "stop": "■ Opriți",
-  "welcome": "Împăratul vă așteaptă. Îi puteți adresa o întrebare despre viața sa, campaniile sau domnia sa, sau pur și simplu să-i spuneți bună ziua: va începe să vă povestească. 📜 de sub răspunsurile sale indică scrisorile din care provin cuvintele sale."
+  "welcome": "Împăratul vă așteaptă. Îi puteți adresa o întrebare despre viața sa, campaniile sau domnia sa, sau pur și simplu să-i spuneți bună ziua: va începe să vă povestească. 📜 de sub răspunsurile sale indică scrisorile din care provin cuvintele sale.",
+  "archiveGap": "Nu s-au păstrat scrisori din {from} până în {to}",
+  "ambienceOn": "♪ Ambianță",
+  "ambienceOff": "♪ Ambianță oprită"
 }

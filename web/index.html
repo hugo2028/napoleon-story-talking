@@ -682,7 +682,18 @@
     }
 
     #context-episode:empty, #context-periode:empty,
-    #context-chapitre:empty, #context-lettres:empty { display: none; }
+    #context-chapitre:empty, #context-lettres:empty, #context-lacune:empty { display: none; }
+
+    /* Silence des archives entre deux lettres racontées (affiché, jamais raconté) */
+    #context-lacune {
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      line-height: 1.4;
+      font-style: italic;
+      color: var(--text-dim);
+      padding-left: 10px;
+      border-left: 2px solid rgba(201, 168, 76, 0.35);
+    }
 
     #context-lettres {
       list-style: none;
@@ -936,6 +947,7 @@
       <div id="context-periode"></div>
       <div id="context-chapitre"></div>
       <ul id="context-lettres"></ul>
+      <p id="context-lacune"></p>
       <div id="context-count"></div>
       <div id="context-text"></div>
     </div>

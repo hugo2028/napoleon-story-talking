@@ -85,5 +85,8 @@
   "newConversation": "↺ Nova conversa",
   "confirmNew": "Limpar tudo? Clique novamente",
   "stop": "■ Parar",
-  "welcome": "O Imperador está à sua espera. Faça-lhe uma pergunta sobre sua vida, suas campanhas ou seu reinado, ou simplesmente cumprimente-o: ele começará a contar sua história. O 📜 sob as respostas dele indica as cartas de onde vêm suas palavras."
+  "welcome": "O Imperador está à sua espera. Faça-lhe uma pergunta sobre sua vida, suas campanhas ou seu reinado, ou simplesmente cumprimente-o: ele começará a contar sua história. O 📜 sob as respostas dele indica as cartas de onde vêm suas palavras.",
+  "ambienceOn": "♪ Ambiente",
+  "ambienceOff": "♪ Ambiente desativado",
+  "archiveGap": "Nenhuma carta preservada de {from} a {to}"
 }

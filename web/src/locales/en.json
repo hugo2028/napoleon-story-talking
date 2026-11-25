@@ -87,5 +87,6 @@
   "stop": "■ Stop",
   "welcome": "Napoleon is waiting for you. Ask him about his life, his campaigns or his reign, or simply say hello: he will begin the story. The 📜 under his answers lists the letters his words come from.",
   "ambienceOn": "♪ Ambience",
-  "ambienceOff": "♪ Ambience off"
+  "ambienceOff": "♪ Ambience off",
+  "archiveGap": "No surviving letters from {from} to {to}"
 }

@@ -85,5 +85,8 @@
   "newConversation": "↺ Ny samtale",
   "confirmNew": "Vil De rydde alt? Klik igen",
   "stop": "■ Stop",
-  "welcome": "Kejseren venter på Dem. Stil ham et spørgsmål om hans liv, hans felttog eller hans regeringstid, eller sig blot goddag: han vil begynde sin fortælling. 📜 under hans svar viser de breve, hans ord stammer fra."
+  "welcome": "Kejseren venter på Dem. Stil ham et spørgsmål om hans liv, hans felttog eller hans regeringstid, eller sig blot goddag: han vil begynde sin fortælling. 📜 under hans svar viser de breve, hans ord stammer fra.",
+  "ambienceOn": "♪ Stemning",
+  "ambienceOff": "♪ Stemning slået fra",
+  "archiveGap": "Ingen bevarede breve fra {from} til {to}"
 }

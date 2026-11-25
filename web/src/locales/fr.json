@@ -87,5 +87,6 @@
   "stop": "■ Stop",
   "welcome": "Napoléon vous attend. Posez-lui une question sur sa vie, ses campagnes ou son règne, ou dites simplement bonjour : il commencera le récit. Le 📜 sous ses réponses donne les lettres dont il tire ses paroles.",
   "ambienceOn": "♪ Ambiance",
-  "ambienceOff": "♪ Ambiance coupée"
+  "ambienceOff": "♪ Ambiance coupée",
+  "archiveGap": "Aucune lettre conservée du {from} au {to}"
 }

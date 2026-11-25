@@ -85,5 +85,8 @@
   "newConversation": "↺ Nieuw gesprek",
   "confirmNew": "Alles wissen? Klik nogmaals",
   "stop": "■ Stop",
-  "welcome": "De Keizer wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn heerschappij, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden vermeldt de brieven waaruit zijn woorden afkomstig zijn."
+  "welcome": "De Keizer wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn heerschappij, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden vermeldt de brieven waaruit zijn woorden afkomstig zijn.",
+  "ambienceOn": "♪ Sfeer",
+  "ambienceOff": "♪ Sfeer uitgeschakeld",
+  "archiveGap": "Er zijn geen bewaarde brieven van {from} tot {to}"
 }

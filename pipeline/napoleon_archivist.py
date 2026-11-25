@@ -15,6 +15,7 @@ Activé par AGENT_MODE=autonome (défaut). Modèle de l'archiviste : AGENT_MODEL
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import os
 import re
@@ -31,6 +32,47 @@ AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1")
 MAX_AGENT_STEPS = int(os.getenv("AGENT_MAX_STEPS", "14"))
 
 _MOT_RE = re.compile(r"\w+", re.UNICODE)
+
+# Une lettre longue est découpée en plusieurs passages dans la base : l'archiviste, le narrateur, les
+# notes et les sources travaillent sur la LETTRE entière (passages d'un même tome, même en-tête
+# numéroté, même date), identifiée par son premier passage.
+_TITRE_NUMEROTE = re.compile(r"^\s*\d{1,5}\.\s")
+# Écrits de Napoléon pris en compte pour repérer une lacune des archives entre deux lettres racontées
+_ECRITS_NAPOLEON = ("napoleon_letter", "napoleon_order", "napoleon_proclamation", "bulletin")
+LACUNE_MIN_JOURS = int(os.getenv("LACUNE_MIN_JOURS", "14"))
+# Deux variantes racontent le même passage : leurs lettres sont du même jour ou de jours voisins.
+VARIANTE_MAX_JOURS = 3
+# En dessous de ce nombre de lettres, l'épisode est trop pauvre pour réclamer des variantes.
+VARIANTES_MIN_LETTRES = 8
+# Au-delà, un plan mélange probablement plusieurs épisodes (avertissement renvoyé à l'archiviste).
+EPISODE_MAX_MOIS = 24
+
+
+def _ecart_jours(a: str, b: str) -> int | None:
+    try:
+        return abs((dt.date.fromisoformat(a[:10]) - dt.date.fromisoformat(b[:10])).days)
+    except ValueError:
+        return None
+
+
+def build_letter_index(conn) -> tuple[dict[int, int], dict[int, list[int]]]:
+    """(passage → lettre, lettre → passages dans l'ordre du volume)."""
+    groupes: dict[tuple, list[tuple[str, int]]] = {}
+    for cid, key, source_type, kind, title, date in conn.execute(
+            "SELECT id, chunk_key, source_type, source_kind, title, date_iso FROM chunks"):
+        titre = (title or "").strip()
+        if kind != "memoir" and date and titre and (_TITRE_NUMEROTE.match(titre)
+                                                    or source_type == "lettres-amour-imperiales"):
+            groupes.setdefault(((key or "").rsplit("_", 1)[0], titre, date), []).append((key or "", cid))
+        else:
+            groupes[("seul", cid)] = [(key or "", cid)]
+    lettre_de, passages = {}, {}
+    for membres in groupes.values():
+        ids = [cid for _, cid in sorted(membres)]
+        passages[ids[0]] = ids
+        for cid in ids:
+            lettre_de[cid] = ids[0]
+    return lettre_de, passages
 
 
 def _retrouver_citation(citation: str, lettre: str, seuil: float = 0.85) -> str | None:
@@ -145,7 +187,8 @@ transition, quand l'épisode est épuisé.
    - Proportionne le plan à la matière : si explorer_periode montre des dizaines de lettres, \
 lis 6 à 12 candidates choisies d'après leurs extraits (rechercher puis lire_lettres) et bâtis 3 à 6 moments qui \
 couvrent l'épisode dans l'ordre chronologique (préparatifs, tournants, apogée, conséquences), \
-avec deux variantes pour la plupart des moments. \
+avec deux variantes pour les moments où deux lettres racontent le même passage (même jour ou jours voisins : \
+des lettres éloignées de plus de 3 jours forment des moments successifs, jamais des variantes). \
 Un plan d'un seul moment n'est acceptable que si les lettres manquent vraiment.
    - Commence le récit au début de l'épisode, sauf si le visiteur demande un moment précis.
    - Contrôle la cohérence de chaque lettre avant de la retenir : une lettre qui évoque \
@@ -205,6 +248,15 @@ Ne demande jamais au narrateur de répondre de mémoire.
 ou un désastre, pluie pour un deuil, clair pour un récit serein). Change-le quand le ton change, pas à chaque tour.
    - carte : la région de l'épisode raconté, qui s'éclaire sur la carte murale ; à renseigner dès qu'un récit
 se situe quelque part (italie, egypte, autriche, russie, espagne, belgique…).
+
+Les lettres :
+- Chaque identifiant désigne une LETTRE entière, même si elle est longue (« passages » : nombre de morceaux \
+dans la base ; lire_lettres en donne le début, « suite_non_lue » signale qu'elle continue). Une lettre ne \
+figure que dans un seul chapitre : deux variantes ne sont jamais deux morceaux d'une même lettre.
+- « date_incertaine » : la date de ce texte est douteuse ; ne le retiens pas dans un plan chronologique.
+- Le type « memoir » désigne un récit écrit après coup (Œuvres de Sainte-Hélène…), pas une lettre du moment.
+- Sujet pauvre en lettres : un moment par lettre, une seule variante si besoin. Ne fabrique pas de choix \
+en coupant la matière : mieux vaut un récit court et complet qu'un choix qui fait perdre la moitié des lettres.
 
 Règles :
 - Tout ce que Napoléon racontera doit venir des lettres servies ou des faits de la fiche transmis : choisis-les avec soin.
@@ -347,6 +399,39 @@ class Archivist:
         self.m_conn, self.m_emb, self.m_ids = m_conn, m_matrix, (np.array(m_ids) if m_ids else None)
         self.events = events
         self.model = model
+        self.lettre_de, self.passages = build_letter_index(conn)
+
+    # ── Lettres entières ────────────────────────────────────────────────────
+    def lettre(self, cid) -> int:
+        """Identifiant de la lettre (son premier passage) à laquelle appartient un passage."""
+        return self.lettre_de.get(int(cid), int(cid))
+
+    def lettres(self, ids) -> list[int]:
+        """Identifiants de lettres, sans doublon, dans l'ordre donné."""
+        out = []
+        for i in ids or []:
+            try:
+                lid = self.lettre(i)
+            except (TypeError, ValueError):
+                continue
+            if lid not in out:
+                out.append(lid)
+        return out
+
+    def textes(self, ids, limite: int | None = None) -> list[dict]:
+        """Lettres entières : métadonnées du premier passage, texte de tous les passages réunis."""
+        out = []
+        for lid in self.lettres(ids):
+            parts = fetch_chunks(self.conn, self.passages.get(lid, [lid]))
+            if not parts:
+                continue
+            texte = "\n".join((c.get("text") or "").strip() for c in parts)
+            lettre = dict(parts[0])
+            lettre["id"], lettre["nb_passages"] = lid, len(parts)
+            lettre["tronquee"] = bool(limite and len(texte) > limite)
+            lettre["text"] = texte[:limite] if limite else texte
+            out.append(lettre)
+        return out
 
     # ── Session ─────────────────────────────────────────────────────────────
     @staticmethod
@@ -356,15 +441,15 @@ class Archivist:
 
     def _random_letters(self, n: int = 5, exclure=()) -> list[dict]:
         """Lettres tirées au hasard pour amorcer un sujet (lettres/proclamations de Napoléon, datées)."""
-        exclure = [int(i) for i in exclure]
+        exclure = set(self.lettres(exclure))
         rows = self.conn.execute(
-            "SELECT id, date_iso, title, substr(text,1,700) FROM chunks "
-            "WHERE length(date_iso) = 10 AND date_reliable != 0 "
+            "SELECT id FROM chunks WHERE length(date_iso) = 10 AND date_reliable != 0 "
             "AND source_kind IN ('napoleon_letter','napoleon_proclamation') AND length(text) > 400 "
-            + (f"AND id NOT IN ({','.join('?' * len(exclure))}) " if exclure else "")
-            + "ORDER BY RANDOM() LIMIT ?", (*exclure, n)).fetchall()
-        letters = [{"id": r[0], "date": r[1], "titre": (r[2] or "")[:80], "extrait": (r[3] or "").replace("\n", " ")}
-                   for r in rows]
+            "ORDER BY RANDOM() LIMIT ?", (n * 4,)).fetchall()
+        tirees = [l for l in self.lettres(r[0] for r in rows) if l not in exclure][:n]
+        letters = [{"id": l["id"], "date": l.get("date_iso"), "titre": (l.get("title") or "")[:80],
+                    "extrait": (l.get("text") or "").replace("\n", " ")}
+                   for l in self.textes(tirees, limite=700)]
         choix = {c["lettre"]: c for c in self._choisir_citations(
             None, [l["id"] for l in letters],
             "Premier tour : pour CHAQUE lettre, retiens la phrase que tu ferais entendre pour donner envie "
@@ -377,11 +462,11 @@ class Archivist:
     # ── Choix des citations (appel dédié : l'agent juge seul) ───────────────
     def _choisir_citations(self, state, lettres: list[int], contexte: str, par_lettre: bool = False) -> list[dict]:
         """L'agent choisit 0 à 2 citations (ou une par lettre) ; le code vérifie seulement qu'elles sont exactes."""
-        chunks = fetch_chunks(self.conn, lettres)
+        chunks = self.textes(lettres, limite=4000)
         if not chunks:
             return []
         dites = (state or {}).get("citations_dites") or []
-        corps = "\n\n".join(f"[lettre {c['id']} — {c.get('date_iso') or '?'}]\n{(c.get('text') or '')[:2500]}"
+        corps = "\n\n".join(f"[lettre {c['id']} — {c.get('date_iso') or '?'}]\n{c.get('text') or ''}"
                              for c in chunks)
         demande = (f"{contexte}\n\n"
                    + ("Déjà cité dans la conversation :\n" + "\n".join(f"- « {d} »" for d in dites) + "\n\n" if dites else "")
@@ -398,7 +483,7 @@ class Archivist:
         out = []
         for c in cands:
             try:
-                lid = int(c.get("lettre"))
+                lid = self.lettre(c.get("lettre"))
             except (TypeError, ValueError):
                 continue
             if not str(c.get("texte") or "").strip():
@@ -416,7 +501,7 @@ class Archivist:
         if not start and not end:
             return None
         rows = self.conn.execute(
-            "SELECT id FROM chunks WHERE date_iso >= ? AND date_iso <= ?",
+            "SELECT id FROM chunks WHERE date_iso >= ? AND date_iso <= ? AND date_reliable != 0",
             (_norm_start(start) or "0000", _norm_end(end) or "9999\xff")).fetchall()
         return {r[0] for r in rows}
 
@@ -425,7 +510,7 @@ class Archivist:
             return {}
         q = ",".join("?" * len(ids))
         rows = self.conn.execute(
-            f"SELECT id, date_iso, title, source_kind, substr(text,1,220) FROM chunks WHERE id IN ({q})", ids
+            f"SELECT id, date_iso, title, source_kind, substr(text,1,220), date_reliable FROM chunks WHERE id IN ({q})", ids
         ).fetchall()
         return {r[0]: r for r in rows}
 
@@ -433,9 +518,15 @@ class Archivist:
         return [{"evenement": e["event"], "debut": e["start"], "fin": e["end"]} for e in self.events]
 
     def t_explorer_periode(self, state, date_debut, date_fin):
-        rows = self.conn.execute(
+        passages = self.conn.execute(
             "SELECT id, date_iso, title, source_kind FROM chunks WHERE date_iso >= ? AND date_iso <= ? "
-            "ORDER BY date_iso", (_norm_start(date_debut), _norm_end(date_fin))).fetchall()
+            "AND date_reliable != 0 ORDER BY date_iso", (_norm_start(date_debut), _norm_end(date_fin))).fetchall()
+        rows, vues = [], set()
+        for r in passages:            # une ligne par lettre (son premier passage dans la période)
+            lid = self.lettre(r[0])
+            if lid not in vues:
+                vues.add(lid)
+                rows.append((lid, *r[1:]))
         par_mois = Counter((r[1] or "?")[:7] for r in rows)
         par_type = Counter(r[3] or "?" for r in rows)
         titres = Counter(" ".join((r[2] or "").split(".")[-1].split()[:6]) for r in rows)
@@ -470,44 +561,62 @@ class Archivist:
                     "mediane": round(float(np.median(scores)), 3),
                     **{f"nb>={s}": int((scores >= s).sum()) for s in (0.30, 0.35, 0.40, 0.45, 0.50)}}
         order = idx[np.argsort(-scores)]
-        top = [(int(self.ids[i]), float(sims[i])) for i in order if sims[i] >= float(seuil_min or 0)][:limite]
+        top = [(int(self.ids[i]), float(sims[i])) for i in order if sims[i] >= float(seuil_min or 0)][:limite * 3]
         meta = self._meta([t[0] for t in top])
-        racontees = set(state["racontees"])
-        res = []
-        for cid, sc in top:
+        racontees = set(self.lettres(state["racontees"]))
+        res, vues = [], set()
+        for cid, sc in top:           # le meilleur passage de chaque lettre la représente
             m = meta.get(cid)
-            if not m:
+            lid = self.lettre(cid)
+            if not m or lid in vues or len(res) >= limite:
                 continue
-            res.append({"id": cid, "date": m[1], "score": round(sc, 3), "type": m[3],
+            vues.add(lid)
+            n = len(self.passages.get(lid, [lid]))
+            res.append({"id": lid, "date": m[1], "score": round(sc, 3), "type": m[3],
                         "titre": (m[2] or "")[:80], "extrait": (m[4] or "").replace("\n", " ")[:200],
-                        **({"deja_racontee": True} if cid in racontees else {})})
+                        **({"passages": n} if n > 1 else {}),
+                        **({"date_incertaine": True} if m[5] == 0 else {}),
+                        **({"deja_racontee": True} if lid in racontees else {})})
         return {"distribution_scores": dist, "resultats": res}
 
     def t_rechercher_mots(self, state, mots, date_debut=None, date_fin=None, limite=25):
         limite = max(1, min(50, int(limite or 25)))
         conds = " OR ".join("lower(text) LIKE ?" for _ in mots)
         params = [f"%{m.lower()}%" for m in mots]
-        sql = f"SELECT id, date_iso, title, source_kind, text FROM chunks WHERE ({conds})"
+        sql = f"SELECT id, date_iso, title, source_kind, text, date_reliable FROM chunks WHERE ({conds})"
         if date_debut or date_fin:
-            sql += " AND date_iso >= ? AND date_iso <= ?"
+            sql += " AND date_iso >= ? AND date_iso <= ? AND date_reliable != 0"
             params += [_norm_start(date_debut) or "0000", _norm_end(date_fin) or "9999\xff"]
         rows = self.conn.execute(sql + " ORDER BY date_iso", params).fetchall()
-        res = []
-        for r in rows[:limite]:
+        racontees = set(self.lettres(state["racontees"]))
+        res, vues = [], set()
+        for r in rows:
+            lid = self.lettre(r[0])
+            if lid in vues:
+                continue
+            vues.add(lid)
+            if len(res) >= limite:
+                continue
             low = (r[4] or "").lower()
             pos = min((low.find(m.lower()) for m in mots if low.find(m.lower()) >= 0), default=0)
-            res.append({"id": r[0], "date": r[1], "type": r[3], "titre": (r[2] or "")[:80],
-                        "extrait": (r[4] or "")[max(0, pos - 80): pos + 140].replace("\n", " ")})
-        return {"total_trouve": len(rows), "resultats": res}
+            res.append({"id": lid, "date": r[1], "type": r[3], "titre": (r[2] or "")[:80],
+                        "extrait": (r[4] or "")[max(0, pos - 80): pos + 140].replace("\n", " "),
+                        **({"date_incertaine": True} if r[5] == 0 else {}),
+                        **({"deja_racontee": True} if lid in racontees else {})})
+        return {"total_trouve": len(vues), "resultats": res}
 
     def t_lire_lettres(self, state, ids):
-        # Plafonné (6 lettres × 1000 caractères) : lire beaucoup coûte cher en temps de réponse
+        # Plafonné (6 lettres × 1600 caractères) : lire beaucoup coûte cher en temps de réponse
+        demandees = self.lettres(ids)
         out = []
-        for c in fetch_chunks(self.conn, [int(i) for i in ids[:6]]):
+        for c in self.textes(demandees[:6], limite=1600):
             out.append({"id": c["id"], "date": c.get("date_iso"), "type": c.get("source_kind"),
-                        "titre": (c.get("title") or "")[:120], "texte": (c.get("text") or "")[:1000]})
-        if len(ids) > 6:
-            out.append({"note": f"{len(ids) - 6} lettres non lues : 6 au maximum par appel, choisis les plus prometteuses."})
+                        "titre": (c.get("title") or "")[:120], "texte": c.get("text") or "",
+                        **({"passages": c["nb_passages"]} if c["nb_passages"] > 1 else {}),
+                        **({"suite_non_lue": True} if c["tronquee"] else {}),
+                        **({"date_incertaine": True} if c.get("date_reliable") == 0 else {})})
+        if len(demandees) > 6:
+            out.append({"note": f"{len(demandees) - 6} lettres non lues : 6 au maximum par appel, choisis les plus prometteuses."})
         return out
 
     def t_tirer_au_hasard(self, state):
@@ -552,7 +661,9 @@ class Archivist:
         return [{"id": r[0], "score": r[3], "titre": (r[1] or "")[:80], "texte": (r[2] or "")[:400]} for r in rows]
 
     def t_fixer_plan(self, state, sujet, chapitres, periode_debut=None, periode_fin=None):
-        meta = self._meta([int(i) for ch in chapitres for i in ch.get("lettres", [])])
+        for ch in chapitres:
+            ch["lettres"] = self.lettres(ch.get("lettres", []))
+        meta = self._meta([i for ch in chapitres for i in ch["lettres"]])
         # Garde-fou « un plan = un épisode » : refuser les lettres datées hors de la période annoncée
         hors_periode = []
         if periode_debut and periode_fin:
@@ -561,20 +672,53 @@ class Archivist:
                 d = (m[1] or "")[:7]
                 if d and not (lo <= d <= hi):
                     hors_periode.append({"id": lid, "date": m[1]})
-        valid = set(meta.keys()) - {h["id"] for h in hors_periode}
-        gardes = [c for c in state["chapitres"] if c["statut"] in ("raconte", "ecarte")]
+        incertaines = [lid for lid, m in meta.items() if m[5] == 0]
+        valid = set(meta.keys()) - {h["id"] for h in hors_periode} - set(incertaines)
+        new_topic = not state["plan"] or state["plan"].get("sujet") != sujet
+        gardes = [] if new_topic else [c for c in state["chapitres"] if c["statut"] in ("raconte", "ecarte")]
+        racontees = set(self.lettres(state["racontees"]))
+        prises = {l for c in gardes for l in c["lettres"]}
+        deja_racontees, en_double = [], []
         n0 = len(state["chapitres"])
         nouveaux = []
         for k, ch in enumerate(chapitres, 1):
-            lettres = [int(i) for i in ch.get("lettres", []) if int(i) in valid]
+            lettres = []
+            for lid in ch["lettres"]:
+                if lid not in valid:
+                    continue
+                if lid in racontees:
+                    deja_racontees.append(lid)
+                elif lid in prises:
+                    en_double.append(lid)
+                else:
+                    prises.add(lid)
+                    lettres.append(lid)
             if not lettres:
                 continue
             nouveaux.append({"id": f"c{n0 + k}", "moment": int(ch.get("moment") or k),
                              "titre": ch["titre"], "resume": ch.get("resume", ""),
                              "lettres": lettres, "statut": "a_raconter"})
-        new_topic = not state["plan"] or state["plan"].get("sujet") != sujet
+        # Des chapitres d'un même moment mais éloignés dans le temps ne sont pas des variantes : ce sont
+        # des moments successifs (sinon le choix du visiteur ferait perdre l'un d'eux sans le raconter).
+        def debut(c):
+            dates = sorted(meta[l][1] for l in c["lettres"] if meta.get(l) and meta[l][1])
+            return dates[0] if dates else ""
+        separes, prec = [], None          # prec = (moment d'origine, date de référence, nouveau numéro)
+        numero = max([c.get("moment") or 0 for c in gardes], default=0)
+        for c in sorted(nouveaux, key=lambda c: (c["moment"], debut(c))):
+            origine, d = c["moment"], debut(c)
+            ecart = _ecart_jours(prec[1], d) if prec and prec[1] and d else None
+            if prec and prec[0] == origine and ecart is not None and ecart <= VARIANTE_MAX_JOURS:
+                c["moment"] = prec[2]
+                continue
+            if prec and prec[0] == origine:
+                separes.append(c["id"])
+            numero += 1
+            prec = (origine, d, numero)
+            c["moment"] = numero
+        nouveaux.sort(key=lambda c: (c["moment"], debut(c)))
         state["plan"] = {"sujet": sujet, "debut": periode_debut, "fin": periode_fin}
-        state["chapitres"] = ([] if new_topic else gardes) + nouveaux
+        state["chapitres"] = gardes + nouveaux
         state["pistes"] = []
         result = {"ok": True, "chapitres": [{"id": c["id"], "moment": c.get("moment"), "titre": c["titre"],
                                              "statut": c["statut"], "nb_lettres": len(c["lettres"])}
@@ -585,11 +729,62 @@ class Archivist:
         a_venir = {}
         for c in nouveaux:
             a_venir.setdefault(c["moment"], []).append(c)
-        if len(a_venir) >= 2 and sum(len(v) >= 2 for v in a_venir.values()) < len(a_venir) / 2:
+        if separes:
+            result["variantes_separees"] = (
+                f"Chapitres devenus des moments successifs, car leurs lettres sont à plus de {VARIANTE_MAX_JOURS} jours "
+                f"de leur « variante » : {separes}. Deux variantes racontent le même passage (même jour ou jours voisins).")
+        nb_lettres = len({l for c in nouveaux for l in c["lettres"]})
+        if (nb_lettres >= VARIANTES_MIN_LETTRES and len(a_venir) >= 2
+                and sum(len(v) >= 2 for v in a_venir.values()) < len(a_venir) / 2):
             result["remarque_variantes"] = (
                 "Peu de moments ont deux variantes : le visiteur n'aura guère de vrai choix. Si la matière le permet, "
                 "cherche pour chaque moment une seconde lettre sur le même passage (autre destinataire, autre angle, "
-                "jour voisin) et révise le plan ; sinon, garde-le tel quel.")
+                f"même jour ou jours voisins, {VARIANTE_MAX_JOURS} jours d'écart au plus) et révise le plan ; "
+                "sinon, garde-le tel quel.")
+        if deja_racontees:
+            result["lettres_deja_racontees"] = (
+                f"Lettres déjà racontées dans la conversation, retirées du plan : {sorted(set(deja_racontees))}.")
+        if en_double:
+            result["lettres_en_double"] = (
+                f"Lettres placées dans plusieurs chapitres, gardées seulement dans le premier : {sorted(set(en_double))}. "
+                "Deux variantes doivent reposer sur des lettres différentes.")
+        if incertaines:
+            result["lettres_date_incertaine"] = (
+                f"Textes à la date douteuse, refusés dans un plan chronologique : {sorted(incertaines)}.")
+        # Le récit avance dans le temps : un moment ne doit pas revenir avant le précédent.
+        debuts = []
+        for moment in sorted(a_venir):
+            dates = [meta[l][1] for c in a_venir[moment] for l in c["lettres"] if meta.get(l) and meta[l][1]]
+            if dates:
+                debuts.append((moment, min(dates)))
+        reculs = [(a[0], b[0]) for a, b in zip(debuts, debuts[1:]) if b[1] < a[1]]
+        # Plan maigre alors que la période offre bien plus de lettres : l'archiviste peut l'étoffer.
+        if periode_debut and periode_fin:
+            kinds = ",".join("?" * len(_ECRITS_NAPOLEON))
+            ids_periode = [r[0] for r in self.conn.execute(
+                f"SELECT id FROM chunks WHERE source_kind IN ({kinds}) AND date_reliable != 0 "
+                "AND date_iso >= ? AND date_iso <= ?",
+                (*_ECRITS_NAPOLEON, _norm_start(periode_debut), _norm_end(periode_fin)))]
+            disponibles = len(set(self.lettres(ids_periode)))
+            if disponibles >= 6 and nb_lettres < disponibles / 3:
+                result["plan_maigre"] = (
+                    f"Le plan ne retient que {nb_lettres} lettres sur les {disponibles} écrits de Napoléon de la période. "
+                    "Si d'autres parlent de l'épisode (cherche-les : rechercher, rechercher_mots sur les lieux et les "
+                    "personnes), ajoute-les en moments successifs ; écarte seulement celles qui sont hors sujet.")
+        if reculs:
+            result["ordre_chronologique"] = (
+                f"Moments qui reviennent en arrière dans le temps : {reculs}. Le récit suit l'ordre des dates : "
+                "renumérote les moments dans l'ordre chronologique des lettres.")
+        dates_plan = sorted(meta[l][1] for c in nouveaux for l in c["lettres"] if meta.get(l) and meta[l][1])
+        if dates_plan:
+            def mois_de(d):   # « 1796 », « 1796-04 » ou « 1796-04-11 » → nombre de mois
+                return int(d[:4]) * 12 + (int(d[5:7]) if len(d) >= 7 and d[5:7].isdigit() else 1)
+            mois = mois_de(dates_plan[-1]) - mois_de(dates_plan[0])
+            if mois > EPISODE_MAX_MOIS:
+                result["episode_trop_long"] = (
+                    f"Les lettres du plan couvrent {mois} mois ({dates_plan[0]} → {dates_plan[-1]}) : un plan raconte UN "
+                    "épisode (une campagne, une période bien bornée). Garde l'épisode que demande le visiteur ; "
+                    "l'épisode suivant se proposera en transition, une fois celui-ci raconté.")
         if hors_periode:
             result["avertissement"] = (
                 "Lettres refusées car hors de la période de l'épisode (un plan = un seul épisode) : "
@@ -691,6 +886,10 @@ class Archivist:
     def _finalize_core(self, state, name, args) -> dict | None:
         if name == "repondre_librement":
             amorce = args.get("lettre_amorce")
+            try:
+                amorce = self.lettre(amorce) if amorce else None
+            except (TypeError, ValueError):
+                amorce = None
             meta = self._meta([int(amorce)]) if amorce else {}
             if amorce and int(amorce) not in meta:
                 amorce = None   # identifiant inconnu : on ignore l'amorce plutôt que d'inventer
@@ -701,7 +900,7 @@ class Archivist:
                     "Napoléon fait entendre à son visiteur UNE phrase de cette lettre pour lui donner "
                     "envie de l'épisode : " + args.get("consigne", ""))
                 citation = ok[0]["texte"] if ok else None
-            demandees = [int(i) for i in (args.get("lettres") or []) if str(i).isdigit()][:3]
+            demandees = self.lettres(i for i in (args.get("lettres") or []) if str(i).isdigit())[:3]
             connues = self._meta(demandees) if demandees else {}
             inconnues = [l for l in demandees if l not in connues]
             if inconnues:
@@ -727,7 +926,17 @@ class Archivist:
         # Les lettres servies doivent appartenir au chapitre : les notes à l'écran (épisode, chapitre,
         # lettres) et les sources restent ainsi cohérentes avec ce que Napoléon raconte.
         # On ne substitue rien : l'archiviste corrige lui-même sa décision.
-        demandees = [int(i) for i in (args.get("lettres") or []) if str(i).isdigit()]
+        if ch[cid]["statut"] in ("raconte", "ecarte"):
+            etat = "déjà raconté" if ch[cid]["statut"] == "raconte" else "écarté (le visiteur a choisi l'autre variante)"
+            ouverts = [c["id"] for c in state["chapitres"] if c["statut"] in ("a_raconter", "en_cours")]
+            return {"_erreur": (f"le chapitre {cid} est {etat}. Chapitres encore à raconter : {ouverts or 'aucun'} ; "
+                                "si tout est raconté, propose une transition (repondre_librement ou nouveau plan).")}
+        demandees = self.lettres(i for i in (args.get("lettres") or []) if str(i).isdigit())
+        deja = [l for l in demandees if l in set(self.lettres(state["racontees"]))]
+        if deja:
+            return {"_erreur": (f"les lettres {deja} ont déjà été racontées : ne les sers pas une seconde fois. "
+                                f"Lettres du chapitre {cid} pas encore racontées : "
+                                f"{[l for l in ch[cid]['lettres'] if l not in state['racontees']] or 'aucune'}.")}
         hors = [l for l in demandees if l not in ch[cid]["lettres"]]
         if hors:
             return {"_erreur": (
@@ -797,7 +1006,7 @@ class Archivist:
                          "pour toute la conversation.")
         if decision["type"] == "libre":
             if decision.get("lettre_amorce"):
-                l = fetch_chunks(self.conn, [int(decision["lettre_amorce"])])
+                l = self.textes([int(decision["lettre_amorce"])], limite=500)
                 if l:
                     parts.append(f"Lettre que tu viens de relire ({l[0].get('date_iso')}) :\n"
                                  f"« {(l[0].get('text') or '')[:500]}… »")
@@ -810,7 +1019,7 @@ class Archivist:
                                  "ancré par sa date et son lieu dits à voix haute. Elle sera racontée en entier si le "
                                  "visiteur accepte. Réponse courte : 4 à 5 phrases au total.")
             if decision.get("lettres"):
-                letters = fetch_chunks(self.conn, decision["lettres"])
+                letters = self.textes(decision["lettres"], limite=1500)
                 parts.append("Conversation libre : ton visiteur te parle à sa façon. Réponds à ce qu'il te dit, "
                              "en t'appuyant sur ces lettres, chacune ancrée par sa date. Tiens-t'en STRICTEMENT à ce "
                              "qu'elles disent : n'ajoute ni fait, ni idée, ni jugement qui n'y figure pas. Distingue le destinataire "
@@ -818,8 +1027,8 @@ class Archivist:
                              "question, dis simplement ce que tu écrivais ces jours-là, sans leur faire dire davantage. "
                              "Ne lui propose pas de choix de suite et ne le ramène pas à un récit : ne termine par une "
                              "question que si elle vient naturellement ou si la consigne le demande :\n" + "\n\n".join(
-                    f"[{c.get('date_iso') or 'date inconnue'}] {(c.get('title') or '')[:80]}\n{(c.get('text') or '')[:900]}"
-                    for c in letters))
+                    f"[{c.get('date_iso') or 'date inconnue'}] {(c.get('title') or '')[:80]}\n{c.get('text') or ''}"
+                    + (" […]" if c["tronquee"] else "") for c in letters))
                 if decision.get("citations"):
                     parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », "
                                  "si elles servent ta réponse. Ne cite rien d'autre entre guillemets :\n"
@@ -857,13 +1066,13 @@ class Archivist:
                 parts.append("C'est un NOUVEL épisode : nomme-le clairement "
                              "(campagne ou période, année, adversaire ou enjeu) avant de plonger dans les lettres.")
         parts.append(f"Chapitre de ce tour : « {ch['titre']} » — {ch['resume']}")
-        letters = fetch_chunks(self.conn, decision["lettres"])
+        letters = self.textes(decision["lettres"], limite=2400)
         parts.append("Lettres de ce tour (revis-les au présent, chacune ancrée par sa date). Tiens-t'en STRICTEMENT "
                      "à ce qu'elles disent : ne développe pas, ne commente pas, n'interprète pas, n'ajoute ni idée, "
                      "ni jugement, ni conclusion, ni état d'âme (« je médite », « il est évident pour moi »…) qui n'y "
                      "figure pas. Une lettre courte donne une réponse courte :\n" +"\n\n".join(
-            f"[{c.get('date_iso') or 'date inconnue'}] {(c.get('title') or '')[:80]}\n{(c.get('text') or '')[:900]}"
-            for c in letters))
+            f"[{c.get('date_iso') or 'date inconnue'}] {(c.get('title') or '')[:80]}\n{c.get('text') or ''}"
+            + (" […]" if c["tronquee"] else "") for c in letters))
         if decision.get("citations"):
             parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », chacune "
                          "une fois, amenées pour que le visiteur en saisisse le sens. Ne cite rien d'autre entre guillemets :\n"
@@ -915,10 +1124,12 @@ class Archivist:
         if decision["type"] == "tour":
             ann["chapitre"] = decision["chapitre"]["titre"]
             ids = decision["lettres"]
+            ann["lacune"] = self._lacune(state, decision)
         else:
             ids = list(decision.get("lettres") or [])
             if decision.get("lettre_amorce") and decision["lettre_amorce"] not in ids:
                 ids.append(decision["lettre_amorce"])
+        ids = self.lettres(ids)
         chunks = sorted(fetch_chunks(self.conn, ids) if ids else [], key=lambda c: c.get("date_iso") or "")
         for c in chunks:
             titre = (c.get("title") or "").strip()
@@ -934,6 +1145,49 @@ class Archivist:
                 ann["periode_debut"] = min([debut] + dates) if debut else min(dates)
                 ann["periode_fin"] = max([fin] + dates) if fin else max(dates)
         return ann
+
+    def _lacune(self, state, decision) -> dict | None:
+        """Silence des archives entre la dernière lettre racontée de l'épisode et celles de ce tour.
+
+        Seulement les vrais manques : aucune lettre, aucun ordre, aucune proclamation ni aucun bulletin
+        de Napoléon dans la base pendant au moins LACUNE_MIN_JOURS jours. Affiché dans les notes,
+        jamais raconté."""
+        def jour(lid):
+            m = self._meta([lid]).get(lid)
+            try:
+                return dt.date.fromisoformat(m[1]) if m and m[1] and len(m[1]) == 10 else None
+            except ValueError:
+                return None
+        actuelles = set(decision["lettres"])
+        avant = [jour(l) for c in state["chapitres"] if c["statut"] in ("raconte", "en_cours")
+                 for l in c["lettres"] if l in state["racontees"] and l not in actuelles]
+        apres = [jour(l) for l in actuelles]
+        avant, apres = [d for d in avant if d], [d for d in apres if d]
+        if not avant or not apres:
+            return None
+        d0, d1 = max(avant), min(apres)
+        if (d1 - d0).days <= LACUNE_MIN_JOURS:
+            return None
+        kinds = ",".join("?" * len(_ECRITS_NAPOLEON))
+        rows = self.conn.execute(
+            f"SELECT DISTINCT date_iso FROM chunks WHERE source_kind IN ({kinds}) AND date_reliable != 0 "
+            "AND length(date_iso) = 10 AND date_iso > ? AND date_iso < ? ORDER BY date_iso",
+            (*_ECRITS_NAPOLEON, d0.isoformat(), d1.isoformat())).fetchall()
+        bornes = [d0]
+        for (d,) in rows:
+            try:
+                bornes.append(dt.date.fromisoformat(d))
+            except ValueError:
+                pass
+        bornes.append(d1)
+        a, b = max(zip(bornes, bornes[1:]), key=lambda p: (p[1] - p[0]).days)
+        jours = (b - a).days - 1
+        # Un saut de plusieurs mois dans le récit n'est pas une lacune : seulement si les archives se
+        # taisent sur la plus grande partie de l'intervalle entre les deux lettres.
+        if jours < LACUNE_MIN_JOURS or jours < ((d1 - d0).days - 1) / 2:
+            return None
+        return {"du": (a + dt.timedelta(days=1)).isoformat(), "au": (b - dt.timedelta(days=1)).isoformat(),
+                "jours": jours}
 
     def _dates_plan(self, state) -> list[str]:
         ids = sorted({l for c in state["chapitres"] if c["statut"] != "ecarte" for l in c["lettres"]})

@@ -83,5 +83,8 @@
   "newConversation": "↺ Elkarrizketa berria",
   "confirmNew": "Dena garbitu? Sakatu berriro",
   "stop": "■ Gelditu",
-  "welcome": "Enperadorea zain duzue. Galdetu iezaiozu bere bizitzaz, kanpainez edo agintaldiaz, edo agurtu besterik ez: berak hasiko du kontakizuna. Bere erantzunen azpiko 📜-ak hitzak jasotzen dituen gutunak erakusten dizkizu."
+  "welcome": "Enperadorea zain duzue. Galdetu iezaiozu bere bizitzaz, kanpainez edo agintaldiaz, edo agurtu besterik ez: berak hasiko du kontakizuna. Bere erantzunen azpiko 📜-ak hitzak jasotzen dituen gutunak erakusten dizkizu.",
+  "ambienceOn": "♪ Giroa",
+  "ambienceOff": "♪ Giroa itzalita",
+  "archiveGap": "Ez da gutunik gorde {from}etik {to}era"
 }

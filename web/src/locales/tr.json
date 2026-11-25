@@ -83,5 +83,8 @@
   "newConversation": "↺ Yeni sohbet",
   "confirmNew": "Her şeyi silmek istiyor musunuz? Lütfen tekrar tıklayınız",
   "stop": "■ Durdur",
-  "welcome": "İmparator Napoléon sizi bekliyor. Ona hayatı, seferleri veya hükümdarlığı hakkında bir soru sorabilir ya da sadece merhaba diyebilirsiniz: hikayesine başlayacaktır. Cevaplarının altındaki 📜, sözlerinin alındığı mektupları gösterir."
+  "welcome": "İmparator Napoléon sizi bekliyor. Ona hayatı, seferleri veya hükümdarlığı hakkında bir soru sorabilir ya da sadece merhaba diyebilirsiniz: hikayesine başlayacaktır. Cevaplarının altındaki 📜, sözlerinin alındığı mektupları gösterir.",
+  "ambienceOn": "♪ Ortam sesi",
+  "ambienceOff": "♪ Ortam sesi kapalı",
+  "archiveGap": "Arşivde {from} ile {to} arasında mektup bulunmamaktadır"
 }

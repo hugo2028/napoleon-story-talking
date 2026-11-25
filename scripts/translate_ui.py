@@ -35,7 +35,7 @@ I18N = ROOT / "web" / "src" / "i18n.js"
 
 # Fragments qui doivent rester identiques dans toutes les langues.
 KEEP = ["⚙", "●", "■", "↻", ".env", "web/avatar/avatar.glb", "python pipeline/napoleon_api.py",
-        "sk-…", "README", "{n}", "F0", "OpenAI", "Azure", "Edge"]
+        "sk-…", "README", "{n}", "{from}", "{to}", "F0", "OpenAI", "Azure", "Edge"]
 
 PROMPT = """Tu traduis l'interface d'une application : Napoléon Bonaparte, en exil à Sainte-Hélène, raconte sa vie
 à un visiteur à partir de ses lettres. Traduis chaque libellé en {name}, de façon naturelle, concise et

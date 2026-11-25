@@ -194,6 +194,37 @@ against the neighbouring letters: 13 passages out of step with their neighbours 
 duplicate passages were replaced by **1,022 passages** from the real volume 10. The cleaning figures in
 section 5 are those of the initial run.
 
+**November 2026 update: dates across the whole *Correspondance*.** An analysis of the dates in the database
+showed two flaws, fixed by `scripts/fix_corpus_dates.py` (every change is logged in
+`napoleon-corpus/metadata/date_fixes.csv`):
+
+- **Volumes 29 to 32 are not letters.** They hold the *Œuvres de Napoléon Iᵉʳ à Sainte-Hélène* (accounts of
+  the campaigns of Egypt, Italy, Marengo…, dictated after the fact), whose 817 passages were classified as
+  letters and dated from a year read in the text: accounts of 1798–1800 ended up in 1793. They are now of
+  type `memoir`, with an unreliable date: they leave period searches and the random draw, and can still be
+  found as texts written after the fact.
+- **Misread years in volumes 1 to 28.** OCR and cleaning mixed up years ("an II" read as "an 11", hence 1803
+  instead of 1794; "1814" read as 1816, 1811 or 4814). Since the edition is chronological, the thread of
+  each volume is the longest sequence of dates moving forward in passage order. A passage clearly off that
+  thread (more than 60 days) keeps its day and month, with a neighbour's year, if the resulting date falls
+  between its two neighbours (± 31 days): **984 years fixed**, 37 of them OCR confusions on the first digit.
+  Otherwise its date is flagged unreliable (210 passages), like the 23 impossible years (before 1769 or
+  after 1821). A sample check confirmed the fixes: the Gregorian equivalents written in brackets by the
+  cleaning pass were often wrong themselves ("19 floréal an 11 (8 mai 1803)" for 8 May 1794).
+
+**Letters and passages.** A long letter is split into several passages (3,505 letters are, into 10,490
+passages). The application groups them: passages from the same volume, with the same numbered heading and
+the same date. The 26,003 passages make **18,097 documents, about 14,100 of them letters**, 1,340 orders,
+1,340 bulletins and 80 proclamations. The archivist, the narrator, the notes and the sources work on the
+whole letter.
+
+**Gaps in the correspondence.** After the fixes, Napoleon's writings dated to the day (letters, orders,
+proclamations, bulletins) cover 200 to 310 days a year from 1796 to 1813, with no silence longer than 20
+days (the longest: 19 September to 8 October 1799, the crossing back from Egypt). Before 1796 the database
+is very patchy: 9 days in 1793 (Toulon: nothing from 14 to 29 November nor from 1 to 23 December, while the
+town was taken), 30 in 1794, 38 in 1795. Elba and the end of 1815 are thin too. When the story crosses such
+a silence, the on-screen notes say so ("No surviving letters from… to…"); Napoleon himself does not.
+
 ## 7. Indexing
 
 - `napoleon_clean.sqlite`: the 26,003 dated passages, with their `text-embedding-3-small` vector (OpenAI)

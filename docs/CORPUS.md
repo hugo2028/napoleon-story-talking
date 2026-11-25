@@ -200,6 +200,38 @@ celles des lettres voisines : 13 passages qui ne suivaient pas leurs voisins ont
 passages en double ont été remplacés par **1 022 passages** du vrai tome 10. Les chiffres de nettoyage de
 la section 5 sont ceux du traitement initial.
 
+**Mise à jour de novembre 2026 : les dates de toute la *Correspondance*.** Une analyse des dates en base a
+montré deux défauts, corrigés par `scripts/fix_corpus_dates.py` (chaque changement est consigné dans
+`napoleon-corpus/metadata/date_fixes.csv`) :
+
+- **Les tomes 29 à 32 ne sont pas des lettres.** Ce sont les *Œuvres de Napoléon Iᵉʳ à Sainte-Hélène*
+  (récits des campagnes d'Égypte, d'Italie, de Marengo…, dictés après coup), dont les 817 passages étaient
+  classés comme lettres et datés d'après une année lue dans le texte : des récits de 1798-1800 se
+  retrouvaient en 1793. Ils sont désormais de type `memoir`, avec une date non fiable : ils sortent des
+  recherches par période et du tirage au sort, et restent trouvables comme récits écrits après coup.
+- **Des années mal lues dans les tomes 1 à 28.** L'OCR et le nettoyage ont confondu des années (« an II » lu
+  « an 11 », donc 1803 au lieu de 1794 ; « 1814 » lu 1816, 1811 ou 4814). L'édition étant chronologique,
+  le fil de chaque tome est la plus longue suite de dates qui avance dans l'ordre des passages. Un passage
+  nettement hors de ce fil (plus de 60 jours) garde son jour et son mois, avec l'année d'un voisin, si la
+  date obtenue tombe entre ses deux voisins (± 31 jours) : **984 années corrigées**, dont 37 confusions
+  d'OCR sur le premier chiffre. Sinon, sa date est marquée non fiable (210 passages), comme les 23 années
+  impossibles (avant 1769 ou après 1821). Un contrôle par échantillon a confirmé les corrections : les
+  équivalents grégoriens écrits entre parenthèses par le nettoyage étaient souvent eux-mêmes faux
+  (« 19 floréal an 11 (8 mai 1803) » pour le 8 mai 1794).
+
+**Lettres et passages.** Une lettre longue est découpée en plusieurs passages (3 505 lettres le sont, en
+10 490 passages). L'application les regroupe : passages d'un même tome, même en-tête numéroté, même date.
+Les 26 003 passages forment **18 097 documents, dont environ 14 100 lettres**, 1 340 ordres, 1 340 bulletins
+et 80 proclamations. L'archiviste, le narrateur, les notes et les sources travaillent sur la lettre entière.
+
+**Les trous de la correspondance.** Après correction, les écrits de Napoléon datés au jour près (lettres,
+ordres, proclamations, bulletins) couvrent 200 à 310 jours par an de 1796 à 1813, sans aucun silence de
+plus de 20 jours (le plus long : du 19 septembre au 8 octobre 1799, la traversée du retour d'Égypte).
+Avant 1796, la base est très lacunaire : 9 jours en 1793 (Toulon : rien du 14 au 29 novembre ni du 1ᵉʳ au
+23 décembre, pendant la prise de la ville), 30 en 1794, 38 en 1795. L'île d'Elbe et la fin de 1815 sont
+pauvres aussi. Quand le récit passe par un tel silence, les notes affichées à l'écran le signalent
+(« Aucune lettre conservée du… au… ») ; Napoléon, lui, n'en dit rien.
+
 ## 7. L'indexation
 
 - `napoleon_clean.sqlite` : les 26 003 passages datés, avec leur vecteur `text-embedding-3-small` (OpenAI)

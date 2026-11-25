@@ -89,5 +89,8 @@
   "newConversation": "↺ Nowa rozmowa",
   "confirmNew": "Wyczyścić wszystko? Proszę kliknąć ponownie",
   "stop": "■ Stop",
-  "welcome": "Napoleon czeka na Państwa. Proszę zapytać go o jego życie, kampanie lub panowanie, albo po prostu przywitać się: rozpocznie wtedy opowieść. 📜 pod jego odpowiedziami wskazuje listy, z których pochodzą jego słowa."
+  "welcome": "Napoleon czeka na Państwa. Proszę zapytać go o jego życie, kampanie lub panowanie, albo po prostu przywitać się: rozpocznie wtedy opowieść. 📜 pod jego odpowiedziami wskazuje listy, z których pochodzą jego słowa.",
+  "ambienceOn": "♪ Atmosfera",
+  "ambienceOff": "♪ Atmosfera wyłączona",
+  "archiveGap": "Brak zachowanych listów od {from} do {to}"
 }

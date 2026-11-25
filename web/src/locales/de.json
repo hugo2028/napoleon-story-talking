@@ -85,5 +85,8 @@
   "newConversation": "↺ Neues Gespräch",
   "confirmNew": "Alles löschen? Bitte noch einmal klicken",
   "stop": "■ Stopp",
-  "welcome": "Der Kaiser erwartet Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Herrschaft, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen."
+  "welcome": "Der Kaiser erwartet Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Herrschaft, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen.",
+  "ambienceOn": "♪ Ambiente",
+  "ambienceOff": "♪ Ambiente aus",
+  "archiveGap": "Keine erhaltenen Briefe vom {from} bis {to}"
 }

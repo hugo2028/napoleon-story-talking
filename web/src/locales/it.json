@@ -85,5 +85,8 @@
   "newConversation": "↺ Nuova conversazione",
   "confirmNew": "Cancellare tutto? Faccia clic di nuovo",
   "stop": "■ Stop",
-  "welcome": "L’Imperatore La attende. Gli ponga una domanda sulla sua vita, le sue campagne o il suo regno, oppure Gli rivolga semplicemente un saluto: inizierà il racconto. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole."
+  "welcome": "L’Imperatore La attende. Gli ponga una domanda sulla sua vita, le sue campagne o il suo regno, oppure Gli rivolga semplicemente un saluto: inizierà il racconto. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole.",
+  "ambienceOn": "♪ Ambiente",
+  "ambienceOff": "♪ Ambiente disattivato",
+  "archiveGap": "Nessuna lettera conservata dal {from} al {to}"
 }

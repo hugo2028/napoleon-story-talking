@@ -270,6 +270,61 @@ def sky_material():
     return m
 
 
+def chess_material():
+    """Damier ivoire et bois sombre, 8 × 8 cases, calé sur les UV du plateau (elles survivent à la jointure
+    des objets avant le bake, contrairement aux coordonnées « Object »)."""
+    m, nt, bsdf = new_material("damier")
+    bsdf.inputs["Roughness"].default_value = 0.35
+    uv = nt.nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "UVMap"
+    checker = nt.nodes.new("ShaderNodeTexChecker")
+    checker.inputs["Scale"].default_value = 8.0
+    checker.inputs["Color1"].default_value = (0.72, 0.64, 0.46, 1)
+    checker.inputs["Color2"].default_value = (0.06, 0.03, 0.015, 1)
+    nt.links.new(uv.outputs["UV"], checker.inputs["Vector"])
+    nt.links.new(checker.outputs["Color"], bsdf.inputs["Base Color"])
+    return m
+
+
+CHESS_SQUARE = 0.0325          # côté d'une case (m) : plateau de 26 cm
+
+
+def chessboard(M, cx, cy, z, angle=0.0):
+    """Échiquier posé en (cx, cy) à la hauteur z, tourné de `angle`, avec une partie en cours."""
+    ca, sa = math.cos(angle), math.sin(angle)
+
+    def at(i, j, dz):
+        """Centre de la case (i colonne, j rangée), de 0 à 7."""
+        u, v = (i - 3.5) * CHESS_SQUARE, (j - 3.5) * CHESS_SQUARE
+        return (cx + u * ca - v * sa, cy + u * sa + v * ca, z + dz)
+
+    box("echiquier_cadre", (cx, cy, z + 0.006), (8 * CHESS_SQUARE + 0.03, 8 * CHESS_SQUARE + 0.03, 0.012),
+        M["acajou"], rot_z=angle, bevel=0.003)
+    bpy.ops.mesh.primitive_plane_add(size=1, location=(cx, cy, z + 0.0125), rotation=(0, 0, angle))
+    board = bpy.context.active_object                          # plan : UV de 0 à 1 sur tout le plateau
+    board.name = "echiquier"
+    board.scale = (8 * CHESS_SQUARE, 8 * CHESS_SQUARE, 1)
+    board.data.materials.append(M["damier"])
+    top = 0.0125
+    # (colonne, rangée, pièce) : milieu de partie, une dizaine de pièces de chaque camp
+    white = [(4, 0, "roi"), (3, 0, "dame"), (0, 0, "tour"), (5, 2, "fou"), (2, 3, "cavalier"),
+             (3, 3, "pion"), (4, 3, "pion"), (5, 1, "pion"), (6, 1, "pion"), (1, 1, "pion")]
+    black = [(4, 7, "roi"), (2, 5, "dame"), (7, 7, "tour"), (2, 6, "fou"), (5, 5, "cavalier"),
+             (3, 4, "pion"), (4, 5, "pion"), (5, 6, "pion"), (6, 6, "pion"), (0, 6, "pion")]
+    heights = {"roi": 0.055, "dame": 0.05, "tour": 0.032, "fou": 0.04, "cavalier": 0.036, "pion": 0.026}
+    for side, pieces, mat in (("b", white, M["ivoire"]), ("n", black, M["ebene"])):
+        for k, (i, j, kind) in enumerate(pieces):
+            h = heights[kind]
+            x, y, zz = at(i, j, top)
+            r = 0.0095 if kind != "pion" else 0.008
+            cyl(f"piece_{side}{k}_socle", (x, y, zz + 0.004), r, 0.008, mat, verts=10)
+            cone(f"piece_{side}{k}_corps", (x, y, zz + 0.008 + (h - 0.016) / 2), r * 0.8, r * 0.35, h - 0.016, mat,
+                 verts=10)
+            sphere(f"piece_{side}{k}_tete", (x, y, zz + h - 0.006), r * (0.75 if kind in ("roi", "dame") else 0.6), mat)
+            if kind == "roi":                                  # petite croix
+                box(f"piece_{side}{k}_croix", (x, y, zz + h + 0.004), (0.003, 0.003, 0.01), mat)
+
+
 def drape(name, center, width, height, mat, folds=32, depth=0.05, swag=0.0):
     """Tenture plissée (plan subdivisé, plis verticaux ; `swag` creuse le bas en feston)."""
     bpy.ops.mesh.primitive_plane_add(size=1, location=center, rotation=(math.pi / 2, 0, 0))
@@ -315,6 +370,9 @@ def build():
         "livre_rouge": material("livre_rouge", (0.25, 0.05, 0.04), rough=0.6),
         "livre_brun": material("livre_brun", (0.20, 0.12, 0.06), rough=0.6),
         "cire": material("cire", (0.85, 0.80, 0.65), rough=0.5),
+        "damier": chess_material(),
+        "ivoire": material("ivoire", (0.82, 0.77, 0.62), rough=0.3),
+        "ebene": material("ebene", (0.03, 0.022, 0.018), rough=0.3),
         "flamme": material("flamme", (1, 0.7, 0.3), emission=(1.0, 0.62, 0.25), strength=40.0),
         "vitre_bois": material("vitre_bois", (0.70, 0.68, 0.62), rough=0.6),
         "ciel": sky_material(),
@@ -412,11 +470,13 @@ def build():
     for k, ox in enumerate((-kw / 2 + 0.08, kw / 2 - 0.08)):
         cyl(f"commode_chandelier_{k}", (kx + ox, ky - 0.05, 1.03), 0.02, 0.22, M["dore"], verts=10)
 
-    # Guéridon à gauche de Napoléon, avec un vase
-    cyl("gueridon_plateau", (-1.35, 0.9, 0.74), 0.3, 0.035, M["acajou"], verts=32)
-    cyl("gueridon_pied", (-1.35, 0.9, 0.37), 0.03, 0.72, M["acajou"], verts=10)
-    cyl("gueridon_base", (-1.35, 0.9, 0.03), 0.18, 0.05, M["acajou"], verts=20)
-    cone("vase", (-1.35, 0.9, 0.86), 0.05, 0.03, 0.2, M["blanc"], verts=16)
+    # Guéridon à gauche de Napoléon, avec une partie d'échecs en cours (il jouait à Longwood avec Bertrand
+    # et Montholon)
+    gx, gy = -1.35, 0.9
+    cyl("gueridon_plateau", (gx, gy, 0.74), 0.3, 0.035, M["acajou"], verts=32)
+    cyl("gueridon_pied", (gx, gy, 0.37), 0.03, 0.72, M["acajou"], verts=10)
+    cyl("gueridon_base", (gx, gy, 0.03), 0.18, 0.05, M["acajou"], verts=20)
+    chessboard(M, gx, gy, 0.7575, angle=math.radians(20))
 
     # Bureau d'acajou à droite, papiers, livres, bougeoir, pendule
     dx, dy = DESK

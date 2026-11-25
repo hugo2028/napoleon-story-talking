@@ -87,5 +87,8 @@
   "newConversation": "↺ Nový rozhovor",
   "confirmNew": "Opravdu vše vymazat? Klikněte znovu",
   "stop": "■ Zastavit",
-  "welcome": "Císař Napoleon na Vás čeká. Zeptejte se ho na jeho život, tažení nebo vládu, nebo ho jen pozdravte: začne Vám vyprávět svůj příběh. 📜 pod jeho odpověďmi uvádí dopisy, ze kterých čerpá svá slova."
+  "welcome": "Císař Napoleon na Vás čeká. Zeptejte se ho na jeho život, tažení nebo vládu, nebo ho jen pozdravte: začne Vám vyprávět svůj příběh. 📜 pod jeho odpověďmi uvádí dopisy, ze kterých čerpá svá slova.",
+  "archiveGap": "Z období od {from} do {to} se nedochovaly žádné dopisy",
+  "ambienceOn": "♪ Atmosféra",
+  "ambienceOff": "♪ Atmosféra vypnuta"
 }
