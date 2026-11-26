@@ -82,7 +82,7 @@ fixes OCR errors; letters whose date contradicts their content are reworked or d
 are in **[docs/CORPUS.en.md](docs/CORPUS.en.md)**.
 
 **2. Finding that a voice is not a source.** A Mistral-7B fine-tuned on the corpus (QLoRA) captures the
-Emperor's tone well, but cannot say where what it states comes from. A conversation meant to help people
+Napoleon's tone well, but cannot say where what it states comes from. A conversation meant to help people
 discover letters has to be able to show them.
 
 **3. Letting the letters speak for themselves.** Hence the final choice: a RAG over the correspondence,

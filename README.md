@@ -85,7 +85,7 @@ conservateur, corrige l'OCR ; les lettres dont la date contredit le contenu sont
 Le détail est dans **[docs/CORPUS.md](docs/CORPUS.md)**.
 
 **2. Constater qu'une voix n'est pas une source.** Un Mistral-7B affiné sur le corpus (QLoRA) prend bien
-le ton de l'Empereur, mais il ne peut pas dire d'où vient ce qu'il affirme. Une conversation qui veut
+le ton de Napoléon, mais il ne peut pas dire d'où vient ce qu'il affirme. Une conversation qui veut
 faire découvrir des lettres doit pouvoir les montrer.
 
 **3. Faire parler les lettres elles-mêmes.** D'où le choix final : un RAG sur la correspondance, où

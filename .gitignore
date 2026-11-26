@@ -51,6 +51,7 @@ napoleon-corpus/metadata/*
 !napoleon-corpus/metadata/events_timeline.json
 !napoleon-corpus/metadata/gallica_pages.json
 !napoleon-corpus/metadata/napoleon_fiche.md
+!napoleon-corpus/metadata/tableaux.json
 !napoleon-corpus/metadata/date_fixes.csv
 !napoleon-corpus/gallica_services/
 !napoleon-corpus/sources/
