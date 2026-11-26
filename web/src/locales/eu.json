@@ -1,7 +1,4 @@
 {
-  "subtitle": "Frantziako Enperadorea · 1769 – 1821",
-  "chatTitle": "Elkarrizketa inperiala",
-  "chatIntro": "Galdetu Enperadoreari bere bizitzaz, kanpainez eta inperioaz.",
   "start": "Hasi",
   "end": "Amaitu",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Hizketa erabilgaitz: ",
   "ttsError": "Hizketa errorea: ",
   "initializing": "Hasieratzen…",
-  "started": "Elkarrizketa hasi da. Egin iezaiozu Enperadoreari zure lehen galdera.",
   "ended": "Elkarrizketa amaitu da. Hasi elkarrizketa berri bat berriro hasteko.",
   "endedStatus": "Elkarrizketa amaituta",
   "endedHistory": "Elkarrizketa amaitu da. Historia ikusgai egongo da hurrengo reset arte.",
@@ -20,9 +16,7 @@
   "readyIdle": "Prest — hasi elkarrizketa bat",
   "askQuestion": "Egin zure galdera…",
   "thinking": "Napoleon pentsatzen ari da…",
-  "speaking": "Enperadorea hizketan ari da…",
   "commsDown": "Komunikazioak eten dira.",
-  "placeholderActive": "Egin zure galdera Enperadoreari…",
   "placeholderIdle": "Hasi elkarrizketa bat idazteko…",
   "letters": {
     "other": "{n} gutun"
@@ -83,8 +77,18 @@
   "newConversation": "↺ Elkarrizketa berria",
   "confirmNew": "Dena garbitu? Sakatu berriro",
   "stop": "■ Gelditu",
-  "welcome": "Enperadorea zain duzue. Galdetu iezaiozu bere bizitzaz, kanpainez edo agintaldiaz, edo agurtu besterik ez: berak hasiko du kontakizuna. Bere erantzunen azpiko 📜-ak hitzak jasotzen dituen gutunak erakusten dizkizu.",
-  "ambienceOn": "♪ Giroa",
-  "ambienceOff": "♪ Giroa itzalita",
-  "archiveGap": "Ez da gutunik gorde {from}etik {to}era"
+  "archiveGap": "Ez da gutunik gorde {from}etik {to}era",
+  "lettersChosen": {
+    "other": "{n} gutun hautatu dira kontakizun honetarako"
+  },
+  "lettersWritten": {
+    "other": "{n} idatziak {from}etik {to}era"
+  },
+  "subtitle": "Longwood, Sainte-Helena · 1821eko udaberria",
+  "chatTitle": "Elkarrizketa Longwood-en",
+  "chatIntro": "Galdetu Napoleoni bere bizitzaz, kanpainez eta erbesteaz.",
+  "started": "Elkarrizketa hasi da. Egin Napoleoni lehen galdera, mesedez.",
+  "speaking": "Napoleon hizketan ari da…",
+  "placeholderActive": "Egin Napoleoni galdera bat…",
+  "welcome": "Napoleon zain duzue. Galdetu iezaiozue bere bizitzaz, kanpainez edo bere garaiaz, edo agurtu besterik ez: hark kontakizuna hasiko du. Bere erantzunen azpiko 📜 ikurrak haren hitzak jasotzen dituzten gutunak erakusten dizkizue."
 }

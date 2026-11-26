@@ -1,7 +1,4 @@
 {
-  "subtitle": "Císař Francouzů · 1769 – 1821",
-  "chatTitle": "Císařský dialog",
-  "chatIntro": "Ptejte se Císaře na jeho život, tažení a říši.",
   "start": "Spustit",
   "end": "Ukončit",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Hlasový výstup není dostupný: ",
   "ttsError": "Chyba hlasového výstupu: ",
   "initializing": "Inicializace…",
-  "started": "Konverzace byla zahájena. Zeptejte se Císaře na svou první otázku.",
   "ended": "Konverzace byla ukončena. Zahajte novou konverzaci pro nový začátek.",
   "endedStatus": "Konverzace ukončena",
   "endedHistory": "Konverzace ukončena. Historie zůstává viditelná do dalšího resetu.",
@@ -20,9 +16,7 @@
   "readyIdle": "Připraveno — zahajte konverzaci",
   "askQuestion": "Zeptejte se na svou otázku…",
   "thinking": "Napoleon přemýšlí…",
-  "speaking": "Císař mluví…",
   "commsDown": "Spojení bylo přerušeno.",
-  "placeholderActive": "Zeptejte se Císaře na svou otázku…",
   "placeholderIdle": "Zahajte konverzaci pro psaní…",
   "letters": {
     "one": "{n} dopis",
@@ -89,6 +83,22 @@
   "stop": "■ Zastavit",
   "welcome": "Císař Napoleon na Vás čeká. Zeptejte se ho na jeho život, tažení nebo vládu, nebo ho jen pozdravte: začne Vám vyprávět svůj příběh. 📜 pod jeho odpověďmi uvádí dopisy, ze kterých čerpá svá slova.",
   "archiveGap": "Z období od {from} do {to} se nedochovaly žádné dopisy",
-  "ambienceOn": "♪ Atmosféra",
-  "ambienceOff": "♪ Atmosféra vypnuta"
+  "lettersChosen": {
+    "one": "{n} dopis vybrán pro tento příběh",
+    "few": "{n} dopisy vybrány pro tento příběh",
+    "many": "{n} dopisů vybráno pro tento příběh",
+    "other": "{n} dopisů vybráno pro tento příběh"
+  },
+  "lettersWritten": {
+    "one": "{n} napsán od {from} do {to}",
+    "few": "{n} napsány od {from} do {to}",
+    "many": "{n} napsáno od {from} do {to}",
+    "other": "{n} napsáno od {from} do {to}"
+  },
+  "subtitle": "Longwood, Svatá Helena · jaro 1821",
+  "chatTitle": "Rozhovor v Longwoodu",
+  "chatIntro": "Ptejte se Napoleona na jeho život, tažení a vyhnanství.",
+  "started": "Rozhovor byl zahájen. Položte Napoleonovi svou první otázku.",
+  "speaking": "Napoleon mluví…",
+  "placeholderActive": "Zeptejte se Napoleona na cokoliv…"
 }

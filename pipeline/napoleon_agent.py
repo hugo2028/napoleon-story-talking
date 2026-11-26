@@ -91,6 +91,7 @@ ANIMATION_DESCRIPTIONS = {
     "emotion_pouting": "moue boudeuse et contrariée ; vexation, rancune, mécontentement, dépit",
     "gesture_charge": "ordre de charge vers l'avant ; attaque, commandement militaire, élan, « en avant ! »",
     "gesture_salute": "salut militaire ; respect, honneur, armée, discipline, hommage aux soldats",
+    "gesture_pointing": "désigne quelque chose du doigt ; un lieu sur la carte, une direction, « là-bas », une armée ennemie",
     "gesture_bow_formal": "révérence formelle ; salutation solennelle, déférence, respect protocolaire",
     "gesture_bow_informal": "petite inclinaison rapide ; salut courtois, remerciement, politesse légère",
     "gesture_waving": "fait signe de la main ; bonjour, au revoir, accueil, appel amical",
@@ -165,7 +166,7 @@ AVATAR_ANIMATIONS = _load_avatar_animation_names()
 EXCLUDED_GESTURES = {"gesture_telling_secret"}
 AVATAR_GESTURE_ANIMATIONS = [
     name for name in AVATAR_ANIMATIONS
-    if not name.startswith("idle_") and name not in EXCLUDED_GESTURES
+    if not name.startswith(("idle_", "turn_")) and name not in EXCLUDED_GESTURES   # turn_* : pas de pivot
 ]
 if "waiting" not in AVATAR_GESTURE_ANIMATIONS:
     AVATAR_GESTURE_ANIMATIONS.append("waiting")
@@ -216,7 +217,11 @@ comme un récit vivant, à la première personne, en français \n(ou dans la lan
 
 Tu t'appuies UNIQUEMENT sur les lettres et passages fournis dans le contexte de chaque tour. \
 Tu parles de vive voix depuis ta mémoire — jamais depuis une correspondance lue à voix haute. \
-N'annonce jamais « dans une de mes lettres… », « dans cette lettre… » ou « je notais que… ».
+N'annonce jamais « dans une de mes lettres… », « dans cette lettre… » ou « je notais que… ». \
+Seule exception : quand le tour ne te fournit aucune lettre, dis-le franchement, en personnage — \
+« Je n'ai pas trouvé de lettre sur ce sujet, mais dans mes écrits je reviens sur ce passage… », \
+« Je n'en ai pas de trace écrite sous la main, mais je m'en souviens… », ou « Je ne trouve aucune trace \
+écrite de ce passage ; en revanche, je peux vous parler de… ».
 
 Fais entendre tes propres mots : quand des « citations choisies » te sont fournies, glisse-les telles quelles \
 entre guillemets « », chacune une seule fois, comme les paroles que tu écris ou dictes à cet instant \
@@ -287,8 +292,14 @@ Exemple : [anim:emotion_angry_gesture] La situation était critique. [anim:head_
 - Mise en scène : tu peux aussi choisir le plan de la caméra avec une balise [cam:plan], placée comme les \
 balises d'animation au début d'un segment : [cam:large] (plan d'ensemble : récits de batailles, transitions, \
 la pièce), [cam:rapproche] (buste : la conversation ordinaire), [cam:visage] (gros plan : un aveu, un regret, \
-une émotion forte, une citation qui compte). Une à trois balises [cam:] par réponse au plus, jamais deux \
-de suite au même plan ; le gros plan reste rare et bref, reviens ensuite à un plan plus large.
+une émotion forte, une citation qui compte), [cam:gauche] (de trois-quarts depuis la cheminée, avec le bureau \
+et la carte derrière toi : un récit de campagne, une lettre que tu évoques), [cam:droite] (de trois-quarts depuis \
+le bureau, avec la fenêtre et l'échiquier : la vie à Longwood, tes compagnons, la mer), [cam:plongee] (vue haute, \
+l'homme seul dans la pièce : l'exil, la captivité, la défaite), [cam:travelling] (lente avancée vers toi pendant \
+une dizaine de secondes : un récit qui monte en tension, une révélation), [cam:tableau] (le tableau mural de \
+face, quand tu montres la carte ou l'œuvre qui y est épinglée, puis reviens vers toi). Une à trois balises [cam:] par réponse \
+au plus, jamais deux de suite au même plan ; varie les angles d'une réponse à l'autre ; le gros plan reste rare \
+et bref, reviens ensuite à un plan plus large.
 - Prose continue, style oral — pas de listes ni de tirets.
 """
 

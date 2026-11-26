@@ -1,7 +1,4 @@
 {
-  "subtitle": "Keizer der Fransen · 1769 – 1821",
-  "chatTitle": "Keizerlijke dialoog",
-  "chatIntro": "Stel de Keizer vragen over zijn leven, zijn veldtochten en zijn rijk.",
   "start": "Starten",
   "end": "Beëindigen",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Spraak niet beschikbaar: ",
   "ttsError": "Spraakfout: ",
   "initializing": "Initialiseren…",
-  "started": "Gesprek gestart. Stel de Keizer uw eerste vraag.",
   "ended": "Gesprek beëindigd. Start een nieuw gesprek om opnieuw te beginnen.",
   "endedStatus": "Gesprek beëindigd",
   "endedHistory": "Gesprek beëindigd. De geschiedenis blijft zichtbaar tot de volgende reset.",
@@ -20,9 +16,7 @@
   "readyIdle": "Gereed — start een gesprek",
   "askQuestion": "Stel uw vraag…",
   "thinking": "Napoleon denkt na…",
-  "speaking": "De Keizer spreekt…",
   "commsDown": "De verbinding is verbroken.",
-  "placeholderActive": "Stel uw vraag aan de Keizer…",
   "placeholderIdle": "Start een gesprek om te schrijven…",
   "letters": {
     "one": "{n} brief",
@@ -85,8 +79,20 @@
   "newConversation": "↺ Nieuw gesprek",
   "confirmNew": "Alles wissen? Klik nogmaals",
   "stop": "■ Stop",
-  "welcome": "De Keizer wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn heerschappij, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden vermeldt de brieven waaruit zijn woorden afkomstig zijn.",
-  "ambienceOn": "♪ Sfeer",
-  "ambienceOff": "♪ Sfeer uitgeschakeld",
-  "archiveGap": "Er zijn geen bewaarde brieven van {from} tot {to}"
+  "archiveGap": "Er zijn geen bewaarde brieven van {from} tot {to}",
+  "lettersChosen": {
+    "one": "{n} brief gekozen voor dit verhaal",
+    "other": "{n} brieven gekozen voor dit verhaal"
+  },
+  "lettersWritten": {
+    "one": "{n} geschreven van {from} tot {to}",
+    "other": "{n} geschreven van {from} tot {to}"
+  },
+  "subtitle": "Longwood, Sint-Helena · lente 1821",
+  "chatTitle": "Gesprek in Longwood",
+  "chatIntro": "Stel Napoléon vragen over zijn leven, zijn veldtochten en zijn ballingschap.",
+  "started": "Het gesprek is begonnen. Stel Napoléon uw eerste vraag.",
+  "speaking": "Napoléon spreekt…",
+  "placeholderActive": "Stel uw vraag aan Napoléon…",
+  "welcome": "Napoleon wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn bewind, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden toont de brieven waaruit zijn woorden afkomstig zijn."
 }

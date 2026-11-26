@@ -1,7 +1,4 @@
 {
-  "subtitle": "Impalaer ar C'hallaoued · 1769 – 1821",
-  "chatTitle": "Kaoz impalaerel",
-  "chatIntro": "Goulennit digant an Impalaer diwar e vuhez, e emgannoù hag e impalaeriezh.",
   "start": "Kregiñ",
   "end": "Echuiñ",
   "reset": "Adkregiñ",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Kaozeal dre vouezh dianav : ",
   "ttsError": "Fazi kaozeal dre vouezh : ",
   "initializing": "O teraouiñ…",
-  "started": "Kaozeadenn kroget. Goulennit ho kentañ goulenn gant an Impalaer.",
   "ended": "Kaozeadenn echuet. Kregit gant ur gaozeadenn nevez evit adkregiñ.",
   "endedStatus": "Kaozeadenn echuet",
   "endedHistory": "Kaozeadenn echuet. Ar roll a chom war wel betek an adkregiñ.",
@@ -20,9 +16,7 @@
   "readyIdle": "Prest — kregit gant ur gaozeadenn",
   "askQuestion": "Goulennit ho koustiañ…",
   "thinking": "Napoléon a zo o prederiañ…",
-  "speaking": "An Impalaer a gomz…",
   "commsDown": "Ar c'hemennadennoù a zo troc'het.",
-  "placeholderActive": "Goulennit ho koustiañ gant an Impalaer…",
   "placeholderIdle": "Kregit gant ur gaozeadenn evit skrivañ…",
   "letters": {
     "zero": "{n} lizher",
@@ -93,8 +87,20 @@
   "newConversation": "↺ Kentañ gaozeadenn nevez",
   "confirmNew": "Dilemel pep tra ? Klikit adarre",
   "stop": "■ Paouez",
-  "welcome": "An Impalaer a zo o c’hortoz ac’hanoc’h. Goulennit digantañ diwar e vuhez, e emgannoù pe e ren, pe lârit dezhañ demat : krogiñ a raio da gontañ. Ar 📜 dindan e respontoù a ziskouez lizheroù m’eo bet tapet e gomzoù dioute.",
   "archiveGap": "Lizher ebet miret etre {from} ha {to}",
-  "ambienceOn": "♪ Ambians",
-  "ambienceOff": "♪ Ambians diweredek"
+  "lettersChosen": {
+    "one": "{n} lizher dibabet evit ar gontadenn-mañ",
+    "other": "{n} lizher dibabet evit ar gontadenn-mañ"
+  },
+  "lettersWritten": {
+    "one": "{n} skrivet eus {from} da {to}",
+    "other": "{n} skrivet eus {from} da {to}"
+  },
+  "subtitle": "Longwood, Sainte-Hélène · nevezamzer 1821",
+  "chatTitle": "Kaoz e Longwood",
+  "chatIntro": "Goulennit digant Napoléon diwar-benn e vuhez, e emgannoù hag e zilenn.",
+  "started": "Kaoz krog. Goulennit ho kentañ goulenn digant Napoléon.",
+  "speaking": "Napoléon a gomz…",
+  "placeholderActive": "Goulennit ho kentañ goulenn digant Napoléon…",
+  "welcome": "Napoleon a zo o c'hortoz ac'hanoc'h. Goulennit digantañ diwar e vuhez, e emgannoù pe e amzerioù, pe lavarit dezhañ demat : krogiñ a raio da gontañ. Ar 📜 dindan e respontoù a ziskouez lizheroù m’eo bet kemeret e gomzoù diganto."
 }

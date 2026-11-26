@@ -1,7 +1,4 @@
 {
-  "subtitle": "Emperador dels Francesos · 1769 – 1821",
-  "chatTitle": "Diàleg imperial",
-  "chatIntro": "Pregunteu a l'Emperador sobre la seva vida, les seves campanyes i el seu imperi.",
   "start": "Començar",
   "end": "Finalitzar",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Veu no disponible: ",
   "ttsError": "Error de veu: ",
   "initializing": "Inicialitzant…",
-  "started": "Conversació iniciada. Feu la vostra primera pregunta a l'Emperador.",
   "ended": "Conversació finalitzada. Inicieu-ne una de nova per tornar a començar.",
   "endedStatus": "Conversació finalitzada",
   "endedHistory": "Conversació finalitzada. L'historial romandrà visible fins al proper reset.",
@@ -20,9 +16,7 @@
   "readyIdle": "Preparat — comenceu una conversa",
   "askQuestion": "Formuli la seva pregunta…",
   "thinking": "Napoleó està pensant…",
-  "speaking": "L'Emperador parla…",
   "commsDown": "Les comunicacions estan tallades.",
-  "placeholderActive": "Formuli la seva pregunta a l'Emperador…",
   "placeholderIdle": "Comenceu una conversa per escriure…",
   "letters": {
     "one": "{n} carta",
@@ -86,7 +80,19 @@
   "confirmNew": "Voleu esborrar-ho tot? Torneu a clicar",
   "stop": "■ Atura",
   "welcome": "Napoleó us espera. Pregunteu-li sobre la seva vida, les seves campanyes o el seu regnat, o simplement saludeu-lo: començarà el relat. El 📜 sota les seves respostes indica les cartes d’on provenen les seves paraules.",
-  "ambienceOn": "♪ Ambient",
-  "ambienceOff": "♪ Ambient desactivat",
-  "archiveGap": "No es conserven cartes des de {from} fins a {to}"
+  "archiveGap": "No es conserven cartes des de {from} fins a {to}",
+  "lettersChosen": {
+    "one": "{n} carta escollida per a aquest relat",
+    "other": "{n} cartes escollides per a aquest relat"
+  },
+  "lettersWritten": {
+    "one": "{n} escrita del {from} al {to}",
+    "other": "{n} escrites del {from} al {to}"
+  },
+  "subtitle": "Longwood, Santa Helena · primavera de 1821",
+  "chatTitle": "Conversació a Longwood",
+  "chatIntro": "Pregunti a Napoleó sobre la seva vida, les seves campanyes i el seu exili.",
+  "started": "Conversació iniciada. Formuli la seva primera pregunta a Napoleó.",
+  "speaking": "Napoleó està parlant…",
+  "placeholderActive": "Formuli la seva pregunta a Napoleó…"
 }

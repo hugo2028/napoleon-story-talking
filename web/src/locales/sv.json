@@ -1,7 +1,4 @@
 {
-  "subtitle": "Frankrikes kejsare · 1769 – 1821",
-  "chatTitle": "Imperial dialog",
-  "chatIntro": "Fråga Kejsaren om hans liv, hans fälttåg och hans imperium.",
   "start": "Starta",
   "end": "Avsluta",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Tal ej tillgängligt: ",
   "ttsError": "Tal-fel: ",
   "initializing": "Initierar…",
-  "started": "Samtalet har börjat. Ställ er första fråga till Kejsaren.",
   "ended": "Samtalet är avslutat. Starta ett nytt samtal för att börja om.",
   "endedStatus": "Samtalet är avslutat",
   "endedHistory": "Samtalet är avslutat. Historiken visas tills nästa reset.",
@@ -20,9 +16,7 @@
   "readyIdle": "Redo — starta ett samtal",
   "askQuestion": "Ställ er fråga…",
   "thinking": "Napoleon tänker…",
-  "speaking": "Kejsaren talar…",
   "commsDown": "Kommunikationen är avbruten.",
-  "placeholderActive": "Ställ er fråga till Kejsaren…",
   "placeholderIdle": "Starta ett samtal för att skriva…",
   "letters": {
     "one": "{n} brev",
@@ -86,7 +80,19 @@
   "confirmNew": "Rensa allt? Klicka igen",
   "stop": "■ Stoppa",
   "welcome": "Kejsaren väntar på Er. Ställ en fråga om hans liv, hans fälttåg eller hans regeringstid, eller hälsa bara: han kommer att börja berätta. 📜 under hans svar visar breven som hans ord kommer ifrån.",
-  "ambienceOn": "♪ Atmosfär",
-  "ambienceOff": "♪ Atmosfär av",
-  "archiveGap": "Inga bevarade brev från {from} till {to}"
+  "archiveGap": "Inga bevarade brev från {from} till {to}",
+  "lettersChosen": {
+    "one": "{n} brev vald för denna berättelse",
+    "other": "{n} brev valda för denna berättelse"
+  },
+  "lettersWritten": {
+    "one": "{n} skrivet från {from} till {to}",
+    "other": "{n} skrivna från {from} till {to}"
+  },
+  "subtitle": "Longwood, Sankt Helena · våren 1821",
+  "chatTitle": "Samtal på Longwood",
+  "chatIntro": "Fråga Napoléon om hans liv, hans fälttåg och hans exil.",
+  "started": "Samtalet har börjat. Ställ er första fråga till Napoléon.",
+  "speaking": "Napoléon talar…",
+  "placeholderActive": "Ställ er fråga till Napoléon…"
 }

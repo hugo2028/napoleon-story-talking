@@ -21,8 +21,8 @@ export const MAP_PLACES = [
   },
   {
     "name": "Lisbonne",
-    "u": 0.0139,
-    "v": 0.5766,
+    "u": 0.0479,
+    "v": 0.5611,
     "region": null
   },
   {
@@ -39,14 +39,14 @@ export const MAP_PLACES = [
   },
   {
     "name": "Berlin",
-    "u": 0.4651,
-    "v": 0.2947,
+    "u": 0.4596,
+    "v": 0.2971,
     "region": null
   },
   {
     "name": "Varsovie",
-    "u": 0.5665,
-    "v": 0.3143,
+    "u": 0.5614,
+    "v": 0.3165,
     "region": null
   },
   {
@@ -69,49 +69,49 @@ export const MAP_PLACES = [
   },
   {
     "name": "Ajaccio",
-    "u": 0.3471,
-    "v": 0.5972,
+    "u": 0.3489,
+    "v": 0.5964,
     "region": "corse"
   },
   {
     "name": "Toulon",
-    "u": 0.3056,
-    "v": 0.5489,
+    "u": 0.3076,
+    "v": 0.5481,
     "region": "france"
   },
   {
     "name": "Fontainebleau",
-    "u": 0.2868,
-    "v": 0.3725,
+    "u": 0.287,
+    "v": 0.3724,
     "region": "france"
   },
   {
     "name": "Milan",
-    "u": 0.3729,
-    "v": 0.4925,
+    "u": 0.3723,
+    "v": 0.4927,
     "region": "italie"
   },
   {
     "name": "Lodi",
-    "u": 0.3772,
-    "v": 0.4982,
+    "u": 0.3766,
+    "v": 0.4984,
     "region": "italie"
   },
   {
     "name": "Arcole",
-    "u": 0.4059,
-    "v": 0.503,
+    "u": 0.405,
+    "v": 0.5034,
     "region": "italie"
   },
   {
     "name": "Rivoli",
-    "u": 0.3995,
-    "v": 0.4952,
+    "u": 0.3985,
+    "v": 0.4956,
     "region": "italie"
   },
   {
     "name": "Marengo",
-    "u": 0.3617,
+    "u": 0.3616,
     "v": 0.5079,
     "region": "italie"
   },
@@ -124,13 +124,13 @@ export const MAP_PLACES = [
   {
     "name": "Aboukir",
     "u": 0.7104,
-    "v": 0.9275,
+    "v": 0.9274,
     "region": "egypte"
   },
   {
     "name": "Les Pyramides",
     "u": 0.7604,
-    "v": 0.9621,
+    "v": 0.9622,
     "region": "egypte"
   },
   {
@@ -141,98 +141,98 @@ export const MAP_PLACES = [
   },
   {
     "name": "Saragosse",
-    "u": 0.1833,
-    "v": 0.5543,
+    "u": 0.1846,
+    "v": 0.5536,
     "region": "espagne"
   },
   {
     "name": "Baylen",
-    "u": 0.1003,
-    "v": 0.6412,
+    "u": 0.1072,
+    "v": 0.638,
     "region": "espagne"
   },
   {
     "name": "Ulm",
-    "u": 0.3994,
-    "v": 0.4073,
+    "u": 0.3969,
+    "v": 0.4084,
     "region": "autriche"
   },
   {
     "name": "Austerlitz",
-    "u": 0.5015,
-    "v": 0.4063,
+    "u": 0.5006,
+    "v": 0.4067,
     "region": "autriche"
   },
   {
     "name": "Wagram",
-    "u": 0.4962,
+    "u": 0.4961,
     "v": 0.4319,
     "region": "autriche"
   },
   {
     "name": "Iéna",
-    "u": 0.4341,
-    "v": 0.3371,
+    "u": 0.4298,
+    "v": 0.3389,
     "region": "prusse"
   },
   {
     "name": "Eylau",
-    "u": 0.5639,
-    "v": 0.2487,
+    "u": 0.5568,
+    "v": 0.2518,
     "region": "pologne"
   },
   {
     "name": "Friedland",
-    "u": 0.5687,
-    "v": 0.2469,
+    "u": 0.5616,
+    "v": 0.25,
     "region": "pologne"
   },
   {
     "name": "Leipzig",
-    "u": 0.4467,
-    "v": 0.3274,
+    "u": 0.4422,
+    "v": 0.3293,
     "region": "allemagne"
   },
   {
     "name": "Dresde",
-    "u": 0.4645,
-    "v": 0.3408,
+    "u": 0.4609,
+    "v": 0.3424,
     "region": "allemagne"
   },
   {
     "name": "Smolensk",
-    "u": 0.7112,
-    "v": 0.2206,
+    "u": 0.7073,
+    "v": 0.2223,
     "region": "russie"
   },
   {
     "name": "La Moskowa",
-    "u": 0.7579,
-    "v": 0.1851,
+    "u": 0.7562,
+    "v": 0.1858,
     "region": "russie"
   },
   {
     "name": "Bérézina",
-    "u": 0.6697,
-    "v": 0.2432,
+    "u": 0.6644,
+    "v": 0.2455,
     "region": "russie"
   },
   {
     "name": "Waterloo",
-    "u": 0.3305,
-    "v": 0.312,
+    "u": 0.3274,
+    "v": 0.3134,
     "region": "belgique"
   },
   {
     "name": "Ligny",
-    "u": 0.3316,
-    "v": 0.3182,
+    "u": 0.3287,
+    "v": 0.3195,
     "region": "belgique"
   },
   {
     "name": "Portoferraio",
-    "u": 0.3795,
-    "v": 0.5759,
+    "u": 0.38,
+    "v": 0.5757,
     "region": "elbe"
   }
 ]

@@ -1,7 +1,4 @@
 {
-  "subtitle": "Imperatore di i Francesi · 1769 – 1821",
-  "chatTitle": "Dialogu imperiale",
-  "chatIntro": "Dumandate à l'Imperatore nantu à a so vita, e so campagne è u so imperu.",
   "start": "Principià",
   "end": "Finisce",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Voce indisponibile : ",
   "ttsError": "Errore di voce : ",
   "initializing": "Inizializazione…",
-  "started": "A conversazione hè principiata. Pone a vostra prima dumanda à l'Imperatore.",
   "ended": "A conversazione hè compia. Principiate una nova per ripiglià.",
   "endedStatus": "Conversazione compia",
   "endedHistory": "Conversazione compia. A storia ferma visibile sin'à u prossimu reset.",
@@ -20,9 +16,7 @@
   "readyIdle": "Prontu — principià una conversazione",
   "askQuestion": "Pone a vostra dumanda…",
   "thinking": "Napoléon riflette…",
-  "speaking": "L'Imperatore parla…",
   "commsDown": "E cumunicazioni sò tagliate.",
-  "placeholderActive": "Pone a vostra dumanda à l'Imperatore…",
   "placeholderIdle": "Principiate una conversazione per scrive…",
   "letters": {
     "zero": "{n} lettere",
@@ -93,8 +87,20 @@
   "newConversation": "↺ Nova cunversazione",
   "confirmNew": "Vulete spazzà tuttu ? Cliccate torna",
   "stop": "■ Arrestà",
-  "welcome": "L’Imperatore vi aspetta. Dumandateli puru nantu à a so vita, e so campagne o u so regnu, o dite li simpliciamente bonghjornu : principierà à cuntavvi. U 📜 sottu à e so risposte vi mostra e lettere da induve piglia e so parolle.",
-  "ambienceOn": "♪ Ambianza",
-  "ambienceOff": "♪ Ambianza spenta",
-  "archiveGap": "Ùn ci hè nisuna lettera cunservata da {from} à {to}"
+  "archiveGap": "Ùn ci hè nisuna lettera cunservata da {from} à {to}",
+  "lettersChosen": {
+    "one": "{n} lettera scelta per issu racontu",
+    "other": "{n} lettere scelte per issu racontu"
+  },
+  "lettersWritten": {
+    "one": "{n} scritta da {from} à {to}",
+    "other": "{n} scritte da {from} à {to}"
+  },
+  "subtitle": "Longwood, Santa Elena · branu 1821",
+  "chatTitle": "Cunversazione à Longwood",
+  "chatIntro": "Dumandate à Napoléon nantu à a so vita, e so campagne è u so esiliu.",
+  "started": "A cunversazione hè principiata. Fate a vostra prima dumanda à Napoléon.",
+  "speaking": "Napoléon parla…",
+  "placeholderActive": "Fate a vostra dumanda à Napoléon…",
+  "welcome": "Napoléon vi aspetta. Dumandate li nantu à a so vita, e so campagne o u so passatu, o dite li simpliciamente bonghjornu : cumincerà à cuntà. U 📜 sottu à e so risposte indica e lettere da induve piglia e so parolle."
 }

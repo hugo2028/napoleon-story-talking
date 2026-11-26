@@ -94,17 +94,56 @@ export class Weather {
 const MAP_URL = new URL('../decor/carte_herisson_1815.jpg', import.meta.url).href
 const MAP_ASPECT = 1800 / 1346
 const LW = 1800, LH = 1346                     // taille du calque des noms (mêmes proportions que la carte)
+/**
+ * Lieux de la carte nommés dans un texte : [{ index du mot, nom }], dans l'ordre. Les mots sont ceux des
+ * sous-titres (texte coupé aux espaces), pour suivre la voix mot à mot. Accents, majuscules, ponctuation et
+ * élisions (« d'Arcole ») sont ignorés ; « Le Caire » est aussi reconnu par « Caire ».
+ */
+const PLACE_ALIASES = { 'La Moskowa': ['moskova', 'borodino'], 'Baylen': ['bailen'], "Saint-Jean-d'Acre": ['acre'] }
+const fold = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/’/g, "'")
+const cleanWord = (w) => fold(w).replace(/^[«"(\[]+|[»".,;:!?)\]]+$/g, '')
+const PLACE_KEYS = MAP_PLACES.flatMap((p) => {
+  const words = fold(p.name).split(/\s+/)
+  const keys = [words]
+  if (words.length > 1 && ['le', 'la', 'les'].includes(words[0])) keys.push(words.slice(1))
+  for (const a of PLACE_ALIASES[p.name] || []) keys.push([a])
+  return keys.map((k) => ({ name: p.name, words: k }))
+}).sort((a, b) => b.words.length - a.words.length)
+
+export function findPlaceMentions(text) {
+  const words = text.split(/\s+/).filter(Boolean).map(cleanWord)
+  const bare = words.map((w) => w.replace(/^(?:l|d|qu|jusqu)'/, ''))
+  const out = []
+  for (let i = 0; i < words.length; i++) {
+    const hit = PLACE_KEYS.find((k) => k.words.every((kw, j) => words[i + j] === kw || (j === 0 && bare[i] === kw)))
+    if (hit) {
+      out.push({ index: i, name: hit.name })
+      i += hit.words.length - 1
+    }
+  }
+  return out
+}
+
 const REGIONS = new Set([...MAP_PLACES.map((p) => p.region).filter(Boolean), 'sainte_helene'])
 
-function placeLabel(ctx, place, color, size, bold = false) {
+/**
+ * Un lieu : son point, et son nom s'il ne chevauche aucun nom déjà posé (`taken` : rectangles occupés).
+ * Les lieux sont posés par ordre d'importance : le lieu prononcé, ceux déjà cités, la région, les capitales.
+ */
+function placeLabel(ctx, place, color, size, bold, taken) {
   const x = place.u * LW, y = place.v * LH
   ctx.beginPath()
-  ctx.arc(x, y, bold ? 9 : 7, 0, Math.PI * 2)
+  ctx.arc(x, y, bold ? 10 : 7, 0, Math.PI * 2)
   ctx.fillStyle = color
   ctx.fill()
   ctx.font = `${bold ? 'bold ' : ''}italic ${size}px Georgia, serif`
-  ctx.textAlign = place.u > 0.85 ? 'right' : 'left'
-  const tx = x + (place.u > 0.85 ? -14 : 14)
+  const w = ctx.measureText(place.name).width
+  const right = place.u > 0.85
+  const tx = x + (right ? -14 : 14)
+  const box = [right ? tx - w : tx, y - 10 - size * 0.8, right ? tx : tx + w, y - 10 + size * 0.25]
+  if (taken.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) return
+  taken.push(box)
+  ctx.textAlign = right ? 'right' : 'left'
   ctx.lineWidth = 9
   ctx.strokeStyle = 'rgba(246, 236, 210, 0.9)'      // halo de papier clair : le nom se détache de la gravure
   ctx.strokeText(place.name, tx, y - 10)
@@ -112,14 +151,27 @@ function placeLabel(ctx, place, color, size, bold = false) {
   ctx.fillText(place.name, tx, y - 10)
 }
 
-/** Calque transparent des noms : capitales toujours, lieux de la région en rouge, cartouche. */
-function drawLabels(region) {
+/**
+ * Calque transparent des noms. `focus` : le lieu que Napoléon prononce, en grand ; `said` : ceux qu'il a déjà
+ * cités ; puis les lieux de la région et les capitales, dont le nom s'efface s'il chevauche un nom plus important.
+ */
+function drawLabels(region, focus = null, said = []) {
   const c = document.createElement('canvas')
   c.width = LW
   c.height = LH
   const ctx = c.getContext('2d')
-  for (const p of MAP_PLACES) if (!p.region) placeLabel(ctx, p, '#3b2610', 54)
-  if (region) for (const p of MAP_PLACES) if (p.region === region) placeLabel(ctx, p, '#9a1c10', 66, true)
+  const taken = []
+  const byName = (n) => MAP_PLACES.find((p) => p.name === n)
+  const done = new Set()
+  const put = (p, color, size, bold) => {
+    if (!p || done.has(p.name)) return
+    done.add(p.name)
+    placeLabel(ctx, p, color, size, bold, taken)
+  }
+  put(byName(focus), '#9a1c10', 76, true)
+  for (const n of [...said].reverse()) put(byName(n), '#9a1c10', 52, true)
+  if (region) for (const p of MAP_PLACES) if (p.region === region) put(p, '#9a1c10', focus ? 50 : 62, !focus)
+  for (const p of MAP_PLACES) if (!p.region) put(p, '#3b2610', 50, false)
   // Cartouche sur le Sahara, en bas à gauche
   ctx.fillStyle = 'rgba(240, 228, 196, 0.92)'
   ctx.strokeStyle = '#5a3d18'
@@ -148,12 +200,13 @@ function drawLabels(region) {
 }
 
 /** Lueur chaude sur les lieux de la région (ou sur la flèche de Sainte-Hélène). */
-function drawGlow(region) {
+function drawGlow(region, focus = null) {
   const c = document.createElement('canvas')
   c.width = LW / 4
   c.height = LH / 4
   const ctx = c.getContext('2d')
-  const pts = MAP_PLACES.filter((p) => p.region === region)
+  const focused = MAP_PLACES.find((p) => p.name === focus)
+  const pts = focused ? [focused] : MAP_PLACES.filter((p) => p.region === region)
   const spots = pts.length ? pts.map((p) => [p.u * c.width, p.v * c.height]) : [[0.6 * c.width, 0.93 * c.height]]
   const r = pts.length > 1 ? 46 : 60
   for (const [x, y] of spots) {
@@ -217,6 +270,36 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 }
 
 /** Une lettre épinglée : date, destinataire, premiers mots à la plume, cachet de cire. */
+/** Cartel sous l'œuvre : titre, peintre et date, crédit. */
+function captionTexture(info) {
+  const w = 640, h = 120
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#efe4c8'
+  ctx.fillRect(0, 0, w, h)
+  ctx.strokeStyle = '#7a5a2a'
+  ctx.lineWidth = 4
+  ctx.strokeRect(4, 4, w - 8, h - 8)
+  ctx.textAlign = 'center'
+  ctx.fillStyle = '#2e2010'
+  ctx.font = 'italic 34px Georgia, serif'
+  let title = info.titre || ''
+  while (ctx.measureText(title).width > w - 40 && title.length > 8) title = title.slice(0, -2)
+  if (title !== (info.titre || '')) title += '…'
+  ctx.fillText(title, w / 2, 50)
+  ctx.font = '24px Georgia, serif'
+  ctx.fillStyle = '#5a4020'
+  ctx.fillText([info.peintre, info.date].filter(Boolean).join(', '), w / 2, 88)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  return tex
+}
+
+const PAINTING_URLS = import.meta.glob('../decor/tableaux/*.jpg', { eager: true, query: '?url', import: 'default' })
+const paintingUrl = (id) => PAINTING_URLS[`../decor/tableaux/${id}.jpg`] || null
+
 function letterTexture(source) {
   const w = 384, h = 500
   const c = document.createElement('canvas')
@@ -261,7 +344,7 @@ export class WallBoard {
    * Tableau de feutre vert encadré, accroché au mur du fond : la carte de l'Europe épinglée à gauche
    * (une région s'y éclaire) et les lettres de la réponse en cours épinglées à droite.
    */
-  constructor(scene, center, width = 2.1, height = 1.1) {
+  constructor(scene, center, width = 3.0, height = 1.1) {
     this.group = new THREE.Group()
     this.group.position.copy(center)
     this.materials = []                                       // assombris avec la pièce (feu, nuit)
@@ -285,13 +368,16 @@ export class WallBoard {
     // et le calque des noms (capitales, lieux de la région en rouge, cartouche)
     const mapH = height - 0.12
     const mapW = mapH * MAP_ASPECT
+    this.mapSize = { w: mapW, h: mapH }
+    this.lastActivity = -Infinity                              // dernier changement visible (isActive)
     this.map = new THREE.Group()
     this.map.position.set(-width / 2 + mapW / 2 + 0.06, 0, 0.005)
     this.map.rotation.z = 0.01
     const mapTex = new THREE.TextureLoader().load(MAP_URL)
     mapTex.colorSpace = THREE.SRGBColorSpace
     mapTex.anisotropy = 4
-    this.map.add(new THREE.Mesh(new THREE.PlaneGeometry(mapW, mapH), basic({ map: mapTex })))
+    this.mapMesh = new THREE.Mesh(new THREE.PlaneGeometry(mapW, mapH), basic({ map: mapTex }))
+    this.map.add(this.mapMesh)
     this.glow = new THREE.Mesh(new THREE.PlaneGeometry(mapW, mapH), new THREE.MeshBasicMaterial({
       transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
     }))
@@ -309,27 +395,86 @@ export class WallBoard {
     }
     this.group.add(this.map)
     // Les lettres, à droite
-    this.letterArea = { x0: -width / 2 + mapW + 0.14, x1: width / 2 - 0.05 }
+    // Œuvre (tableau choisi par l'archiviste) au milieu ; les lettres à droite, ou sur toute la place libre
+    const free0 = -width / 2 + mapW + 0.14
+    this.paintArea = { x0: free0, x1: free0 + 0.82, h: height - 0.2 }
+    this.letterSpan = { full: { x0: free0, x1: width / 2 - 0.05 }, side: { x0: free0 + 0.9, x1: width / 2 - 0.05 } }
+    this.letterArea = this.letterSpan.full
+    this.painting = null
     this.letters = []
     this.lettersKey = ''
     this.glowTarget = 0
     this.region = null
+    this.focus = null            // lieu que Napoléon est en train de nommer
+    this.said = []               // lieux déjà nommés dans la réponse en cours
     scene.add(this.group)
   }
 
   highlight(region) {
     if (!REGIONS.has(region) || region === this.region) return
     this.region = region
-    this._swapMap(this.glow.material, drawGlow(region))
-    this._swapMap(this.labels.material, drawLabels(region))
+    this.focus = null
+    this.said = []
+    this._redraw()
     this.glow.material.opacity = 0
-    this.glowTarget = 1
+    this._touch()
+  }
+
+  _touch() {
+    this.lastActivity = performance.now()
+  }
+
+  /** Le tableau vient de changer (région, lieu nommé, œuvre, lettres) : la caméra le garde en vue. */
+  isActive(windowMs = 9000) {
+    return performance.now() - this.lastActivity < windowMs
+  }
+
+  /**
+   * Point du tableau qui retient l'attention, en coordonnées du monde : le lieu que Napoléon nomme sur la
+   * carte, sinon l'œuvre épinglée, sinon les lettres, sinon le centre de la carte.
+   */
+  attentionPoint() {
+    const p = MAP_PLACES.find((q) => q.name === this.focus)
+    if (p) return this.map.localToWorld(new THREE.Vector3((p.u - 0.5) * this.mapSize.w, (0.5 - p.v) * this.mapSize.h, 0))
+    if (this.painting && !this.painting.fading) return this.painting.mesh.getWorldPosition(new THREE.Vector3())
+    if (this.lastSources?.length) {
+      const { x0, x1 } = this.letterArea
+      return this.group.localToWorld(new THREE.Vector3((x0 + x1) / 2, 0, 0))
+    }
+    return this.map.getWorldPosition(new THREE.Vector3())
+  }
+
+  /** Napoléon nomme un lieu : il s'éclaire et son nom passe au premier plan ; le précédent reste nommé. */
+  focusPlace(name) {
+    if (!MAP_PLACES.some((p) => p.name === name) || name === this.focus) return
+    if (this.focus) this.said = [...this.said.filter((n) => n !== this.focus), this.focus]
+    this.focus = name
+    this._redraw()
+    this.glow.material.opacity = 0.15
+    this._touch()
+  }
+
+  /** Nouvelle réponse : plus de lieu en cours ; la région reste éclairée. */
+  resetPlaces() {
+    if (!this.focus && !this.said.length) return
+    this.focus = null
+    this.said = []
+    this._redraw()
+  }
+
+  _redraw() {
+    this._swapMap(this.glow.material, drawGlow(this.region, this.focus))
+    this._swapMap(this.labels.material, drawLabels(this.region, this.focus, this.said))
+    this.glowTarget = this.region || this.focus ? 1 : 0
   }
 
   clear() {
     this.region = null
+    this.focus = null
+    this.said = []
     this.glowTarget = 0
     this._swapMap(this.labels.material, drawLabels(null))
+    this.showPainting(null)
     this.showLetters([])
   }
 
@@ -340,13 +485,90 @@ export class WallBoard {
     old?.dispose()
   }
 
+  /**
+   * Une œuvre épinglée entre la carte et les lettres, avec son cartel ({ id, titre, peintre, date }) ;
+   * null l'enlève. Les lettres se resserrent à droite pendant qu'elle est là.
+   */
+  showPainting(info) {
+    const id = info?.id || null
+    if (id === (this.painting?.info.id || null)) return
+    if (this.painting) {
+      this.painting.fading = true
+      this.letters.push(this.painting)            // s'efface avec les mêmes règles que les lettres
+      this.painting = null
+    }
+    const url = id && paintingUrl(id)
+    const span = url ? this.letterSpan.side : this.letterSpan.full
+    if (span !== this.letterArea) {
+      this.letterArea = span
+      const key = this.lettersKey
+      this.lettersKey = null
+      this.showLetters(this.lastSources || [], true)
+      this.lettersKey = key
+    }
+    if (!url) return
+    const { x0, x1, h } = this.paintArea
+    const group = new THREE.Group()
+    group.position.set((x0 + x1) / 2, 0.06, 0.012)
+    group.rotation.z = -0.008
+    const mat = this.basic({ transparent: true, opacity: 0 })
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat)
+    mesh.userData.painting = { ...info, url }     // repéré au clic (avatar.js) pour l'afficher en grand
+    group.add(mesh)
+    const capMat = this.basic({ map: captionTexture(info), transparent: true, opacity: 0 })
+    const cap = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.079), capMat)
+    group.add(cap)
+    new THREE.TextureLoader().load(url, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.anisotropy = 4
+      const aspect = tex.image.width / tex.image.height
+      const maxW = x1 - x0 - 0.04, maxH = h - 0.14
+      const pw = Math.min(maxW, maxH * aspect), ph = pw / aspect
+      mesh.scale.set(pw, ph, 1)
+      mesh.position.y = 0.05
+      cap.position.y = 0.05 - ph / 2 - 0.05
+      mat.map = tex
+      mat.needsUpdate = true
+      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), this.pinMat)
+      pin.position.set(0, 0.05 + ph / 2 - 0.02, 0.006)
+      group.add(pin)
+    })
+    this.group.add(group)
+    this.painting = { mesh: group, mat, mats: [mat, capMat], info, fading: false, delay: 0.2, target: mesh }
+    this._touch()
+    this.letters.push(this.painting)
+  }
+
+  /**
+   * Objets du tableau que le visiteur peut regarder de près : la carte, l'œuvre épinglée, les lettres du tour.
+   * Chacun : { id, label, meshes } (maillages à cadrer et à viser).
+   */
+  pois() {
+    const out = [{ id: 'carte', label: 'La carte de l\'Europe', meshes: [this.mapMesh] }]
+    if (this.painting && !this.painting.fading && this.painting.target.scale.x !== 1) {
+      // La toile et son cartel (les plans du groupe ; l'épingle n'en est pas)
+      const planes = this.painting.mesh.children.filter((m) => m.isMesh && m.geometry.type === 'PlaneGeometry')
+      out.push({ id: 'tableau', label: this.painting.info.titre || 'L\'œuvre', meshes: planes })
+    }
+    const letters = this.letters.filter((l) => l !== this.painting && !l.fading).map((l) => l.mesh)
+    if (letters.length) out.push({ id: 'lettres', label: letters.length > 1 ? 'Les lettres' : 'La lettre', meshes: letters })
+    return out
+  }
+
+  /** Le maillage de l'œuvre affichée (pour le clic) ; null s'il n'y en a pas. */
+  paintingMesh() {
+    return this.painting?.target || null
+  }
+
   /** Les lettres de la réponse (sources de l'API : date, titre, extrait) ; trois au plus. */
-  showLetters(sources = []) {
+  showLetters(sources = [], relayout = false) {
     const list = (sources || []).filter((s) => s && (s.date || s.title)).slice(0, 3)
+    this.lastSources = list
     const key = list.map((s) => `${s.date}|${s.title}`).join('#')
-    if (key === this.lettersKey) return
+    if (key === this.lettersKey && !relayout) return
     this.lettersKey = key
-    for (const l of this.letters) l.fading = true             // les précédentes s'effacent
+    if (list.length && !relayout) this._touch()
+    for (const l of this.letters) if (l !== this.painting) l.fading = true   // les précédentes s'effacent
     const { x0, x1 } = this.letterArea
     const n = list.length
     const lw = Math.min(0.31, (x1 - x0) / Math.max(1, n) - 0.015)
@@ -371,17 +593,20 @@ export class WallBoard {
     const target = this.glowTarget * (0.82 + 0.18 * Math.sin(t * 1.7))   // la lueur respire doucement
     this.glow.material.opacity += (target - this.glow.material.opacity) * Math.min(1, dt * 1.5)
     for (const l of [...this.letters]) {
+      const mats = l.mats || [l.mat]
       if (l.fading) {
-        l.mat.opacity -= dt * 1.5
+        for (const m of mats) m.opacity -= dt * 1.5
         if (l.mat.opacity <= 0) {
           this.group.remove(l.mesh)
-          l.mat.map?.dispose()
-          l.mat.dispose()
-          this.materials.splice(this.materials.indexOf(l.mat), 1)
+          for (const m of mats) {
+            m.map?.dispose()
+            m.dispose()
+            this.materials.splice(this.materials.indexOf(m), 1)
+          }
           this.letters.splice(this.letters.indexOf(l), 1)
         }
       } else if ((l.delay -= dt) <= 0) {
-        l.mat.opacity = Math.min(1, l.mat.opacity + dt * 1.2)
+        for (const m of mats) m.opacity = Math.min(1, m.opacity + dt * 1.2)
       }
     }
   }

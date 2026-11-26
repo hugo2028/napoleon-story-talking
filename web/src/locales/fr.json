@@ -1,7 +1,7 @@
 {
-  "subtitle": "Empereur des Français · 1769 – 1821",
-  "chatTitle": "Dialogue impérial",
-  "chatIntro": "Interrogez l'Empereur sur sa vie, ses campagnes et son empire.",
+  "subtitle": "Longwood, Sainte-Hélène · printemps 1821",
+  "chatTitle": "Dialogue à Longwood",
+  "chatIntro": "Interrogez Napoléon sur sa vie, ses campagnes et son exil.",
   "start": "Commencer",
   "end": "Finir",
   "reset": "Reset",
@@ -12,7 +12,7 @@
   "ttsUnavailable": "TTS indisponible : ",
   "ttsError": "Erreur TTS : ",
   "initializing": "Initialisation…",
-  "started": "Conversation commencée. Posez votre première question à l'Empereur.",
+  "started": "Conversation commencée. Posez votre première question à Napoléon.",
   "ended": "Conversation terminée. Commencez une nouvelle conversation pour repartir à zéro.",
   "endedStatus": "Conversation terminée",
   "endedHistory": "Conversation terminée. L'historique reste visible jusqu'au prochain reset.",
@@ -20,9 +20,9 @@
   "readyIdle": "Prêt — commencez une conversation",
   "askQuestion": "Posez votre question…",
   "thinking": "Napoléon réfléchit…",
-  "speaking": "L'Empereur parle…",
+  "speaking": "Napoléon parle…",
   "commsDown": "Les communications sont interrompues.",
-  "placeholderActive": "Posez votre question à l'Empereur…",
+  "placeholderActive": "Posez votre question à Napoléon…",
   "placeholderIdle": "Commencez une conversation pour écrire…",
   "letters": {
     "one": "{n} lettre",
@@ -86,7 +86,13 @@
   "confirmNew": "Tout effacer ? Cliquez encore",
   "stop": "■ Stop",
   "welcome": "Napoléon vous attend. Posez-lui une question sur sa vie, ses campagnes ou son règne, ou dites simplement bonjour : il commencera le récit. Le 📜 sous ses réponses donne les lettres dont il tire ses paroles.",
-  "ambienceOn": "♪ Ambiance",
-  "ambienceOff": "♪ Ambiance coupée",
-  "archiveGap": "Aucune lettre conservée du {from} au {to}"
+  "archiveGap": "Aucune lettre conservée du {from} au {to}",
+  "lettersChosen": {
+    "one": "{n} lettre retenue pour ce récit",
+    "other": "{n} lettres retenues pour ce récit"
+  },
+  "lettersWritten": {
+    "one": "{n} écrite du {from} au {to}",
+    "other": "{n} écrites du {from} au {to}"
+  }
 }

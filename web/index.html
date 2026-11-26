@@ -90,7 +90,6 @@
     }
 
     /* Ambiance coupée : bouton estompé */
-    #ambience-btn.muted { opacity: 0.55; text-decoration: line-through; }
 
     /* Vignette : les bords de l'image s'assombrissent, le regard va à Napoléon */
     #avatar-canvas::after {
@@ -98,7 +97,7 @@
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(8, 6, 4, 0.5) 100%);
+      background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgba(8, 6, 4, var(--vignette, 0.5)) 100%);
     }
 
     /* Status bar */
@@ -658,7 +657,7 @@
 
     /* ── Context bubble ──────────────────────────────────────────────── */
     #context-episode {
-      font-size: 20px;
+      font-size: 16px;
       line-height: 1.3;
       color: var(--gold);
       text-shadow: 0 2px 10px rgba(201, 168, 76, 0.25);
@@ -673,11 +672,11 @@
     }
 
     #context-chapitre {
-      font-size: 16px;
+      font-size: 13px;
       line-height: 1.4;
       font-style: italic;
       color: var(--text);
-      padding-top: 10px;
+      padding-top: 6px;
       border-top: 1px solid rgba(201, 168, 76, 0.22);
     }
 
@@ -699,10 +698,10 @@
       list-style: none;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
       font-family: system-ui, sans-serif;
-      font-size: 14px;
-      line-height: 1.45;
+      font-size: 12px;
+      line-height: 1.4;
       color: var(--text-dim);
     }
 
@@ -711,26 +710,95 @@
       font-weight: 600;
     }
 
-    /* Grand encadré de repères, sans défilement : il prend la hauteur de son contenu */
+    /* Encadré de repères, étroit pour ne pas cacher Napoléon : épisode, période, chapitre et lettres ;
+       le nombre de lettres et le contexte de l'épisode se déplient d'un clic (classe « open ») */
     #context-bubble {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      width: clamp(280px, 30%, 420px);
-      padding: 18px 22px;
-      border-radius: 14px;
-      background: rgba(12, 10, 8, 0.86);
+      top: 16px;
+      left: 16px;
+      width: clamp(230px, 22%, 320px);
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: rgba(12, 10, 8, 0.78);
+      cursor: pointer;
       backdrop-filter: blur(10px);
       border: 1px solid rgba(201, 168, 76, 0.28);
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
       z-index: 2;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
       overflow: visible;
     }
 
     #context-bubble[hidden] { display: none; }
+
+    /* Œuvre du tableau mural en grand (clic sur l'œuvre) ; un clic ou Échap referme */
+    #painting-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(8, 6, 4, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 16px;
+      cursor: zoom-out;
+    }
+    #painting-overlay[hidden] { display: none; }
+
+    /* Objet regardé de près : le titre et les notes s'effacent, le bouton de retour prend la place du titre */
+    #title-overlay, #context-bubble, #status-bar { transition: opacity 0.4s; }
+    #avatar-panel.inspecting #title-overlay,
+    #avatar-panel.inspecting #context-bubble,
+    #avatar-panel.inspecting #status-bar { opacity: 0; pointer-events: none; }
+
+    /* Retour au récit après avoir regardé un objet de près */
+    #inspect-back {
+      position: absolute;
+      left: 50%;
+      top: 18px;
+      transform: translateX(-50%);
+      z-index: 3;
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(201, 168, 76, 0.5);
+      background: rgba(12, 10, 8, 0.82);
+      color: var(--gold);
+      font: 14px Georgia, serif;
+      cursor: pointer;
+    }
+    #inspect-back[hidden] { display: none; }
+    /* Nom de l'objet survolé, près du curseur */
+    #poi-label {
+      position: absolute;
+      z-index: 3;
+      pointer-events: none;
+      padding: 3px 9px;
+      border-radius: 6px;
+      background: rgba(12, 10, 8, 0.85);
+      border: 1px solid rgba(201, 168, 76, 0.4);
+      color: var(--gold);
+      font: italic 13px Georgia, serif;
+      white-space: nowrap;
+    }
+    #poi-label[hidden] { display: none; }
+    #painting-overlay img { max-width: 100%; max-height: calc(100dvh - 140px); object-fit: contain; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+    #painting-caption { text-align: center; color: var(--text); font-family: Georgia, serif; }
+    #painting-caption strong { display: block; font-style: italic; font-weight: normal; font-size: 20px; color: var(--gold); }
+    #painting-caption small { display: block; margin-top: 4px; font-family: system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
+    #context-bubble:not(.open) #context-count, #context-bubble:not(.open) #context-text { display: none; }
+    #context-bubble::after {
+      content: '▾';
+      position: absolute;
+      right: 10px;
+      bottom: 6px;
+      font-size: 11px;
+      color: var(--gold-dim);
+    }
+    #context-bubble.open::after { content: '▴'; }
 
     #context-count {
       font-family: system-ui, sans-serif;
@@ -746,7 +814,7 @@
 
     #context-text {
       font-family: system-ui, sans-serif;
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1.55;
       color: var(--text-dim);
     }
@@ -934,7 +1002,7 @@
 
     <div id="title-overlay">
       <h1>Napoléon Bonaparte</h1>
-      <p data-i18n="subtitle">Empereur des Français · 1769 – 1821</p>
+      <p data-i18n="subtitle">Longwood, Sainte-Hélène · printemps 1821</p>
     </div>
 
     <div id="status-bar">
@@ -942,6 +1010,12 @@
       <span id="status-text">Initialisation…</span>
     </div>
 
+    <button type="button" id="inspect-back" hidden>⤺ Revenir à Napoléon</button>
+    <div id="poi-label" hidden></div>
+    <div id="painting-overlay" hidden>
+      <img id="painting-image" alt="">
+      <p id="painting-caption"></p>
+    </div>
     <div id="context-bubble" hidden>
       <div id="context-episode"></div>
       <div id="context-periode"></div>
@@ -958,14 +1032,13 @@
     <div id="chat-header">
       <div id="chat-header-row">
         <div>
-          <h2 data-i18n="chatTitle">Dialogue impérial</h2>
-          <p data-i18n="chatIntro">Interrogez l'Empereur sur sa vie, ses campagnes et son empire.</p>
+          <h2 data-i18n="chatTitle">Dialogue à Longwood</h2>
+          <p data-i18n="chatIntro">Interrogez Napoléon sur sa vie, ses campagnes et son exil.</p>
         </div>
         <div id="chat-actions">
           <button type="button" id="settings-btn" class="chat-action" data-i18n="settings">⚙ Paramètres</button>
           <button type="button" id="new-conversation-btn" class="chat-action" data-i18n="newConversation" hidden>↺ Nouvelle conversation</button>
           <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
-          <button type="button" id="ambience-btn" class="chat-action" aria-pressed="true">♪ Ambiance</button>
         </div>
       </div>
     </div>
@@ -980,7 +1053,7 @@
         <input
           type="text"
           id="chat-input"
-          placeholder="Posez votre question à l'Empereur…"
+          placeholder="Posez votre question à Napoléon…"
           autocomplete="off"
           disabled
         />

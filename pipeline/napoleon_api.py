@@ -225,7 +225,9 @@ def _get_sources(letter_ids: list[int]) -> list[dict]:
 _ALLOWED_ANIMATIONS = set(AVATAR_GESTURE_ANIMATIONS)
 _ANIM_TAG_RE = re.compile(r"\s*\[((?:anim|cam):[^\]]+)\]\s*", re.IGNORECASE)
 # Plans de caméra que le narrateur peut demander ([cam:…]) ; transmis à l'interface comme « cam:<plan> »
-_CAMERA_SHOTS = {"large": "large", "rapproche": "rapproche", "rapproché": "rapproche", "visage": "visage"}
+_CAMERA_SHOTS = {"large": "large", "rapproche": "rapproche", "rapproché": "rapproche", "visage": "visage",
+                 "gauche": "gauche", "droite": "droite", "plongee": "plongee", "plongée": "plongee",
+                 "travelling": "travelling", "tableau": "tableau"}
 _MAX_ACTION_REPEATS = 3
 _PAUSE_TOKEN = "[pause]"   # respiration du récit : silence SSML côté frontend, masquée à l'affichage
 _PAUSE_RE = re.compile(r"\s*\[\s*pause\s*\]\s*", re.IGNORECASE)
@@ -1033,6 +1035,8 @@ def _chat_autonome(frontend_conv_id: str | None, user_message: str, lang: str = 
         "event":           subject or "thématique",
         "turn":            state["tour"],
         "doc_count":       archivist.doc_count(state) if subject != previous_subject else None,
+        # Lettres de la base sur toute la période de l'épisode, quel qu'en soit le sujet
+        "period_count":    archivist.period_count(state) if subject != previous_subject else None,
         "context":         context_text,
         "sources":         _get_sources(served),
         "actions":         anim_actions,

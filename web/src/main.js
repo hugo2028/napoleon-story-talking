@@ -7,6 +7,7 @@ import { BrowserSpeech } from './browserSpeech.js'
 import { PROVIDERS, providerFromUrl } from './providers.js'
 import { Subtitles } from './subtitles.js'
 import { Ambience } from './ambience.js'
+import { findPlaceMentions } from './decorScene.js'
 import './mobileViewport.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -18,6 +19,8 @@ const chatLog      = document.getElementById('chat-log')
 const statusDot    = document.getElementById('status-dot')
 const statusText   = document.getElementById('status-text')
 const contextBubble = document.getElementById('context-bubble')
+// Un clic déplie ou replie les notes (nombre de lettres et contexte de l'épisode)
+contextBubble.addEventListener('click', () => contextBubble.classList.toggle('open'))
 const contextCount  = document.getElementById('context-count')
 const contextText   = document.getElementById('context-text')
 const contextEpisode  = document.getElementById('context-episode')
@@ -28,7 +31,6 @@ const contextLacune   = document.getElementById('context-lacune')
 const newBtn       = document.getElementById('new-conversation-btn')
 const subtitles    = new Subtitles(document.getElementById('subtitles'))
 const recordBtn    = document.getElementById('record-btn')
-const ambienceBtn  = document.getElementById('ambience-btn')
 const settingsBtn      = document.getElementById('settings-btn')
 const settingsDialog   = document.getElementById('settings-dialog')
 const settingsForm     = document.getElementById('settings-form')
@@ -64,8 +66,59 @@ let avatar   = null
 if (import.meta.env.DEV) window.__napoleon = { get avatar() { return avatar } }
 let synth    = null
 let speaking = false
+let placeMentions = []   // lieux de la carte nommés dans la réponse en cours, par mot (findPlaceMentions)
+let quoteSpans = []      // citations « … » de la réponse en cours, par mot : la musique ne joue que pendant elles
+
+/** Citations de la réponse : [{ start, end }] en index de mots (sous-titres), du « ouvrant au » fermant. */
+function findQuoteSpans(text) {
+  const spans = []
+  let start = null
+  text.split(/\s+/).filter(Boolean).forEach((w, i) => {
+    if (start === null && /[«“]/.test(w)) start = i
+    if (start !== null && /[»”]/.test(w)) { spans.push({ start, end: i }); start = null }
+  })
+  return spans
+}
 // Plans du narrateur ([cam:…]) → modes de caméra de l'avatar (avatar.js, _setCameraTargets)
-const CAMERA_SHOTS = { large: 'default', rapproche: 'closeup', visage: 'face' }
+const CAMERA_SHOTS = {
+  large: 'default', rapproche: 'closeup', visage: 'face',
+  gauche: 'left', droite: 'right', plongee: 'high', travelling: 'travelling', tableau: 'board',
+}
+
+// Œuvre du tableau mural en grand, avec son cartel et son crédit
+const paintingOverlay = document.getElementById('painting-overlay')
+function showPaintingLarge(info) {
+  if (!info?.url) return
+  document.getElementById('painting-image').src = info.url
+  document.getElementById('painting-image').alt = info.titre || ''
+  const caption = document.getElementById('painting-caption')
+  caption.replaceChildren()
+  const title = document.createElement('strong')
+  title.textContent = info.titre || ''
+  const credit = document.createElement('small')
+  credit.textContent = [info.peintre, info.date].filter(Boolean).join(', ') + ' — Wikimedia Commons, domaine public'
+  caption.append(title, credit)
+  paintingOverlay.hidden = false
+}
+paintingOverlay.addEventListener('click', () => { paintingOverlay.hidden = true })
+
+// Objet regardé de près : bouton pour revenir au récit ; au survol, le nom de l'objet près du curseur
+const inspectBack = document.getElementById('inspect-back')
+inspectBack.addEventListener('click', () => avatar?.endInspect?.())
+const poiLabel = document.getElementById('poi-label')
+function showPoiLabel(poi, e) {
+  if (!poi || !e) { poiLabel.hidden = true; return }
+  const panel = poiLabel.parentElement.getBoundingClientRect()
+  poiLabel.textContent = poi.label
+  poiLabel.style.left = `${e.clientX - panel.left + 14}px`
+  poiLabel.style.top = `${e.clientY - panel.top + 16}px`
+  poiLabel.hidden = false
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return
+  if (!paintingOverlay.hidden) paintingOverlay.hidden = true
+  else avatar?.endInspect?.()
+})
 let pending  = false
 let ready    = false
 let conversationActive = false
@@ -99,9 +152,17 @@ async function init() {
   }
 
   updateNightfall()
+  applyLighting()
   restoreScene()
   if (avatar) avatar.onLightning = () => ambience.thunder()
-  if (import.meta.env.DEV) window.__avatar = avatar   // essais dans la console (développement seulement)
+  if (avatar) avatar.onPaintingClick = showPaintingLarge
+  if (avatar) avatar.onInspectChange = (on) => {
+    inspectBack.hidden = !on
+    poiLabel.hidden = true
+    document.getElementById('avatar-panel').classList.toggle('inspecting', on)
+  }
+  if (avatar) avatar.onPoiHover = showPoiLabel
+  if (import.meta.env.DEV) { window.__avatar = avatar; window.__ambience = ambience }   // essais dans la console (développement seulement)
   const status = await refreshConfigStatus()
   await initSpeech()
   ready = true
@@ -136,9 +197,15 @@ async function initSpeech() {
     if (anim?.startsWith('cam:')) avatar?.setCameraMode?.(CAMERA_SHOTS[anim.slice(4)] || 'default')
     else avatar?.switchAnimation(anim)
   }
-  synth.onWord   = (i) => subtitles.reach(i)
+  synth.onWord   = (i) => {
+    subtitles.reach(i)
+    // La carte suit la voix : chaque lieu nommé s'éclaire au moment où il est prononcé
+    while (placeMentions.length && placeMentions[0].index <= i) avatar?.focusPlace?.(placeMentions.shift().name)
+    // Musique pendant les citations seulement, et un instant après (quelques mots)
+    ambience.setMusicActive(quoteSpans.some((s) => i >= s.start && i <= s.end + 4))
+  }
   synth.onStart  = () => { speaking = true;  avatar?.startTalking(); ambience.setSpeaking(true); updateControls() }
-  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); ambience.setSpeaking(false); subtitles.finish(); setReady() }
+  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); ambience.setSpeaking(false); ambience.setMusicActive(false); subtitles.finish(); setReady() }
   return true
 }
 
@@ -410,41 +477,32 @@ newBtn.addEventListener('click', () => {
 
 // ── Ambiance : son de Longwood et soir qui tombe ─────────────────────────────
 const ambience = new Ambience()
-const AMBIENCE_KEY = 'napoleon.ambience'
 const NIGHT_AFTER_ANSWERS = 10   // la nuit est tombée après une dizaine de réponses
 
-function ambienceWanted() {
-  try { return localStorage.getItem(AMBIENCE_KEY) !== 'off' } catch { return true }
+// Jeu de lumière choisi par l'archiviste à chaque tour (scène « lumiere »)
+const LIGHTING_FROM_SCENE = { normale: 'normal', penombre: 'penombre', projecteur: 'projecteur' }
+let agentLighting = 'normal'
+function applyLighting() {
+  avatar?.setLightingStyle?.(agentLighting)
 }
-
-function renderAmbienceButton() {
-  const on = ambienceWanted()
-  ambienceBtn.textContent = t(on ? 'ambienceOn' : 'ambienceOff')
-  ambienceBtn.setAttribute('aria-pressed', String(on))
-  ambienceBtn.classList.toggle('muted', !on)
-}
-
-ambienceBtn.addEventListener('click', () => {
-  const on = !ambienceWanted()
-  try { localStorage.setItem(AMBIENCE_KEY, on ? 'on' : 'off') } catch {}
-  if (on) ambience.start()
-  else ambience.stop()
-  renderAmbienceButton()
-})
 
 // Le navigateur n'autorise le son qu'après un geste de l'utilisateur : premier clic ou première touche.
 function unlockAmbience() {
-  if (ambienceWanted() && !ambience.enabled) ambience.start()
+  if (!ambience.enabled) ambience.start()
 }
 document.addEventListener('pointerdown', unlockAmbience, { capture: true })
 document.addEventListener('keydown', unlockAmbience, { capture: true })
-renderAmbienceButton()
 
 /** Mise en scène de l'archiviste : temps derrière la fenêtre (image et son), région éclairée sur la carte. */
 function applyScene(scene) {
   if (!scene) return
   avatar?.applyScene?.(scene)
   if (scene.meteo) ambience.setWeather(scene.meteo)
+  if (scene.musique) ambience.setMusic(scene.musique)
+  if (scene.reset) ambience.setMusic(null)
+  if (scene.reset) agentLighting = 'normal'
+  if (LIGHTING_FROM_SCENE[scene.lumiere]) agentLighting = LIGHTING_FROM_SCENE[scene.lumiere]
+  if (scene.reset || scene.lumiere) applyLighting()
 }
 
 /** Reprise d'une conversation enregistrée : la dernière mise en scène connue de chaque élément. */
@@ -454,6 +512,8 @@ function restoreScene() {
     if (m.role !== 'assistant' || !m.scene) continue
     if (m.scene.meteo) scene.meteo = m.scene.meteo
     if (m.scene.carte) scene.carte = m.scene.carte
+    if (m.scene.lumiere) scene.lumiere = m.scene.lumiere
+    if (m.scene.tableau) scene.tableau = m.scene.tableau
   }
   const last = [...history].reverse().find((m) => m.role === 'assistant')
   if (last?.sources) scene.lettres = last.sources
@@ -540,6 +600,7 @@ async function respond(userText, showUser = true) {
 
   let speech = ''
   let apiDocCount = null
+  let apiPeriodCount = null
   let apiContext  = null
   let apiSources  = null
   let apiActions  = []
@@ -555,6 +616,7 @@ async function respond(userText, showUser = true) {
     if (!res.ok) throw new Error(data.error || 'Erreur LLM')
     speech      = data.speech || ''
     apiDocCount = data.doc_count ?? null
+    apiPeriodCount = data.period_count ?? null
     apiContext  = data.context ?? null
     apiSources  = data.sources ?? null
     apiActions  = data.actions ?? []
@@ -578,11 +640,11 @@ async function respond(userText, showUser = true) {
   if (apiAnnotation) {
     const episodeChanged = apiAnnotation.episode !== currentEpisode
     currentEpisode = apiAnnotation.episode
-    if (episodeChanged) updateContextBubble(apiDocCount, apiContext, true)
-    else if (apiDocCount != null || apiContext) updateContextBubble(apiDocCount, apiContext)
+    if (episodeChanged) updateContextBubble(apiDocCount, apiContext, true, apiPeriodCount)
+    else if (apiDocCount != null || apiContext) updateContextBubble(apiDocCount, apiContext, false, apiPeriodCount)
     updateAnnotation(apiAnnotation)
   } else if (apiDocCount != null || apiContext) {
-    updateContextBubble(apiDocCount, apiContext)
+    updateContextBubble(apiDocCount, apiContext, false, apiPeriodCount)
   }
   pending = false
   updateControls()
@@ -590,6 +652,10 @@ async function respond(userText, showUser = true) {
   if (synth && speech) {
     setStatus(t('speaking'), false)
     subtitles.show(stripPauses(speech))
+    avatar?.focusPlace?.(null)
+    avatar?.endInspect?.()          // nouvelle réponse : la caméra reprend le récit
+    placeMentions = findPlaceMentions(stripPauses(speech))
+    quoteSpans = findQuoteSpans(stripPauses(speech))
     try {
       await synth.speak(speech, apiActions)
     } catch (err) {
@@ -669,10 +735,20 @@ function addBubble(text, role, sources = null) {
 let currentEpisode = null
 
 /** Compteur de lettres + contexte historique de l'épisode. `replace` efface l'ancien épisode. */
-function updateContextBubble(docCount, text, replace = false) {
+/**
+ * Notes de l'épisode. `docCount` : lettres retenues pour le récit ; `period` : toutes les lettres de la base
+ * écrites pendant la période de l'épisode ({ total, debut, fin }), quel qu'en soit le sujet.
+ */
+function updateContextBubble(docCount, text, replace = false, period = null) {
   if (!replace && docCount == null && !text) return
   if (replace || docCount != null) {
-    contextCount.textContent = docCount != null ? `${t('letters', docCount)} · ${t('source')}` : ''
+    const parts = []
+    if (docCount != null) parts.push(t('lettersChosen', docCount))
+    if (period?.total) {
+      parts.push(t('lettersWritten', period.total)
+        .replace('{from}', formatDate(period.debut)).replace('{to}', formatDate(period.fin)))
+    }
+    contextCount.textContent = parts.join(' · ')
   }
   if (replace || text) contextText.textContent = text || ''
   refreshNotesVisibility()

@@ -1,7 +1,4 @@
 {
-  "subtitle": "Împăratul francezilor · 1769 – 1821",
-  "chatTitle": "Dialog imperial",
-  "chatIntro": "Întrebați-l pe Împărat despre viața sa, campaniile și imperiul său.",
   "start": "Începeți",
   "end": "Finalizați",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Funcția de vorbire indisponibilă: ",
   "ttsError": "Eroare la vorbire: ",
   "initializing": "Se inițializează…",
-  "started": "Conversația a început. Adresați-i Împăratului prima dumneavoastră întrebare.",
   "ended": "Conversația s-a încheiat. Începeți o conversație nouă pentru a relua.",
   "endedStatus": "Conversație încheiată",
   "endedHistory": "Conversația s-a încheiat. Istoricul rămâne vizibil până la următorul reset.",
@@ -20,9 +16,7 @@
   "readyIdle": "Gata — începeți o conversație",
   "askQuestion": "Adresați întrebarea dumneavoastră…",
   "thinking": "Napoleon se gândește…",
-  "speaking": "Împăratul vorbește…",
   "commsDown": "Comunicarea este întreruptă.",
-  "placeholderActive": "Adresați Împăratului întrebarea dumneavoastră…",
   "placeholderIdle": "Începeți o conversație pentru a scrie…",
   "letters": {
     "zero": "{n} scrisori",
@@ -93,6 +87,18 @@
   "stop": "■ Opriți",
   "welcome": "Împăratul vă așteaptă. Îi puteți adresa o întrebare despre viața sa, campaniile sau domnia sa, sau pur și simplu să-i spuneți bună ziua: va începe să vă povestească. 📜 de sub răspunsurile sale indică scrisorile din care provin cuvintele sale.",
   "archiveGap": "Nu s-au păstrat scrisori din {from} până în {to}",
-  "ambienceOn": "♪ Ambianță",
-  "ambienceOff": "♪ Ambianță oprită"
+  "lettersChosen": {
+    "one": "{n} scrisoare aleasă pentru această poveste",
+    "other": "{n} scrisori alese pentru această poveste"
+  },
+  "lettersWritten": {
+    "one": "{n} scrisă între {from} și {to}",
+    "other": "{n} scrise între {from} și {to}"
+  },
+  "subtitle": "Longwood, Sainte-Helena · primăvara 1821",
+  "chatTitle": "Conversație la Longwood",
+  "chatIntro": "Întrebați-l pe Napoléon despre viața sa, campaniile și exilul său.",
+  "started": "Conversația a început. Puneți prima dumneavoastră întrebare lui Napoléon.",
+  "speaking": "Napoléon vorbește…",
+  "placeholderActive": "Puneți întrebarea dumneavoastră pentru Napoléon…"
 }

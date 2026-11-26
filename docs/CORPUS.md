@@ -285,14 +285,26 @@ l'avance.
 ### Ce que Napoléon sait sans ses lettres
 
 Napoléon parle depuis Sainte-Hélène, au printemps 1821. Ses lettres ne disent pas tout de sa vie : elles ne
-racontent pas sa naissance, par exemple. La fiche `napoleon-corpus/metadata/napoleon_fiche.md` rassemble une
-cinquantaine de faits qu'il connaît forcément à cette date. On y trouve sa famille, sa jeunesse, ses mariages,
-son fils, les grandes dates de sa vie, l'exil et ses compagnons, et aussi les limites de ce qu'il sait.
+racontent pas sa naissance, par exemple. La fiche `napoleon-corpus/metadata/napoleon_fiche.md` rassemble environ
+120 faits qu'il connaît forcément à cette date, en douze rubriques : sa famille, sa jeunesse, Toulon, ses mariages
+et ses enfants, chaque grande période (Italie, Égypte, Consulat, Empire, chute), ses proches et ses maréchaux,
+l'exil, et les limites de ce qu'il sait. Les opuscules du corpus sur sa jeunesse, écrits par des éditeurs après
+1821, n'y entrent que pour les faits de sa vie, jamais pour leurs commentaires. L'outil la parcourt par rubrique
+ou par mots.
 
 Cette fiche n'est pas envoyée à chaque question. L'archiviste la consulte avec l'outil `fiche_personnelle`
 seulement quand la question l'exige, puis transmet au narrateur les faits retenus par leur identifiant.
 Un identifiant inconnu est refusé, donc rien ne peut être ajouté en route. Les lettres restent la source
 principale : la fiche les complète, elle ne les remplace pas.
+
+L'archiviste cherche dans cet ordre, et Napoléon dit d'où vient ce qu'il raconte :
+
+1. ses lettres : il raconte ;
+2. sinon ses Œuvres : « Je n'ai pas trouvé de lettre sur ce sujet, mais dans mes écrits je reviens sur ce passage… » ;
+3. sinon sa fiche : « Je n'en ai pas de trace écrite sous la main, mais je m'en souviens… » ;
+4. sinon : « Je ne trouve aucune trace écrite de ce passage ; en revanche, je peux vous parler de… ».
+
+Rien d'autre ne passe : l'archiviste ne transmet aucun fait tiré de sa propre connaissance.
 
 Deux règles évitent les anachronismes. Napoléon ignore tout ce qui suit le printemps 1821, sa propre mort
 comprise. Si on lui parle de la tour Eiffel ou d'un avion, il ne sait pas de quoi il s'agit. Une question à

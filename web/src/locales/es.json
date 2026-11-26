@@ -1,7 +1,4 @@
 {
-  "subtitle": "Emperador de los franceses · 1769 – 1821",
-  "chatTitle": "Diálogo imperial",
-  "chatIntro": "Pregunte al Emperador por su vida, sus campañas y su imperio.",
   "start": "Empezar",
   "end": "Terminar",
   "reset": "Reiniciar",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Voz no disponible: ",
   "ttsError": "Error de voz: ",
   "initializing": "Iniciando…",
-  "started": "Conversación iniciada. Haga su primera pregunta al Emperador.",
   "ended": "Conversación terminada. Empiece una nueva conversación para volver a empezar.",
   "endedStatus": "Conversación terminada",
   "endedHistory": "Conversación terminada. El historial sigue visible hasta el próximo reinicio.",
@@ -20,9 +16,7 @@
   "readyIdle": "Listo — empiece una conversación",
   "askQuestion": "Haga su pregunta…",
   "thinking": "Napoleón reflexiona…",
-  "speaking": "El Emperador habla…",
   "commsDown": "Las comunicaciones están interrumpidas.",
-  "placeholderActive": "Haga su pregunta al Emperador…",
   "placeholderIdle": "Empiece una conversación para escribir…",
   "letters": {
     "one": "{n} carta",
@@ -87,6 +81,18 @@
   "stop": "■ Detener",
   "welcome": "Napoleón le espera. Puede preguntarle sobre su vida, sus campañas o su reinado, o simplemente saludarle: él comenzará el relato. El 📜 bajo sus respuestas indica las cartas de donde provienen sus palabras.",
   "archiveGap": "No se conservan cartas del {from} al {to}",
-  "ambienceOn": "♪ Ambiente",
-  "ambienceOff": "♪ Ambiente desactivado"
+  "lettersChosen": {
+    "one": "{n} carta seleccionada para este relato",
+    "other": "{n} cartas seleccionadas para este relato"
+  },
+  "lettersWritten": {
+    "one": "{n} escrita del {from} al {to}",
+    "other": "{n} escritas del {from} al {to}"
+  },
+  "subtitle": "Longwood, Santa Elena · primavera de 1821",
+  "chatTitle": "Conversación en Longwood",
+  "chatIntro": "Pregúntele a Napoleón sobre su vida, sus campañas y su exilio.",
+  "started": "Conversación iniciada. Haga su primera pregunta a Napoleón.",
+  "speaking": "Napoleón está hablando…",
+  "placeholderActive": "Haga su pregunta a Napoleón…"
 }

@@ -8,6 +8,12 @@
 
 const MASTER = 0.55          // volume général
 const DUCKED = 0.35          // part du volume conservée pendant que Napoléon parle
+const MUSIC = 0.3            // volume de la musique, sous l'ambiance
+const MUSIC_DUCKED = 0.55    // part du volume de la musique conservée pendant que Napoléon parle
+
+// Extraits musicaux choisis par l'archiviste (scène « musique ») : scripts/build_music.py, crédits dans docs/SCENE.md
+const MUSIC_URLS = Object.fromEntries(['solennelle', 'melancolique', 'tendre', 'triomphale', 'marseillaise']
+  .map((name) => [name, new URL(`../music/${name}.mp3`, import.meta.url).href]))
 
 function noiseBuffer(ctx, seconds = 4, color = 'brown') {
   const len = Math.floor(ctx.sampleRate * seconds)
@@ -32,6 +38,46 @@ export class Ambience {
     this.enabled = false
     this.speaking = false
     this._timers = []
+    this.musicName = null      // morceau joué
+    this.musicWanted = null    // morceau demandé (gardé jusqu'au premier geste de l'utilisateur)
+    this.musicTrack = null
+    this.musicActive = false   // la musique ne se fait entendre que pendant les citations (setMusicActive)
+  }
+
+  /** Une citation commence (true) ou s'achève (false) : la musique choisie monte, puis s'efface. */
+  setMusicActive(on) {
+    if (on === this.musicActive) return
+    this.musicActive = on
+    if (this.ctx) this._applyVolume(on ? 1.2 : 2.5)
+  }
+
+  /** Musique de fond choisie par l'archiviste : fondu enchaîné vers ce morceau (en boucle), ou silence. */
+  setMusic(name) {
+    this.musicWanted = MUSIC_URLS[name] ? name : null
+    if (this.ctx && this.enabled) this._playMusic(this.musicWanted)
+  }
+
+  _playMusic(name) {
+    if (name === this.musicName) return
+    this.musicName = name
+    const now = this.ctx.currentTime
+    const old = this.musicTrack
+    if (old) {                                            // le morceau précédent s'efface en quelques secondes
+      old.gain.gain.cancelScheduledValues(now)
+      old.gain.gain.setTargetAtTime(0, now, 1.2)
+      setTimeout(() => { old.el.pause(); old.src.disconnect() }, 7000)
+    }
+    this.musicTrack = null
+    if (!name) return
+    const el = new Audio(MUSIC_URLS[name])
+    el.loop = true
+    const src = this.ctx.createMediaElementSource(el)
+    const gain = this.ctx.createGain()
+    gain.gain.value = 0
+    src.connect(gain).connect(this.musicBus)
+    el.play().catch(() => {})
+    gain.gain.setTargetAtTime(1, now, 1.5)
+    this.musicTrack = { el, src, gain }
   }
 
   /** Démarre (ou reprend) le son. À appeler depuis un geste de l'utilisateur. */
@@ -40,6 +86,7 @@ export class Ambience {
     if (!this.ctx) this._build()
     if (this.ctx.state === 'suspended') await this.ctx.resume()
     this._applyVolume(0.8)
+    this._playMusic(this.musicWanted)
   }
 
   stop() {
@@ -82,6 +129,10 @@ export class Ambience {
     this.master.gain.cancelScheduledValues(now)
     this.master.gain.setValueAtTime(this.master.gain.value, now)
     this.master.gain.linearRampToValueAtTime(target, now + seconds)
+    const music = this.enabled && this.musicActive ? MUSIC * (this.speaking ? MUSIC_DUCKED : 1) : 0
+    this.musicBus.gain.cancelScheduledValues(now)
+    this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, now)
+    this.musicBus.gain.linearRampToValueAtTime(music, now + seconds)
   }
 
   _build() {
@@ -90,6 +141,9 @@ export class Ambience {
     this.master = ctx.createGain()
     this.master.gain.value = 0
     this.master.connect(ctx.destination)
+    this.musicBus = ctx.createGain()                       // musique : volume et effacement à part
+    this.musicBus.gain.value = 0
+    this.musicBus.connect(ctx.destination)
     const brown = noiseBuffer(ctx, 6, 'brown')
     const white = noiseBuffer(ctx, 2, 'white')
     this.brown = brown

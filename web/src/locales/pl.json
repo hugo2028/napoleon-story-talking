@@ -1,7 +1,4 @@
 {
-  "subtitle": "Cesarz Francuzów · 1769 – 1821",
-  "chatTitle": "Dialog cesarski",
-  "chatIntro": "Proszę zapytać Cesarza o jego życie, kampanie i imperium.",
   "start": "Rozpocznij",
   "end": "Zakończ",
   "reset": "Resetuj",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Mowa niedostępna: ",
   "ttsError": "Błąd mowy: ",
   "initializing": "Inicjalizacja…",
-  "started": "Rozpoczęto rozmowę. Proszę zadać Cesarzowi pierwsze pytanie.",
   "ended": "Rozmowa zakończona. Proszę rozpocząć nową, aby zacząć od początku.",
   "endedStatus": "Rozmowa zakończona",
   "endedHistory": "Rozmowa zakończona. Historia pozostaje widoczna do następnego resetu.",
@@ -20,9 +16,7 @@
   "readyIdle": "Gotowe — proszę rozpocząć rozmowę",
   "askQuestion": "Proszę zadać pytanie…",
   "thinking": "Napoleon się zastanawia…",
-  "speaking": "Cesarz mówi…",
   "commsDown": "Łączność została przerwana.",
-  "placeholderActive": "Proszę zadać pytanie Cesarzowi…",
   "placeholderIdle": "Proszę rozpocząć rozmowę, aby pisać…",
   "letters": {
     "one": "{n} list",
@@ -90,7 +84,23 @@
   "confirmNew": "Wyczyścić wszystko? Proszę kliknąć ponownie",
   "stop": "■ Stop",
   "welcome": "Napoleon czeka na Państwa. Proszę zapytać go o jego życie, kampanie lub panowanie, albo po prostu przywitać się: rozpocznie wtedy opowieść. 📜 pod jego odpowiedziami wskazuje listy, z których pochodzą jego słowa.",
-  "ambienceOn": "♪ Atmosfera",
-  "ambienceOff": "♪ Atmosfera wyłączona",
-  "archiveGap": "Brak zachowanych listów od {from} do {to}"
+  "archiveGap": "Brak zachowanych listów od {from} do {to}",
+  "lettersChosen": {
+    "one": "Wybrano {n} list do tej opowieści",
+    "few": "Wybrano {n} listy do tej opowieści",
+    "many": "Wybrano {n} listów do tej opowieści",
+    "other": "Wybrano {n} listów do tej opowieści"
+  },
+  "lettersWritten": {
+    "one": "{n} napisana od {from} do {to}",
+    "few": "{n} napisane od {from} do {to}",
+    "many": "{n} napisanych od {from} do {to}",
+    "other": "{n} napisanych od {from} do {to}"
+  },
+  "subtitle": "Longwood, Wyspa Świętej Heleny · wiosna 1821",
+  "chatTitle": "Rozmowa w Longwood",
+  "chatIntro": "Proszę zapytać Napoleona o jego życie, kampanie i wygnanie.",
+  "started": "Rozmowa rozpoczęta. Proszę zadać Napoleonowi pierwsze pytanie.",
+  "speaking": "Napoleon mówi…",
+  "placeholderActive": "Proszę zadać pytanie Napoleonowi…"
 }

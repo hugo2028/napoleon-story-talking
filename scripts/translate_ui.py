@@ -46,7 +46,7 @@ Règles :
 - garde tels quels les symboles (⚙ ● ■ ↻ ✓ ·), les noms propres (Napoléon, Sainte-Hélène, Gallica,
   OpenAI, Azure Speech, Edge, Ollama), les chemins, fichiers et commandes (.env, web/avatar/avatar.glb,
   python pipeline/napoleon_api.py, sk-…, README) et le marqueur {{n}} ;
-- « l'Empereur » désigne Napoléon : traduis-le par le titre impérial usuel dans cette langue ;
+- à Sainte-Hélène, Napoléon n'est plus empereur : ne lui donne jamais ce titre ;
 - les valeurs qui sont des objets sont des pluriels : donne toutes les catégories de pluriel CLDR utiles
   en {name} parmi zero, one, two, few, many, other (toujours « other ») ; {{n}} est obligatoire dans
   few, many et other, facultatif dans zero, one et two si la langue nomme ces quantités sans chiffre ;

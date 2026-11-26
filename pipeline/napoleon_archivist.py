@@ -20,12 +20,20 @@ import json
 import os
 import re
 import time
+from pathlib import Path
 from collections import Counter
 from difflib import SequenceMatcher
 
 import numpy as np
 
+import unicodedata
+
 from napoleon_agent import NAPOLEON_FICHE, cosine_sim, embed_question, fetch_chunks
+
+
+def _sans_accents(texte: str) -> str:
+    texte = unicodedata.normalize("NFKD", (texte or "").lower())
+    return "".join(c for c in texte if not unicodedata.combining(c))
 from llm_connector import parse_json_object
 
 AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1")
@@ -191,6 +199,12 @@ avec deux variantes pour les moments où deux lettres racontent le même passage
 des lettres éloignées de plus de 3 jours forment des moments successifs, jamais des variantes). \
 Un plan d'un seul moment n'est acceptable que si les lettres manquent vraiment.
    - Commence le récit au début de l'épisode, sauf si le visiteur demande un moment précis.
+   - Une question sur une période large (« pendant la Révolution », « votre jeunesse », « sous le Consulat ») porte
+sur toute la période, pas sur son épisode le plus riche en lettres. Vérifie d'abord avec chronologie et
+explorer_periode où commencent les lettres : la Correspondance ne commence qu'au siège de Toulon (septembre 1793).
+Pour ce qui précède, réponds d'abord par un survol tiré de la fiche (repondre_librement avec « faits »), puis
+propose d'entrer dans l'épisode où les lettres commencent.
+   - Une demande de récit (« parle-moi de… », « raconte… », « et le sacre ? ») appelle l'enquête, le plan et servir_tour DÈS CE TOUR. Ne réponds jamais par repondre_librement en annonçant un épisode que tu n'as pas préparé, et ne fais pas choisir au visiteur entre des moments sans lettres pour les raconter.
    - Contrôle la cohérence de chaque lettre avant de la retenir : une lettre qui évoque \
 « l'anniversaire » d'une bataille ne peut pas dater du jour de cette bataille ; une lettre qui \
 mentionne des faits postérieurs à sa date est mal datée → écarte-la.
@@ -232,10 +246,21 @@ en y intégrant la lettre amorce.
 
 8. Napoléon parle depuis Sainte-Hélène, au printemps 1821 : il ne sait rien de ce qui vient après \
 (sa mort, la suite de l'histoire, les inventions, les pays et les personnes d'après). \
+   - Pour toute question sur sa vie, cherche dans cet ordre et dis au narrateur, dans la consigne, d'où vient \
+ce qu'il raconte :
+     1. les lettres (rechercher, rechercher_mots) : le récit ou la réponse s'appuie sur elles ;
+     2. sinon ses Œuvres (memoires) : repondre_librement avec « memoires » ; Napoléon dit qu'il n'a pas trouvé \
+de lettre sur ce sujet, mais qu'il revient sur ce passage dans ses écrits ;
+     3. sinon sa fiche (fiche_personnelle, par mots ou par rubrique) : repondre_librement avec « faits » ; il dit \
+qu'il n'en a pas de trace écrite sous la main, mais qu'il s'en souvient ;
+     4. sinon : il dit qu'il ne trouve aucune trace écrite de ce passage et propose un sujet voisin dont tu as \
+vérifié les lettres. Il ne raconte rien « de mémoire » au-delà de ce que tu lui transmets.
+   - La consigne ne contient aucun fait que tes sources ne donnent pas : ni nom, ni date, ni lieu tirés de ta \
+propre connaissance. Ce que tu sais par toi-même mais n'as trouvé nulle part n'existe pas pour Napoléon.
    - Une question sur un fait de sa propre vie que les lettres ne couvrent pas (sa naissance, ses parents, \
 ses frères et sœurs, ses études, ses mariages, son fils, son exil et ses compagnons) : consulte \
 fiche_personnelle, puis repondre_librement avec dans « faits » les identifiants des faits qui répondent. \
-Les lettres restent la source à privilégier quand elles existent : la fiche complète, elle ne remplace pas.
+Les lettres restent la source à privilégier : pour un événement de sa vie publique (le sacre, un traité, une bataille…), cherche D'ABORD les lettres qui en parlent (rechercher, rechercher_mots) et sers-les avec les faits ; la fiche complète, elle ne remplace pas.
    - Une question sur ce qui est postérieur à 1821 ou étranger à son temps : repondre_librement, sans lettre \
 ni fait, avec pour consigne que Napoléon ne sait pas de quoi parle le visiteur et le dit en homme de son temps, \
 sans faire semblant de savoir, puis ramène la conversation vers sa vie.
@@ -248,6 +273,25 @@ Ne demande jamais au narrateur de répondre de mémoire.
 ou un désastre, pluie pour un deuil, clair pour un récit serein). Change-le quand le ton change, pas à chaque tour.
    - carte : la région de l'épisode raconté, qui s'éclaire sur la carte murale ; à renseigner dès qu'un récit
 se situe quelque part (italie, egypte, autriche, russie, espagne, belgique…).
+   - lumiere : l'éclairage de la pièce. normale pour la conversation et les récits ; penombre (la pièce baisse, la
+lueur du feu sur lui) pour une confidence, un regret, un deuil, la captivité ; projecteur (pièce dans le noir, une
+seule lumière sur lui) très rarement, pour un moment solennel : une proclamation, un testament, un adieu. Reviens
+à normale quand le ton redevient ordinaire.
+   - musique : un fond musical accordé au récit (solennelle, melancolique, tendre, triomphale, marseillaise), ou
+aucune pour une simple conversation. Choisis-la au début d'un épisode et change-la quand le ton change vraiment, pas
+à chaque tour ; aucune musique vaut mieux qu'une musique à contresens. La musique est un accent, pas un fond
+permanent : elle ne se fait entendre que pendant les citations (ses propres mots entre « »), et la plupart des tours
+n'en ont pas. « marseillaise » est un chant précis, pas une musique de bataille :
+réserve-la, très rarement, à un moment où ce chant a sa place (les armées de la République, une proclamation
+républicaine, le départ pour l'Italie en 1796) ; jamais pour une campagne de l'Empire. Pas de musique pour un salut, l'accueil du
+visiteur ou une lettre tirée au hasard pour ouvrir la conversation : elle ne commence qu'avec un récit.
+   - tableau : une œuvre de ton catalogue (cherche-la avec l'outil tableaux) épinglée au tableau mural, seulement quand elle montre vraiment le
+moment raconté (le sacre, Arcole, Jaffa, Austerlitz…) ; « aucun » pour l'enlever quand le récit passe à autre chose.
+Le tableau sert au visiteur, pas à Napoléon : beaucoup d'œuvres ont été peintes après 1821 et il ne peut pas les
+connaître. Ne demande jamais au narrateur d'en parler ; son cartel donne sa date.
+Dès que le sujet change (nouvel épisode, ou réponse libre sur autre chose), renseigne-le toujours, avec
+servir_tour comme avec repondre_librement : l'œuvre du nouveau sujet, ou « aucun » — jamais l'œuvre d'un autre
+sujet laissée en place.
 
 Les lettres :
 - Chaque identifiant désigne une LETTRE entière, même si elle est longue (« passages » : nombre de morceaux \
@@ -271,6 +315,15 @@ Règles :
 
 # Mise en scène choisie par l'archiviste à chaque tour (affichée par l'interface, jamais racontée)
 METEOS = ["clair", "brume", "pluie", "orage"]
+LUMIERES = ["normale", "penombre", "projecteur"]
+MUSIQUES = ["aucune", "solennelle", "melancolique", "tendre", "triomphale", "marseillaise"]
+# Œuvres que l'archiviste peut épingler au tableau mural (napoleon-corpus/metadata/tableaux.json,
+# images dans web/decor/tableaux/) : toutes peintes de son vivant.
+_TABLEAUX_FILE = Path(__file__).resolve().parent.parent / "napoleon-corpus" / "metadata" / "tableaux.json"
+try:
+    TABLEAUX = {t["id"]: t for t in json.loads(_TABLEAUX_FILE.read_text(encoding="utf-8"))}
+except (OSError, json.JSONDecodeError):
+    TABLEAUX = {}
 CARTES = ["corse", "france", "italie", "egypte", "espagne", "autriche", "prusse", "pologne", "allemagne", "russie", "belgique", "angleterre", "elbe", "sainte_helene"]
 _SCENE = {
     "meteo": {"type": "string", "enum": METEOS,
@@ -281,6 +334,21 @@ _SCENE = {
                "description": "Région à éclairer sur la carte murale : le lieu de l'épisode raconté (ex. italie pour "
                               "1796, autriche pour Austerlitz, russie pour 1812, belgique pour Waterloo). "
                               "Facultatif : sans valeur, la carte reste comme elle est."},
+    "lumiere": {"type": "string", "enum": LUMIERES,
+                "description": "Éclairage de la pièce, accordé au ton : normale (conversation, récit), penombre "
+                               "(confidence, regret, deuil, captivité), projecteur (rare : moment solennel, "
+                               "proclamation, adieu). Facultatif : sans valeur, l'éclairage ne change pas."},
+    "musique": {"type": "string", "enum": MUSIQUES,
+                "description": "Musique de fond, jouée doucement sous la voix : aucune (conversation, simple échange), "
+                               "solennelle (sacre, proclamation, grand moment d'État), melancolique (exil, défaite, "
+                               "deuil, regrets), tendre (Joséphine, son fils, la famille), triomphale (victoire, entrée "
+                               "dans une capitale), marseillaise (La Marseillaise elle-même : très rare, seulement quand "
+                               "ce chant a sa place, sous la République). "
+                               "Facultatif : sans valeur, la musique ne change pas."},
+    "tableau": {"type": "string", "enum": ["aucun"] + list(TABLEAUX),
+                "description": "Œuvre à épingler au tableau mural, quand elle montre le moment raconté : un "
+                               "identifiant trouvé avec l'outil tableaux. aucun : l'enlever. Facultatif : sans "
+                               "valeur, l'œuvre affichée ne change pas."},
 }
 
 
@@ -328,12 +396,21 @@ TOOLS = [
         {"requete": {"type": "string"},
          "limite": {"type": "integer", "description": "1-8, défaut 4."}},
         ["requete"]),
+    _fn("tableaux",
+        "Cherche dans le catalogue des œuvres (tableaux, gravures, portraits) que tu peux épingler au tableau mural "
+        "(champ « tableau »). Chaque œuvre : identifiant, titre, peintre, date de l'œuvre, sujet. Beaucoup ont été "
+        "faites après 1821 : elles servent au visiteur, Napoléon ne les connaît pas.",
+        {"mots": {"type": "string", "description": "Mots du sujet : lieu, bataille, personne, événement (ex. « Wagram », "
+                                                   "« Joséphine », « retraite de Russie »)."}},
+        ["mots"]),
     _fn("fiche_personnelle",
-        "Fiche de ce que Napoléon sait de sa propre vie sans ses lettres, au printemps 1821 à Sainte-Hélène : "
-        "naissance, famille, jeunesse, mariages et enfants, grandes dates, l'exil et ses compagnons, et les limites "
-        "de ce qu'il sait. Chaque fait a un identifiant (f1, f2…) à transmettre dans repondre_librement.faits. "
-        "À consulter seulement quand la question porte sur ces sujets ou que les lettres n'y répondent pas.",
-        {"rubrique": {"type": "string", "description": "Optionnel : filtre sur une rubrique (ex. « famille », « exil »)."}}),
+        "Le savoir de Napoléon sur sa propre vie, sans ses lettres, tel qu'il le connaît au printemps 1821 : "
+        "famille, jeunesse, chaque campagne et chaque période, ses proches et ses maréchaux, l'exil, et ce qu'il "
+        "ne sait pas. Chaque fait a un identifiant (f1, f2…) à transmettre dans repondre_librement.faits. "
+        "Sans argument : la liste des rubriques. Avec « rubrique » : les faits d'une rubrique. Avec « mots » : "
+        "les faits qui contiennent ces mots (noms, lieux, années).",
+        {"rubrique": {"type": "string", "description": "Optionnel : une rubrique (ex. « Jeunesse », « Empire », « exil »)."},
+         "mots": {"type": "string", "description": "Optionnel : mots à chercher (ex. « sacre Notre-Dame Pie VII »)."}}),
     _fn("fixer_plan",
         "Fixe ou révise le plan du récit. Remplace tous les chapitres NON racontés par ceux fournis "
         "(les chapitres déjà racontés sont conservés).",
@@ -369,6 +446,8 @@ TOOLS = [
          "faits": {"type": "array", "items": {"type": "string"},
                    "description": "Optionnel : 1 à 6 identifiants de faits de la fiche personnelle (f1, f2…) "
                                   "sur lesquels Napoléon fonde sa réponse."},
+         "memoires": {"type": "array", "items": {"type": "integer"},
+                      "description": "Optionnel : 1 à 2 passages de ses Œuvres (outil memoires) quand aucune lettre ne répond."},
          "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."},
          **_SCENE},
         ["consigne"]),
@@ -624,12 +703,32 @@ class Archivist:
         return [{"id": l["id"], "date": l["date"], "titre": l["titre"], "extrait": l["extrait"],
                  "phrase_citable": l["phrase_citable"]} for l in letters]
 
-    def t_fiche_personnelle(self, state, rubrique=None):
-        faits = NAPOLEON_FICHE
+    def t_tableaux(self, state, mots):
+        cles = [m for m in re.findall(r"\w+", _sans_accents(mots)) if len(m) > 2]
+        scores = []
+        for t in TABLEAUX.values():
+            texte = _sans_accents(f"{t['titre']} {t['sujet']} {t['peintre']}")
+            n = sum(c in texte for c in cles)
+            if n:
+                scores.append((n, t))
+        return [{k: t[k] for k in ("id", "titre", "peintre", "date", "sujet")}
+                for _, t in sorted(scores, key=lambda x: -x[0])[:8]]
+
+    def t_fiche_personnelle(self, state, rubrique=None, mots=None):
+        rubriques = {}
+        for f in NAPOLEON_FICHE:
+            rubriques[f["rubrique"]] = rubriques.get(f["rubrique"], 0) + 1
+        faits = []
         if rubrique:
-            r = rubrique.strip().lower()
-            faits = [f for f in faits if r in f["rubrique"].lower()] or faits
-        return {"rubriques": sorted({f["rubrique"] for f in NAPOLEON_FICHE}),
+            r = _sans_accents(rubrique)
+            faits = [f for f in NAPOLEON_FICHE if r in _sans_accents(f["rubrique"])]
+        if mots:
+            # Faits contenant le plus de mots de la recherche (accents et majuscules ignorés)
+            cles = [m for m in re.findall(r"\w+", _sans_accents(mots)) if len(m) > 2]
+            scores = [(sum(c in _sans_accents(f["texte"]) for c in cles), f) for f in NAPOLEON_FICHE]
+            trouves = [f for s, f in sorted(scores, key=lambda x: -x[0]) if s > 0][:12]
+            faits = faits + [f for f in trouves if f not in faits]
+        return {"rubriques": rubriques,
                 "faits": [{"id": f["id"], "rubrique": f["rubrique"], "texte": f["texte"]} for f in faits]}
 
     def t_memoires(self, state, requete, limite=4):
@@ -879,8 +978,12 @@ class Archivist:
     def _finalize(self, state, name, args) -> dict | None:
         decision = self._finalize_core(state, name, args)
         if decision and "_erreur" not in decision:
-            decision["scene"] = {k: v for k, v in (("meteo", args.get("meteo")), ("carte", args.get("carte")))
-                                 if v in (METEOS if k == "meteo" else CARTES)}
+            allowed = {"meteo": METEOS, "carte": CARTES, "lumiere": LUMIERES, "musique": MUSIQUES,
+                       "tableau": ["aucun"] + list(TABLEAUX)}
+            decision["scene"] = {k: args.get(k) for k in allowed if args.get(k) in allowed[k]}
+            t = TABLEAUX.get(decision["scene"].get("tableau"))
+            if t:   # l'interface affiche l'œuvre avec son cartel
+                decision["scene"]["tableau"] = {k: t[k] for k in ("id", "titre", "peintre", "date")}
         return decision
 
     def _finalize_core(self, state, name, args) -> dict | None:
@@ -910,8 +1013,14 @@ class Archivist:
             faits_inconnus = [i for i in faits_demandes if i not in fiche]
             if faits_inconnus:
                 return {"_erreur": f"faits inconnus {faits_inconnus} : utilise les identifiants de fiche_personnelle."}
+            memoires = [int(i) for i in (args.get("memoires") or []) if str(i).isdigit()][:2]
+            if memoires and self.m_conn is not None:
+                connus = {r[0] for r in self.m_conn.execute(
+                    f"SELECT id FROM chunks WHERE id IN ({','.join('?' * len(memoires))})", memoires)}
+                if [m for m in memoires if m not in connus]:
+                    return {"_erreur": "passages des Œuvres inconnus : utilise les identifiants de l'outil memoires."}
             return {"type": "libre", "consigne": args.get("consigne", ""),
-                    "lettres": demandees,
+                    "lettres": demandees, "memoires": memoires,
                     "faits": [fiche[i] for i in faits_demandes],
                     "citations": self._choisir_citations(
                         state, demandees, "Napoléon répond à son visiteur : " + args.get("consigne", ""))
@@ -997,6 +1106,16 @@ class Archivist:
         state["amorce"] = None   # l'amorce est consommée dès qu'un tour de récit est servi
 
     # ── Prompt de narration ─────────────────────────────────────────────────
+    def _passages_oeuvres(self, ids: list[int]) -> list[str]:
+        if not ids or self.m_conn is None:
+            return []
+        out = []
+        for mid in ids:
+            row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (mid,)).fetchone()
+            if row:
+                out.append(f"[{(row[0] or 'Œuvres')[:60]}]\n{(row[1] or '')[:400]}")
+        return out
+
     def narrator_prompt(self, state: dict, decision: dict, user_message: str,
                         nouvel_episode: bool = False, premiere_reponse: bool = False) -> str:
         parts = []
@@ -1033,6 +1152,11 @@ class Archivist:
                     parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », "
                                  "si elles servent ta réponse. Ne cite rien d'autre entre guillemets :\n"
                                  + "\n".join(f"- « {c['texte']} »" for c in decision["citations"]))
+            mem = self._passages_oeuvres(decision.get("memoires") or [])
+            if mem:
+                parts.append("Passages de tes Œuvres (tes écrits des campagnes et du règne, réunis après coup) : tu "
+                             "peux t'y appuyer en disant que tu reviens sur ce passage dans tes écrits, sans rien y "
+                             "ajouter :\n" + "\n\n".join(mem))
             if decision.get("faits"):
                 parts.append("Faits de ta fiche personnelle — ce que tu sais de ta propre vie sans tes lettres. "
                              "Tu peux t'appuyer dessus, sans rien y ajouter :\n"
@@ -1040,19 +1164,16 @@ class Archivist:
             parts.append(f"Consigne de l'archiviste : {decision['consigne']}")
             if not decision.get("lettres"):
                 parts.append("Aucune autre lettre n'est fournie : n'avance aucun fait historique précis "
-                             "qui ne figure pas ci-dessus. Si rien ci-dessus ne répond à la question, ne la traite "
-                             "pas sur le fond : dis-le en une phrase, en personnage, puis ramène ton visiteur vers "
-                             "ce dont tu as la trace.")
+                             "qui ne figure pas ci-dessus. Dis franchement d'où vient ce que tu racontes, comme "
+                             "l'indique la consigne : pas de lettre sur ce sujet, mais tes écrits ou ta mémoire ; "
+                             "et si rien ci-dessus ne répond, que tu ne trouves pas de trace écrite de ce passage, "
+                             "puis propose ce dont tu peux parler.")
             parts.append(f"Message du visiteur : {user_message}")
             return "\n\n---\n\n".join(parts)
 
         ch = decision["chapitre"]
-        if decision["memoires"] and self.m_conn is not None:
-            mem = []
-            for mid in decision["memoires"]:
-                row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (mid,)).fetchone()
-                if row:
-                    mem.append(f"[{(row[0] or 'Œuvres')[:60]}]\n{(row[1] or '')[:400]}")
+        if decision["memoires"]:
+            mem = self._passages_oeuvres(decision["memoires"])
             if mem:
                 parts.append("Passages de tes Œuvres (écrits des campagnes et du règne, réunis après coup ; ce ne sont pas "
                              "des souvenirs de l'exil) : sers-t'en seulement s'ils éclairent le moment raconté, sans "
@@ -1198,4 +1319,13 @@ class Archivist:
         return [r[0] for r in rows if r[0]]
 
     def doc_count(self, state) -> int:
+        """Lettres retenues dans le plan de l'épisode (celles que Napoléon racontera)."""
         return len({l for c in state["chapitres"] for l in c["lettres"]})
+
+    def period_count(self, state) -> dict | None:
+        """Toutes les lettres de la base datées de la période de l'épisode, quel qu'en soit le sujet."""
+        p = state["plan"]
+        if not p or not p.get("debut") or not p.get("fin"):
+            return None
+        n = self.t_explorer_periode(state, p["debut"], p["fin"])["total_lettres"]
+        return {"total": n, "debut": p["debut"], "fin": p["fin"]}

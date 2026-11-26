@@ -275,14 +275,25 @@ Gallica reader's own search. The page must therefore be known in advance.
 ### What Napoleon knows without his letters
 
 Napoleon speaks from Saint Helena, in the spring of 1821. His letters do not tell his whole life: they do not
-describe his birth, for example. The file `napoleon-corpus/metadata/napoleon_fiche.md` gathers about fifty
-facts he necessarily knows by then. It covers his family, youth, marriages, son, the main dates of his life,
-the exile and his companions, and also the limits of what he knows.
+describe his birth, for example. The file `napoleon-corpus/metadata/napoleon_fiche.md` gathers about 120
+facts he necessarily knows by then, in twelve sections: his family, youth, Toulon, marriages and children, each
+major period (Italy, Egypt, Consulate, Empire, fall), his relatives and marshals, the exile, and the limits of
+what he knows. The corpus booklets on his youth, written by editors after 1821, only contribute facts of his
+life, never their commentary. The tool browses it by section or by keyword.
 
 This file is not sent with every question. The archivist consults it with the `fiche_personnelle` tool only
 when a question calls for it, then passes the chosen facts to the narrator by their identifiers. An unknown
 identifier is rejected, so nothing can be added along the way. The letters remain the main source: the file
 completes them, it does not replace them.
+
+The archivist searches in this order, and Napoleon says where what he tells comes from:
+
+1. his letters: he tells the story;
+2. otherwise his Works: "I found no letter on this subject, but in my writings I come back to it…";
+3. otherwise his file: "I have no written trace of it at hand, but I remember…";
+4. otherwise: "I find no written trace of this; on the other hand, I can tell you about…".
+
+Nothing else gets through: the archivist passes on no fact drawn from its own knowledge.
 
 Two rules prevent anachronisms. Napoleon knows nothing after the spring of 1821, including his own death. If
 someone mentions the Eiffel Tower or an aeroplane, he does not know what it is. A question that neither the

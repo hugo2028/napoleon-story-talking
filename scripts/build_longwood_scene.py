@@ -13,7 +13,8 @@ Le mur du fond est à y=+2.6. Dans three.js (Y en haut) : x reste x, z Blender d
 Usage :
     blender -b --factory-startup -P scripts/build_longwood_scene.py -- --preview   # rendu d'aperçu (PNG)
     blender -b --factory-startup -P scripts/build_longwood_scene.py -- --bake      # bake + export GLB
-Options : --size 2048 (taille de la texture), --samples 256.
+Options : --size 4096 (taille de chacune des deux textures), --samples 192 (mobilier), --shell-samples 128
+(enveloppe de la pièce), --detail 2 (finesse des objets ronds).
 """
 from __future__ import annotations
 
@@ -37,8 +38,11 @@ def _opt(name, default):
     return int(argv[argv.index(name) + 1]) if name in argv else default
 
 
-SIZE = _opt("--size", 2048)
-SAMPLES = _opt("--samples", 256)
+SIZE = _opt("--size", 4096)
+SAMPLES = _opt("--samples", 192)
+DETAIL = _opt("--detail", 2)
+SHELL_SAMPLES = _opt("--shell-samples", 128)   # l'enveloppe (grandes surfaces planes) se débruite bien
+SHELL_MIN_SIZE = 1.8                          # m : au-delà, un élément fait partie de l'enveloppe de la pièce   # multiplie les côtés des cylindres, cônes et sphères
 
 # Dimensions de la pièce (m)
 X0, X1 = -3.1, 3.1       # murs gauche / droit : tout le mur du fond tient dans le cadre de l'app (écran large)
@@ -72,11 +76,12 @@ def box(name, center, size, mat, rot_z=0.0, bevel=0.0):
         bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
         mod = o.modifiers.new("biseau", "BEVEL")
         mod.width = bevel
-        mod.segments = 3
+        mod.segments = 2 + DETAIL
     return o
 
 
 def cyl(name, center, radius, depth, mat, verts=24, rot=(0, 0, 0)):
+    verts = min(96, verts * DETAIL)
     bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=radius, depth=depth, location=center, rotation=rot)
     o = bpy.context.active_object
     o.name = name
@@ -85,6 +90,7 @@ def cyl(name, center, radius, depth, mat, verts=24, rot=(0, 0, 0)):
 
 
 def cone(name, center, r1, r2, depth, mat, verts=24):
+    verts = min(96, verts * DETAIL)
     bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r1, radius2=r2, depth=depth, location=center)
     o = bpy.context.active_object
     o.name = name
@@ -93,7 +99,7 @@ def cone(name, center, r1, r2, depth, mat, verts=24):
 
 
 def sphere(name, center, radius, mat, scale=(1, 1, 1)):
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=center, segments=10, ring_count=6)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, location=center, segments=10 * DETAIL, ring_count=6 * DETAIL)
     o = bpy.context.active_object
     o.name = name
     o.scale = scale
@@ -183,17 +189,20 @@ def plane_coords(nt, axes):
     return comb.outputs["Vector"]
 
 
+WALL_DOTS = 6.0               # motifs du papier peint par mètre (grille régulière)
+
+
 def wallpaper_material(axes):
     """Papier peint jaune pâle semé de petits motifs verts, en quinconce (Voronoï régulier, 2D)."""
     m, nt, bsdf = new_material(f"papier_peint_{axes}")
     bsdf.inputs["Roughness"].default_value = 0.85
     vor = nt.nodes.new("ShaderNodeTexVoronoi")
     vor.voronoi_dimensions = "2D"
-    vor.inputs["Scale"].default_value = 6.0
+    vor.inputs["Scale"].default_value = WALL_DOTS
     vor.inputs["Randomness"].default_value = 0.0
     nt.links.new(plane_coords(nt, axes), vor.inputs["Vector"])
     color = dots_ramp(nt, vor.outputs["Distance"], [
-        (0.0, (0.06, 0.16, 0.12, 1)),     # motif vert
+        (0.0, (0.06, 0.16, 0.12, 1)),     # motif vert (redessiné net par l'app : web/src/avatar.js, WALL_DOTS)
         (0.05, (0.22, 0.30, 0.20, 1)),
         (0.08, (0.52, 0.44, 0.24, 1)),    # fond jaune pâle
         (1.0, (0.52, 0.44, 0.24, 1)),
@@ -286,7 +295,8 @@ def chess_material():
     return m
 
 
-CHESS_SQUARE = 0.0325          # côté d'une case (m) : plateau de 26 cm
+CHESS_SQUARE = 0.042           # côté d'une case (m) : plateau de 34 cm
+CHESS_PIECES = CHESS_SQUARE / 0.0325   # les pièces suivent la taille des cases
 
 
 def chessboard(M, cx, cy, z, angle=0.0):
@@ -311,18 +321,19 @@ def chessboard(M, cx, cy, z, angle=0.0):
              (3, 3, "pion"), (4, 3, "pion"), (5, 1, "pion"), (6, 1, "pion"), (1, 1, "pion")]
     black = [(4, 7, "roi"), (2, 5, "dame"), (7, 7, "tour"), (2, 6, "fou"), (5, 5, "cavalier"),
              (3, 4, "pion"), (4, 5, "pion"), (5, 6, "pion"), (6, 6, "pion"), (0, 6, "pion")]
-    heights = {"roi": 0.055, "dame": 0.05, "tour": 0.032, "fou": 0.04, "cavalier": 0.036, "pion": 0.026}
+    heights = {k: v * CHESS_PIECES for k, v in
+               {"roi": 0.055, "dame": 0.05, "tour": 0.032, "fou": 0.04, "cavalier": 0.036, "pion": 0.026}.items()}
     for side, pieces, mat in (("b", white, M["ivoire"]), ("n", black, M["ebene"])):
         for k, (i, j, kind) in enumerate(pieces):
             h = heights[kind]
             x, y, zz = at(i, j, top)
-            r = 0.0095 if kind != "pion" else 0.008
+            r = (0.0095 if kind != "pion" else 0.008) * CHESS_PIECES
             cyl(f"piece_{side}{k}_socle", (x, y, zz + 0.004), r, 0.008, mat, verts=10)
             cone(f"piece_{side}{k}_corps", (x, y, zz + 0.008 + (h - 0.016) / 2), r * 0.8, r * 0.35, h - 0.016, mat,
                  verts=10)
             sphere(f"piece_{side}{k}_tete", (x, y, zz + h - 0.006), r * (0.75 if kind in ("roi", "dame") else 0.6), mat)
             if kind == "roi":                                  # petite croix
-                box(f"piece_{side}{k}_croix", (x, y, zz + h + 0.004), (0.003, 0.003, 0.01), mat)
+                box(f"piece_{side}{k}_croix", (x, y, zz + h + 0.004), (0.004, 0.004, 0.013), mat)
 
 
 def drape(name, center, width, height, mat, folds=32, depth=0.05, swag=0.0):
@@ -357,8 +368,11 @@ def build():
         "plafond": material("plafond", (0.80, 0.78, 0.72), rough=0.95, noise=0.12, noise_scale=2),
         "marbre_noir": material("marbre_noir", (0.025, 0.024, 0.024), rough=0.15, noise=0.3, noise_scale=5),
         "suie": material("suie", (0.012, 0.01, 0.008), rough=0.9),
-        "braises": material("braises", (0.05, 0.02, 0.01), emission=(1.0, 0.35, 0.08), strength=8.0,
+        "braises": material("braises", (0.05, 0.02, 0.01), emission=(1.0, 0.30, 0.06), strength=2.5,
                             noise=0.6, noise_scale=8),
+        # Bûches : bois noirci, à peine rougeoyant ; la lueur vient du lit de braises dessous
+        "buche": material("buche", (0.07, 0.045, 0.03), rough=0.9, emission=(1.0, 0.28, 0.05), strength=0.35,
+                          noise=0.7, noise_scale=12),
         "velours": material("velours", (0.012, 0.075, 0.035), rough=0.9, noise=0.35, noise_scale=12),
         "acajou": material("acajou", (0.12, 0.045, 0.02), rough=0.3, noise=0.3, noise_scale=14),
         "dore": material("dore", (0.55, 0.38, 0.12), rough=0.3),
@@ -448,8 +462,11 @@ def build():
     box("chem_tablette", (fx + 0.04, FIRE_Y, 1.13), (0.42, 1.65, 0.06), M["marbre_noir"])
     box("chem_foyer", (X0 + 0.05, FIRE_Y, 0.45), (0.1, 1.1, 0.9), M["suie"])
     box("chem_atre", (fx + 0.07, FIRE_Y, 0.02), (0.5, 1.55, 0.04), M["marbre_noir"])
-    for k, (dy, dz) in enumerate(((-0.15, 0.08), (0.12, 0.1), (0.0, 0.16))):
-        cyl(f"buche_{k}", (X0 + 0.3, FIRE_Y + dy, dz), 0.07, 0.6, M["braises"], verts=12, rot=(0, math.pi / 2, 0.3 * k))
+    # Lit de braises au fond de l'âtre, et trois bûches couchées en travers du foyer (parallèles au fond)
+    box("braises_lit", (X0 + 0.2, FIRE_Y, 0.045), (0.26, 0.62, 0.03), M["braises"])
+    for k, (dx, dz, tilt) in enumerate(((-0.05, 0.1, 0.06), (0.06, 0.1, -0.05), (0.0, 0.19, 0.12))):
+        cyl(f"buche_{k}", (X0 + 0.2 + dx, FIRE_Y + 0.02 * (k - 1), dz), 0.05, 0.5, M["buche"], verts=12,
+            rot=(math.pi / 2, 0, tilt))
     box("miroir_cadre", (X0 + 0.03, FIRE_Y, 2.15), (0.05, 1.15, 1.75), M["dore"])
     box("miroir", (X0 + 0.06, FIRE_Y, 2.15), (0.02, 1.0, 1.6), M["miroir"])
     box("pendule", (fx + 0.04, FIRE_Y, 1.3), (0.16, 0.34, 0.28), M["dore"])
@@ -674,16 +691,97 @@ def drop_hidden_faces(obj):
     print(f"FACES cachées supprimées : {len(hidden)}")
 
 
+def split_walls(room, wall_faces):
+    """Sépare les murs tapissés dans un objet « longwood_murs », avec une seconde UV « Detail » : la position sur
+    le mur, en motifs (WALL_DOTS par mètre). Même texture précalculée que le reste de la pièce."""
+    import bmesh
+    walls = room.copy()
+    walls.data = room.data.copy()
+    walls.name = walls.data.name = "longwood_murs"
+    room.users_collection[0].objects.link(walls)
+    for obj, keep_walls in ((room, False), (walls, True)):
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if (f.index in wall_faces) != keep_walls], context="FACES")
+        bm.to_mesh(obj.data)
+        bm.free()
+    me = walls.data
+    uv = me.uv_layers.new(name="Detail")
+    for poly in me.polygons:
+        n = poly.normal
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            u = co.x if abs(n.y) >= abs(n.x) else co.y          # mur du fond : x ; murs de côté : y
+            uv.data[li].uv = (u * WALL_DOTS, co.z * WALL_DOTS)
+    me.uv_layers["Lightmap"].active_render = True
+    me.uv_layers.active = me.uv_layers["Lightmap"]
+    print(f"MURS : {len(me.polygons)} faces, UV Detail")
+    return walls
+
+
+def bake_group(objs, name, image_name, samples):
+    """Joint `objs` en un objet `name`, lui donne une UV « Lightmap » sans chevauchement et y précalcule
+    l'éclairage (le reste de la scène reste en place : il éclaire et fait ombre). Renvoie (objet, PNG affichable)."""
+    scn = bpy.context.scene
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.join()
+    obj = bpy.context.active_object
+    obj.name = obj.data.name = name
+    obj.data.transform(obj.matrix_world)            # sommets en coordonnées du monde, objet à l'origine
+    obj.matrix_world.identity()
+    drop_hidden_faces(obj)
+    uv = obj.data.uv_layers.new(name="Lightmap")
+    obj.data.uv_layers.active = uv
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.002, area_weight=0.0)
+    bpy.ops.uv.pack_islands(margin=0.002)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    img = bpy.data.images.new(image_name, SIZE, SIZE, float_buffer=True)
+    for slot in obj.material_slots:
+        nt = slot.material.node_tree
+        node = nt.nodes.new("ShaderNodeTexImage")
+        node.image = img
+        uvn = nt.nodes.new("ShaderNodeUVMap")
+        uvn.uv_map = "Lightmap"
+        nt.links.new(uvn.outputs["UV"], node.inputs["Vector"])
+        nt.nodes.active = node                     # le bake écrit dans le nœud actif de chaque matériau
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    scn.cycles.samples = samples
+    print(f"BAKE {name} : {SIZE}px, {samples} échantillons…", flush=True)
+    bpy.ops.object.bake(type="COMBINED")
+    png = OUT_DIR / f"{image_name}.png"
+    img.save_render(str(png), scene=scn)           # transformation AgX + exposition, lue telle quelle par three.js
+    print("TEXTURE", png, flush=True)
+    return obj, png
+
+
 def bake():
     scn = bpy.context.scene
-    shadow_proxy()
+    # Pas de silhouette d'ombre : son ombre précalculée faisait une tache fixe sous ses pieds quand il pivote ;
+    # l'application pose une ombre douce sous lui (avatar.js, _addContactShadow).
     camera()
     cycles(SAMPLES)
+    # Motifs du papier peint : précalculés à la résolution de la texture, ils sont flous de près. Les murs sont
+    # précalculés unis et l'application redessine les motifs, nets à toute distance (UV « Detail », plus bas).
+    for mat in bpy.data.materials:
+        if mat.name.startswith("papier_peint"):
+            ramp = next(n for n in mat.node_tree.nodes if n.type == "VALTORGB")
+            bg = tuple(ramp.color_ramp.elements[-1].color)
+            for e in ramp.color_ramp.elements:
+                e.color = bg
     # Le ciel n'est pas précalculé : son dégradé dépend de ses propres coordonnées, que la jointure fausserait.
     # three.js le dessine derrière la fenêtre (web/src/avatar.js) ; la lumière du soir qui entre dans la pièce
     # vient de la source « fenetre », le ciel peut donc être retiré avant le bake.
     bpy.data.objects.remove(bpy.data.objects["ciel"], do_unlink=True)
-    # Tous les éléments du décor en un seul objet, avec une seconde UV « Lightmap » sans chevauchement
+    # Deux textures précalculées : l'enveloppe de la pièce (murs, sol, plafond, rideaux, grandes moulures) et le
+    # mobilier avec les objets. Les objets ont ainsi leur propre texture de SIZE px : nets quand le visiteur les
+    # regarde de près (avatar.js, inspect).
     deco = [o for o in scn.objects if o.type == "MESH" and o.name != "ombre_napoleon"]
     bpy.ops.object.select_all(action="DESELECT")
     for o in deco:
@@ -691,29 +789,13 @@ def bake():
     bpy.context.view_layer.objects.active = deco[0]
     bpy.ops.object.convert(target="MESH")          # applique les modificateurs (tentures)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
-    bpy.ops.object.join()
-    room = bpy.context.active_object
-    room.name = "longwood"
-    room.data.transform(room.matrix_world)          # sommets en coordonnées du monde, objet à l'origine
-    room.matrix_world.identity()
-    drop_hidden_faces(room)
-    uv = room.data.uv_layers.new(name="Lightmap")
-    room.data.uv_layers.active = uv
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.002, area_weight=0.0)
-    bpy.ops.uv.pack_islands(margin=0.002)
-    bpy.ops.object.mode_set(mode="OBJECT")
-
-    img = bpy.data.images.new("longwood_lumiere", SIZE, SIZE, float_buffer=True)
-    for slot in room.material_slots:
-        nt = slot.material.node_tree
-        node = nt.nodes.new("ShaderNodeTexImage")
-        node.image = img
-        uvn = nt.nodes.new("ShaderNodeUVMap")
-        uvn.uv_map = "Lightmap"
-        nt.links.new(uvn.outputs["UV"], node.inputs["Vector"])
-        nt.nodes.active = node
+    deco = [o for o in scn.objects if o.type == "MESH" and o.name != "ombre_napoleon"]
+    def in_shell(o):   # grands éléments, et tout ce qui est tapissé (les motifs sont redessinés par l'app)
+        return max(o.dimensions) >= SHELL_MIN_SIZE or any(
+            m and m.name.startswith("papier_peint") for m in o.data.materials)
+    shell = [o for o in deco if in_shell(o)]
+    objects = [o for o in deco if not in_shell(o)]
+    print(f"ENVELOPPE : {len(shell)} objets ; MOBILIER : {len(objects)} objets", flush=True)
     cfg = scn.render.bake
     cfg.use_pass_direct = True
     cfg.use_pass_indirect = True
@@ -721,36 +803,36 @@ def bake():
     cfg.use_pass_emit = True
     cfg.use_pass_glossy = False
     cfg.use_pass_transmission = False
-    cfg.margin = 6
-    bpy.ops.object.select_all(action="DESELECT")
-    room.select_set(True)
-    bpy.context.view_layer.objects.active = room
-    print(f"BAKE {SIZE}px, {SAMPLES} échantillons…", flush=True)
-    bpy.ops.object.bake(type="COMBINED")
+    cfg.margin = max(6, SIZE // 512)
+    room, room_png = bake_group(shell, "longwood", "longwood_lumiere", SHELL_SAMPLES)
+    furniture, furniture_png = bake_group(objects, "longwood_objets", "longwood_objets", SAMPLES)
 
-    # Version affichable (transformation AgX + exposition de la scène), lue par three.js telle quelle
-    png = OUT_DIR / "longwood_lumiere.png"
-    img.save_render(str(png), scene=scn)
-    print("TEXTURE", png)
-
-    # Pour l'export : un seul matériau, la texture précalculée sur l'UV Lightmap
-    shown = bpy.data.images.load(str(png))
-    final, nt, bsdf = new_material("longwood")
-    tex = nt.nodes.new("ShaderNodeTexImage")
-    tex.image = shown
-    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
-    room.data.materials.clear()
-    room.data.materials.append(final)
-    for layer in [l for l in room.data.uv_layers if l.name != "Lightmap"]:
-        room.data.uv_layers.remove(layer)
+    # Pour l'export : un matériau par texture précalculée, sur l'UV Lightmap ; les murs tapissés à part
+    wall_faces = {q.index for q in room.data.polygons
+                  if room.material_slots[q.material_index].material.name.startswith("papier_peint")}
+    for obj, png in ((room, room_png), (furniture, furniture_png)):
+        shown = bpy.data.images.load(str(png))
+        final, nt, bsdf = new_material(obj.name)
+        tex = nt.nodes.new("ShaderNodeTexImage")
+        tex.image = shown
+        nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+        for q in obj.data.polygons:
+            q.material_index = 0
+        obj.data.materials.clear()
+        obj.data.materials.append(final)
+        for layer in [l for l in obj.data.uv_layers if l.name != "Lightmap"]:
+            obj.data.uv_layers.remove(layer)
+    walls = split_walls(room, wall_faces)
 
     bpy.ops.object.select_all(action="DESELECT")
     room.select_set(True)
+    furniture.select_set(True)
+    walls.select_set(True)
     for anchor in anchors():
         anchor.select_set(True)
     glb = OUT_DIR / "longwood.glb"
     bpy.ops.export_scene.gltf(filepath=str(glb), use_selection=True, export_format="GLB",
-                              export_image_format="JPEG", export_jpeg_quality=88,
+                              export_image_format="JPEG", export_jpeg_quality=90,
                               export_normals=False, export_materials="EXPORT", export_apply=True)
     print("GLB", glb, glb.stat().st_size)
 

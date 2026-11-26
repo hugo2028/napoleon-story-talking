@@ -1,7 +1,4 @@
 {
-  "subtitle": "Fransız İmparatoru · 1769 – 1821",
-  "chatTitle": "İmparatorluk diyaloğu",
-  "chatIntro": "Hayatı, seferleri ve imparatorluğu hakkında İmparator'a sorular sorabilirsiniz.",
   "start": "Başlat",
   "end": "Bitir",
   "reset": "Reset",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Konuşma kullanılamıyor: ",
   "ttsError": "Konuşma hatası: ",
   "initializing": "Başlatılıyor…",
-  "started": "Sohbet başladı. İlk sorunuzu İmparator'a sorabilirsiniz.",
   "ended": "Sohbet sona erdi. Yeniden başlamak için yeni bir sohbet başlatınız.",
   "endedStatus": "Sohbet sona erdi",
   "endedHistory": "Sohbet sona erdi. Geçmiş, bir sonraki reset işlemine kadar görünür kalacaktır.",
@@ -20,9 +16,7 @@
   "readyIdle": "Hazır — bir sohbet başlatınız",
   "askQuestion": "Sorunuzu sorunuz…",
   "thinking": "Napoléon düşünüyor…",
-  "speaking": "İmparator konuşuyor…",
   "commsDown": "İletişim kesildi.",
-  "placeholderActive": "İmparator'a sorunuzu sorunuz…",
   "placeholderIdle": "Yazmak için bir sohbet başlatınız…",
   "letters": {
     "other": "{n} mektup"
@@ -84,7 +78,17 @@
   "confirmNew": "Her şeyi silmek istiyor musunuz? Lütfen tekrar tıklayınız",
   "stop": "■ Durdur",
   "welcome": "İmparator Napoléon sizi bekliyor. Ona hayatı, seferleri veya hükümdarlığı hakkında bir soru sorabilir ya da sadece merhaba diyebilirsiniz: hikayesine başlayacaktır. Cevaplarının altındaki 📜, sözlerinin alındığı mektupları gösterir.",
-  "ambienceOn": "♪ Ortam sesi",
-  "ambienceOff": "♪ Ortam sesi kapalı",
-  "archiveGap": "Arşivde {from} ile {to} arasında mektup bulunmamaktadır"
+  "archiveGap": "Arşivde {from} ile {to} arasında mektup bulunmamaktadır",
+  "lettersChosen": {
+    "other": "Bu hikaye için {n} mektup seçildi"
+  },
+  "lettersWritten": {
+    "other": "{from} - {to} tarihleri arasında {n} mektup yazıldı"
+  },
+  "subtitle": "Longwood, Sainte-Hélène · 1821 baharı",
+  "chatTitle": "Longwood'da Sohbet",
+  "chatIntro": "Napoléon'a hayatı, seferleri ve sürgünü hakkında sorular sorabilirsiniz.",
+  "started": "Sohbet başladı. Napoléon'a ilk sorunuzu sorabilirsiniz.",
+  "speaking": "Napoléon konuşuyor…",
+  "placeholderActive": "Napoléon'a sorunuzu sorabilirsiniz…"
 }

@@ -1,7 +1,4 @@
 {
-  "subtitle": "Kaiser der Franzosen · 1769 – 1821",
-  "chatTitle": "Kaiserlicher Dialog",
-  "chatIntro": "Befragen Sie den Kaiser zu seinem Leben, seinen Feldzügen und seinem Reich.",
   "start": "Beginnen",
   "end": "Beenden",
   "reset": "Zurücksetzen",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Sprachausgabe nicht verfügbar: ",
   "ttsError": "Fehler der Sprachausgabe: ",
   "initializing": "Wird gestartet…",
-  "started": "Gespräch begonnen. Stellen Sie dem Kaiser Ihre erste Frage.",
   "ended": "Gespräch beendet. Beginnen Sie ein neues Gespräch, um neu anzufangen.",
   "endedStatus": "Gespräch beendet",
   "endedHistory": "Gespräch beendet. Der Verlauf bleibt bis zum nächsten Zurücksetzen sichtbar.",
@@ -20,9 +16,7 @@
   "readyIdle": "Bereit — beginnen Sie ein Gespräch",
   "askQuestion": "Stellen Sie Ihre Frage…",
   "thinking": "Napoleon denkt nach…",
-  "speaking": "Der Kaiser spricht…",
   "commsDown": "Die Verbindungen sind unterbrochen.",
-  "placeholderActive": "Stellen Sie dem Kaiser Ihre Frage…",
   "placeholderIdle": "Beginnen Sie ein Gespräch, um zu schreiben…",
   "letters": {
     "one": "{n} Brief",
@@ -85,8 +79,20 @@
   "newConversation": "↺ Neues Gespräch",
   "confirmNew": "Alles löschen? Bitte noch einmal klicken",
   "stop": "■ Stopp",
-  "welcome": "Der Kaiser erwartet Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Herrschaft, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen.",
-  "ambienceOn": "♪ Ambiente",
-  "ambienceOff": "♪ Ambiente aus",
-  "archiveGap": "Keine erhaltenen Briefe vom {from} bis {to}"
+  "archiveGap": "Keine erhaltenen Briefe vom {from} bis {to}",
+  "lettersChosen": {
+    "one": "{n} Brief für diese Erzählung ausgewählt",
+    "other": "{n} Briefe für diese Erzählung ausgewählt"
+  },
+  "lettersWritten": {
+    "one": "{n} vom {from} bis {to} geschrieben",
+    "other": "{n} vom {from} bis {to} geschrieben"
+  },
+  "subtitle": "Longwood, Sankt Helena · Frühling 1821",
+  "chatTitle": "Gespräch in Longwood",
+  "chatIntro": "Fragen Sie Napoléon nach seinem Leben, seinen Feldzügen und seinem Exil.",
+  "started": "Das Gespräch hat begonnen. Stellen Sie Napoléon Ihre erste Frage.",
+  "speaking": "Napoléon spricht …",
+  "placeholderActive": "Stellen Sie Napoléon Ihre Frage …",
+  "welcome": "Napoléon wartet auf Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Zeit an der Macht, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen."
 }

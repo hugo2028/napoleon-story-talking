@@ -1,7 +1,7 @@
 {
-  "subtitle": "Emperor of the French · 1769 – 1821",
-  "chatTitle": "Imperial dialogue",
-  "chatIntro": "Ask the Emperor about his life, his campaigns and his empire.",
+  "subtitle": "Longwood, Saint Helena · spring 1821",
+  "chatTitle": "Conversation at Longwood",
+  "chatIntro": "Ask Napoleon about his life, his campaigns and his exile.",
   "start": "Start",
   "end": "End",
   "reset": "Reset",
@@ -12,7 +12,7 @@
   "ttsUnavailable": "Speech unavailable: ",
   "ttsError": "Speech error: ",
   "initializing": "Initialising…",
-  "started": "Conversation started. Ask the Emperor your first question.",
+  "started": "Conversation started. Ask Napoleon your first question.",
   "ended": "Conversation ended. Start a new conversation to begin again.",
   "endedStatus": "Conversation ended",
   "endedHistory": "Conversation ended. The history stays visible until the next reset.",
@@ -20,9 +20,9 @@
   "readyIdle": "Ready — start a conversation",
   "askQuestion": "Ask your question…",
   "thinking": "Napoleon is thinking…",
-  "speaking": "The Emperor is speaking…",
+  "speaking": "Napoleon is speaking…",
   "commsDown": "Communications are cut off.",
-  "placeholderActive": "Ask the Emperor your question…",
+  "placeholderActive": "Ask Napoleon your question…",
   "placeholderIdle": "Start a conversation to write…",
   "letters": {
     "one": "{n} letter",
@@ -86,7 +86,13 @@
   "confirmNew": "Clear everything? Click again",
   "stop": "■ Stop",
   "welcome": "Napoleon is waiting for you. Ask him about his life, his campaigns or his reign, or simply say hello: he will begin the story. The 📜 under his answers lists the letters his words come from.",
-  "ambienceOn": "♪ Ambience",
-  "ambienceOff": "♪ Ambience off",
-  "archiveGap": "No surviving letters from {from} to {to}"
+  "archiveGap": "No surviving letters from {from} to {to}",
+  "lettersChosen": {
+    "one": "{n} letter chosen for this story",
+    "other": "{n} letters chosen for this story"
+  },
+  "lettersWritten": {
+    "one": "{n} written from {from} to {to}",
+    "other": "{n} written from {from} to {to}"
+  }
 }

@@ -1,7 +1,4 @@
 {
-  "subtitle": "Imperatore dei Francesi · 1769 – 1821",
-  "chatTitle": "Dialogo imperiale",
-  "chatIntro": "Interrogate l'Imperatore sulla sua vita, le sue campagne e il suo impero.",
   "start": "Inizia",
   "end": "Termina",
   "reset": "Azzera",
@@ -12,7 +9,6 @@
   "ttsUnavailable": "Voce non disponibile: ",
   "ttsError": "Errore voce: ",
   "initializing": "Inizializzazione…",
-  "started": "Conversazione iniziata. Fate la vostra prima domanda all'Imperatore.",
   "ended": "Conversazione terminata. Iniziate una nuova conversazione per ricominciare.",
   "endedStatus": "Conversazione terminata",
   "endedHistory": "Conversazione terminata. La cronologia resta visibile fino al prossimo azzeramento.",
@@ -20,9 +16,7 @@
   "readyIdle": "Pronto — iniziate una conversazione",
   "askQuestion": "Fate la vostra domanda…",
   "thinking": "Napoleone riflette…",
-  "speaking": "L'Imperatore parla…",
   "commsDown": "Le comunicazioni sono interrotte.",
-  "placeholderActive": "Fate la vostra domanda all'Imperatore…",
   "placeholderIdle": "Iniziate una conversazione per scrivere…",
   "letters": {
     "one": "{n} lettera",
@@ -85,8 +79,20 @@
   "newConversation": "↺ Nuova conversazione",
   "confirmNew": "Cancellare tutto? Faccia clic di nuovo",
   "stop": "■ Stop",
-  "welcome": "L’Imperatore La attende. Gli ponga una domanda sulla sua vita, le sue campagne o il suo regno, oppure Gli rivolga semplicemente un saluto: inizierà il racconto. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole.",
-  "ambienceOn": "♪ Ambiente",
-  "ambienceOff": "♪ Ambiente disattivato",
-  "archiveGap": "Nessuna lettera conservata dal {from} al {to}"
+  "archiveGap": "Nessuna lettera conservata dal {from} al {to}",
+  "lettersChosen": {
+    "one": "{n} lettera scelta per questo racconto",
+    "other": "{n} lettere scelte per questo racconto"
+  },
+  "lettersWritten": {
+    "one": "{n} scritta dal {from} al {to}",
+    "other": "{n} scritte dal {from} al {to}"
+  },
+  "subtitle": "Longwood, Sant'Elena · primavera 1821",
+  "chatTitle": "Conversazione a Longwood",
+  "chatIntro": "Chieda a Napoleone della sua vita, delle sue campagne e del suo esilio.",
+  "started": "Conversazione iniziata. Ponga la Sua prima domanda a Napoleone.",
+  "speaking": "Napoleone sta parlando…",
+  "placeholderActive": "Ponga la Sua domanda a Napoleone…",
+  "welcome": "Napoleone La sta aspettando. Gli ponga una domanda sulla sua vita, sulle sue campagne o sul suo periodo di governo, oppure Gli rivolga semplicemente un saluto: inizierà a raccontare. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole."
 }
