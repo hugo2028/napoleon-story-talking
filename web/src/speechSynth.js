@@ -45,6 +45,10 @@ export class SpeechSynth {
     this._segmentPlaying = false
     this._syncTimer      = null
     this._finish         = null
+    // Pause demandée par le visiteur (clic sur un nom) : la voix s'arrête au mot près et reprend au même endroit
+    this._paused         = false
+    this._resumeWaiters  = []
+    this._segTimers      = []
     // Web Audio (mode ElevenLabs uniquement)
     this._audioSource = null
     this._audioCtx    = null
@@ -104,6 +108,31 @@ export class SpeechSynth {
     return this._speakAzure(text, actions)
   }
 
+  get canPause() { return this._provider !== 'elevenlabs' }
+  get paused() { return this._paused }
+
+  /** Met la voix en pause (le mot en cours s'achève à peine) ; resume() reprend au même endroit. */
+  pause() {
+    if (this._paused || !this.canPause) return
+    this._paused = true
+    if (this._audio && this._segmentPlaying && !this._audio.paused) this._audio.pause()
+  }
+
+  resume() {
+    if (!this._paused) return
+    this._paused = false
+    if (this._audio && this._segmentPlaying && this._audio.paused) this._audio.play().catch(() => {})
+    const waiters = this._resumeWaiters
+    this._resumeWaiters = []
+    for (const w of waiters) w()
+  }
+
+  /** Attend la reprise si la voix est en pause (entre deux morceaux). */
+  _untilResumed() {
+    if (!this._paused) return Promise.resolve()
+    return new Promise((resolve) => this._resumeWaiters.push(resolve))
+  }
+
   // ── Azure : synthèse phrase par phrase, lecture par un élément <audio> ─────
   //
   // Chaque morceau est synthétisé en entier (audio + animation faciale + mots), puis joué par un
@@ -127,7 +156,7 @@ export class SpeechSynth {
       this._audio = audio
       // Retour sur la page (appel, autre appli, écran verrouillé) : la phrase en cours reprend.
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && this._segmentPlaying && audio.paused) {
+        if (document.visibilityState === 'visible' && this._segmentPlaying && audio.paused && !this._paused) {
           audio.play().catch(() => {})
         }
       })
@@ -165,6 +194,8 @@ export class SpeechSynth {
         next = prepare(i + 1)   // le morceau suivant se prépare pendant la lecture
         if (!started) { started = true; this.onStart?.() }
         const segDisplay = countWords(stripPauses(segments[i].text))
+        await this._untilResumed()
+        if (run !== this._run) return
         await this._playSegment(run, seg, { scheduler, wordBase, displayBase, segDisplay, displayTotal })
         if (run !== this._run) return
         wordBase += seg.words.length
@@ -227,12 +258,33 @@ export class SpeechSynth {
     for (const [index, frames] of seg.face) this.onFaceFrames?.(index, frames)
 
     return new Promise((resolve, reject) => {
-      let scheduled = false
+      const pending = []     // { ms, fn, done } : instant dans l'audio du morceau
+      const add = (ms, fn) => pending.push({ ms, fn, done: false })
+      if (!seg.face.length) for (const v of seg.visemes) add(v.ms, () => this.onViseme?.(v.id))
+      const n = seg.words.length
+      seg.words.forEach((w, i) => {
+        ctx.scheduler.onWord(ctx.wordBase + i, w.ms, null, add)
+        // Mot affiché correspondant (sous-titres) : proportionnel dans le morceau
+        const shown = ctx.displayBase + Math.min(ctx.segDisplay - 1, Math.floor((i * ctx.segDisplay) / n))
+        add(w.ms, () => this.onWord?.(shown, ctx.displayTotal))
+      })
+      const disarm = () => { for (const t of this._segTimers) clearTimeout(t); this._segTimers = [] }
+      const arm = () => {
+        disarm()
+        const now = audio.currentTime * 1000
+        for (const p of pending) {
+          if (p.done) continue
+          const t = setTimeout(() => { p.done = true; p.fn() }, Math.max(0, p.ms - now))
+          this._segTimers.push(t)
+          this._timers.push(t)
+        }
+      }
       // Horloge du visage : l'image 0 correspond au début de l'audio, recalée sur sa position réelle.
       const sync = () => this.onFaceClock?.(performance.now() - audio.currentTime * 1000)
       const cleanup = () => {
         audio.onplaying = audio.onpause = audio.onended = audio.onerror = null
         clearInterval(this._syncTimer)
+        this._segTimers = []
         this._segmentPlaying = false
         this._finish = null
       }
@@ -242,27 +294,20 @@ export class SpeechSynth {
         sync()
         clearInterval(this._syncTimer)
         this._syncTimer = setInterval(sync, 250)
-        if (scheduled || run !== this._run) return
-        scheduled = true
-        const t0 = performance.now() - audio.currentTime * 1000
-        // Voix sans animation faciale : visèmes simples
-        if (!seg.face.length) {
-          for (const v of seg.visemes) this._at(t0 + v.ms, () => this.onViseme?.(v.id))
-        }
-        const n = seg.words.length
-        seg.words.forEach((w, i) => {
-          ctx.scheduler.onWord(ctx.wordBase + i, w.ms, t0)
-          // Mot affiché correspondant (sous-titres) : proportionnel dans le morceau
-          const shown = ctx.displayBase + Math.min(ctx.segDisplay - 1, Math.floor((i * ctx.segDisplay) / n))
-          this._at(t0 + w.ms, () => this.onWord?.(shown, ctx.displayTotal))
-        })
+        if (run !== this._run) return
+        arm()
       }
-      // Lecture interrompue (appel, autre appli…) : le visage se relâche au lieu de continuer seul.
+      // Lecture interrompue (pause du visiteur, appel, autre appli…) : plus rien ne part, le visage se relâche.
       audio.onpause = () => {
+        disarm()
         clearInterval(this._syncTimer)
         if (!audio.ended) this.onFaceClock?.(null)
       }
-      audio.onended = () => { cleanup(); resolve() }
+      audio.onended = () => {
+        for (const p of pending) if (!p.done) { p.done = true; p.fn() }   // fin du morceau : aucun mot ne se perd
+        cleanup()
+        resolve()
+      }
       audio.onerror = () => { cleanup(); reject(new Error('lecture audio impossible')) }
 
       this._segmentPlaying = true
@@ -409,10 +454,12 @@ export class SpeechSynth {
     }
 
     return {
-      onWord: (wordIndex, ms, playbackStart) => {
+      onWord: (wordIndex, ms, playbackStart, add = null) => {
         while (nextActionIdx < sortedActions.length &&
                wordIndex >= sortedActions[nextActionIdx].wordStart) {
-          scheduleAt(sortedActions[nextActionIdx].animation, ms, playbackStart)
+          const animation = sortedActions[nextActionIdx].animation
+          if (add) add(ms + audioBufferMs, () => this.onAction?.(animation))
+          else scheduleAt(animation, ms, playbackStart)
           nextActionIdx++
         }
       },
@@ -432,6 +479,10 @@ export class SpeechSynth {
 
   stop() {
     this._run++
+    this._paused = false
+    const waiters = this._resumeWaiters
+    this._resumeWaiters = []
+    for (const w of waiters) w()
     for (const t of (this._timers ?? [])) clearTimeout(t)
     this._timers = []
     clearInterval(this._syncTimer)

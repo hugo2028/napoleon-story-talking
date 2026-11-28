@@ -150,7 +150,24 @@ export class BrowserSpeech {
     this.onViseme?.(0)
   }
 
+  get canPause() { return BrowserSpeech.supported() }
+  get paused() { return !!this._paused }
+
+  pause() {
+    if (this._paused || !this.canPause) return
+    this._paused = true
+    speechSynthesis.pause()
+    this._stopMouth()
+  }
+
+  resume() {
+    if (!this._paused) return
+    this._paused = false
+    speechSynthesis.resume()
+  }
+
   stop() {
+    this._paused = false
     this._run++
     for (const t of this._timers) clearTimeout(t)
     this._timers = []

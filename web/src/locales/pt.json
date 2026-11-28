@@ -94,5 +94,15 @@
   "chatIntro": "Pergunte a Napoleão sobre sua vida, suas campanhas e seu exílio.",
   "started": "Conversa iniciada. Faça sua primeira pergunta a Napoleão.",
   "speaking": "Napoleão está falando…",
-  "placeholderActive": "Faça sua pergunta a Napoleão…"
+  "placeholderActive": "Faça sua pergunta a Napoleão…",
+  "inspectBack": "⤺ Voltar para Napoleão",
+  "poi_carte": "O mapa da Europa",
+  "poi_lettres": "As cartas",
+  "poi_cheminee": "A lareira",
+  "poi_miroir": "O espelho",
+  "poi_echiquier": "O tabuleiro de xadrez",
+  "poi_commode": "A cômoda e o busto",
+  "poi_fenetre": "A janela para o mar",
+  "poi_bureau": "A escrivaninha",
+  "poi_lustre": "O lustre"
 }

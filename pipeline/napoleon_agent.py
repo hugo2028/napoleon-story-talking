@@ -69,35 +69,42 @@ DEFAULT_AVATAR_ANIMATIONS = [
 
 ANIMATION_DESCRIPTIONS = {
     # ── Avatar Mixamo actuel (web/avatar/avatar.glb) ──
-    "talk_speaking_with_gestures": "gestes de parole génériques avec les deux bras ; narration continue, transition neutre, discours animé",
-    "head_nod_yes": "hochement de tête affirmatif ; oui, validation, accord clair",
-    "head_nod_hard_emphatic": "hochement de tête appuyé ; affirmation forte, certitude, « absolument »",
-    "head_nod_long_agree": "long hochement de tête ; accord réfléchi, approbation calme, « en effet »",
-    "head_nod_sarcastic": "hochement de tête ironique ; sarcasme, fausse approbation, mépris amusé",
-    "head_shake_no": "secoue la tête ; non, refus, négation",
-    "head_shake_annoyed": "secoue la tête avec agacement ; irritation, exaspération, désapprobation",
-    "head_shake_thoughtful": "secoue lentement la tête, pensif ; doute, regret, perplexité, « hélas »",
-    "gesture_acknowledge_nod": "petit signe de tête de reconnaissance ; prendre acte, saluer un propos, « je vous entends »",
-    "gesture_dismiss_wave_off": "geste de la main qui balaie ; écarter une idée, dédain, « peu importe »",
-    "gesture_look_away": "détourne le regard ; souvenir pénible, gêne, réflexion, évitement",
-    "emotion_angry_gesture": "geste de colère ; indignation, fureur, reproche, trahison",
-    "emotion_cocky_confident": "posture fière et sûre de soi ; vantardise, assurance, triomphe personnel, « c'est moi qui l'ai fait »",
-    "emotion_happy_hand_gesture": "geste joyeux des mains ; enthousiasme, bonne nouvelle, victoire, plaisir",
-    "emotion_relieved_sigh": "soupir de soulagement ; danger écarté, fin d'une épreuve, lassitude",
-    "emotion_angry_point": "pointe du doigt avec colère ; accusation, reproche direct, désigner un coupable, « vous ! »",
-    "emotion_shake_fist": "secoue le poing ; rage, menace, défi lancé à l'ennemi, révolte",
-    "emotion_fist_pump": "poing serré de victoire ; triomphe, succès éclatant, « nous avons gagné ! »",
-    "emotion_disappointed": "abattement déçu ; déception, échec, espoir trahi, constat amer",
-    "emotion_pouting": "moue boudeuse et contrariée ; vexation, rancune, mécontentement, dépit",
-    "gesture_charge": "ordre de charge vers l'avant ; attaque, commandement militaire, élan, « en avant ! »",
-    "gesture_salute": "salut militaire ; respect, honneur, armée, discipline, hommage aux soldats",
-    "gesture_pointing": "désigne quelque chose du doigt ; un lieu sur la carte, une direction, « là-bas », une armée ennemie",
-    "gesture_bow_formal": "révérence formelle ; salutation solennelle, déférence, respect protocolaire",
-    "gesture_bow_informal": "petite inclinaison rapide ; salut courtois, remerciement, politesse légère",
-    "gesture_waving": "fait signe de la main ; bonjour, au revoir, accueil, appel amical",
-    "gesture_telling_secret": "se penche pour faire une confidence ; secret, aparté, révélation, « entre nous »",
-    "gesture_shoulder_rubbing": "se frotte l'épaule ; fatigue, douleur, blessure, lassitude après l'effort",
-    "idle_weight_shift": "posture de repos, transfert du poids d'une jambe à l'autre ; attente sans parler",
+    # Chaque description : ce que fait Napoléon — quand le jouer — ce qu'il faut éviter.
+    "talk_speaking_with_gestures": "il parle en accompagnant ses phrases des deux mains — pour un récit qui se déroule, une explication, une transition — à éviter sur un aveu ou une émotion forte, où un geste précis dit plus",
+    "head_nod_yes": "hoche la tête une fois — pour approuver le visiteur, confirmer un fait (« oui, c'est bien cela ») — à éviter s'il n'y a rien à confirmer",
+    "head_nod_hard_emphatic": "hoche la tête avec force — pour une certitude, une décision qu'il assume, un jugement sans appel (« je le referais ») — à éviter sur un doute",
+    "head_nod_long_agree": "hoche longuement la tête — pour un accord réfléchi, reconnaître la justesse d'une remarque, « en effet, vous avez raison »",
+    "head_nod_sarcastic": "hoche la tête avec ironie — pour se moquer d'un adversaire, d'une prétention, d'un ennemi qui se croyait habile (les Anglais, les Bourbons, Hudson Lowe) — jamais envers le visiteur",
+    "head_shake_no": "secoue la tête — pour un refus, une négation, corriger une idée fausse (« non, ce n'est pas ainsi »)",
+    "head_shake_annoyed": "secoue la tête, agacé — pour l'exaspération devant une incompétence, une lenteur, une désobéissance (un maréchal en retard, un ministre timoré)",
+    "head_shake_thoughtful": "secoue lentement la tête, pensif — pour un regret, un « hélas », une perte, ce qui aurait pu être évité",
+    "gesture_acknowledge_nod": "petit signe de tête — pour prendre acte de la question du visiteur avant de répondre, saluer une remarque",
+    "gesture_dismiss_wave_off": "balaie l'air de la main — pour écarter une idée, une rumeur, une calomnie, un détail sans importance (« peu importe », « laissons cela »)",
+    "gesture_look_away": "détourne le regard — pour un souvenir pénible, une gêne, une question qui touche (la mort d'un ami, le divorce, son fils), une hésitation",
+    "emotion_angry_gesture": "geste de colère — pour l'indignation, une trahison (Talleyrand, Marmont, Bernadotte), une injustice subie",
+    "emotion_cocky_confident": "se redresse, sûr de lui — pour un succès personnel, une manœuvre réussie, une fierté assumée (« c'est moi qui l'ai voulu ») — à éviter sur la défaite ou l'exil",
+    "emotion_happy_hand_gesture": "geste joyeux des mains — pour une bonne nouvelle, l'enthousiasme d'une victoire, une naissance (son fils), un souvenir heureux",
+    "emotion_relieved_sigh": "soupire, soulagé — pour un danger écarté, la fin d'une épreuve (Bérézina franchie, attentat manqué)",
+    "emotion_angry_point": "pointe un doigt accusateur — pour accuser un coupable précis, un ennemi, un traître (jamais le visiteur)",
+    "emotion_shake_fist": "secoue le poing — pour la rage contre l'ennemi, un défi lancé, la révolte contre son sort, l'Angleterre",
+    "emotion_fist_pump": "serre le poing de victoire — pour un triomphe net (Austerlitz, Iéna, Arcole), le moment où la bataille bascule",
+    "emotion_disappointed": "s'affaisse, déçu — pour un échec, un espoir trahi, une défaite (Leipzig, Waterloo), l'abandon de Marie-Louise",
+    "emotion_pouting": "fait la moue, contrarié — pour une vexation, une rancune, un contretemps mesquin (les restrictions de Longwood)",
+    "gesture_charge": "lance le bras en avant comme pour ordonner la charge — pour l'élan d'une attaque, un ordre donné en pleine bataille (« en avant ! »)",
+    "gesture_salute": "salut militaire — pour honorer ses soldats, la Garde, un héros tombé (Desaix, Lannes), le drapeau",
+    "gesture_pointing": "désigne du doigt devant lui — pour montrer un lieu sur la carte, une direction, « là-bas, l'ennemi »",
+    # Poses mythiques (tenues trois secondes) : une seule par réponse au plus, au moment qu'elle incarne
+    "pose_main_dans_le_gilet": "sa pose la plus célèbre, la main droite posée dans le gilet (portrait de David) — pour l'homme d'État : les lois, le Code civil, gouverner, l'autorité calme, une déclaration posée — à éviter en pleine action ou dans l'émotion",
+    "pose_mains_dans_le_dos": "les mains jointes dans le dos, le regard au loin — pour méditer, se souvenir, l'exil à Sainte-Hélène, la mer, la nostalgie, une réflexion sur son destin",
+    "pose_bras_croises": "les bras croisés sur la poitrine — pour juger, attendre, défier : la veille d'une bataille, un adversaire qu'il toise, une décision ferme, un refus de céder",
+    "pose_main_au_menton": "la main portée au menton, pensif — pour réfléchir, peser une question difficile, un doute, un « si j'avais su »",
+    "pose_main_sur_le_coeur": "la main sur le cœur — pour un aveu sincère, une émotion vraie : Joséphine, son fils, sa mère, la fidélité de ses soldats",
+    "gesture_bow_formal": "s'incline avec solennité — pour une salutation protocolaire, saluer un souverain, accueillir le visiteur avec cérémonie",
+    "gesture_bow_informal": "s'incline brièvement — pour remercier le visiteur, un salut courtois",
+    "gesture_waving": "fait signe de la main — pour accueillir ou dire au revoir au visiteur",
+    "gesture_telling_secret": "se penche pour une confidence — (retiré des choix)",
+    "gesture_shoulder_rubbing": "se frotte l'épaule — pour la fatigue, une blessure (Ratisbonne), la maladie à Longwood, l'usure des années",
+    "idle_weight_shift": "posture de repos — attente sans parler",
     # ── Ancien avatar ──
     "c'est gagné bras droit": "geste de victoire avec le bras droit ; conclusion forte, succès, triomphe, point remporté",
     "coucou bras droit": "salutation du bras droit",
@@ -219,9 +226,9 @@ Tu t'appuies UNIQUEMENT sur les lettres et passages fournis dans le contexte de 
 Tu parles de vive voix depuis ta mémoire — jamais depuis une correspondance lue à voix haute. \
 N'annonce jamais « dans une de mes lettres… », « dans cette lettre… » ou « je notais que… ». \
 Seule exception : quand le tour ne te fournit aucune lettre, dis-le franchement, en personnage — \
-« Je n'ai pas trouvé de lettre sur ce sujet, mais dans mes écrits je reviens sur ce passage… », \
-« Je n'en ai pas de trace écrite sous la main, mais je m'en souviens… », ou « Je ne trouve aucune trace \
-écrite de ce passage ; en revanche, je peux vous parler de… ».
+« Je n'ai pas trouvé de lettre sur ce sujet, mais dans mes écrits je reviens sur ce passage… » (nomme alors l'écrit par le titre qui précède le passage fourni ; ne nomme JAMAIS un écrit dont aucun passage \
+ne t'est fourni), ou, sans aucune source, « Je n'ai aucune source écrite sur ce sujet ; en revanche, je peux \
+vous parler de… » — sans jamais raconter de mémoire ce qu'aucune source ne t'a donné.
 
 Fais entendre tes propres mots : quand des « citations choisies » te sont fournies, glisse-les telles quelles \
 entre guillemets « », chacune une seule fois, comme les paroles que tu écris ou dictes à cet instant \
@@ -256,7 +263,7 @@ Règles absolues :
 Si ton visiteur évoque une invention, un pays, un événement ou une personne postérieurs à ton temps, \
 tu ne sais pas de quoi il parle : réponds en homme de 1821, sans jamais faire semblant de savoir.
 - Tout fait précis — nom, date, lieu, chiffre, événement — doit figurer explicitement \
-dans les lettres fournies ou dans les faits de ta fiche personnelle quand le tour t'en donne. \
+dans les lettres fournies ou dans les passages de tes écrits fournis. \
 N'invente rien, n'ajoute aucun détail \
 tiré de ta connaissance générale.
 - Il en va de même des idées : ne dis que ce que disent les lettres. Pas de développement, de \
@@ -266,8 +273,8 @@ et sans méta-commentaire : "Mes souvenirs de cette période sont flous sur ce p
 "Je n'ai plus trace précise de cet événement…" Puis rattache-toi \
 à ce que tes lettres disent réellement.
 - Ne mentionne jamais un nom propre, une bataille, un amiral, un chiffre qui ne figure \
-ni dans les lettres du contexte ni dans ta fiche personnelle.
-- Une question à laquelle ni tes lettres ni ta fiche ne répondent, tu ne la traites pas sur le fond : \
+ni dans les lettres du contexte ni dans les passages de tes écrits.
+- Une question à laquelle ni tes lettres ni tes écrits ne répondent, tu ne la traites pas sur le fond : \
 dis-le en restant en personnage, en une phrase, puis ramène ton visiteur vers ce dont tu as la trace.
 - Sois concis : 4 à 6 phrases maximum par réponse. C'est une conversation, pas un discours. \
 Laisse ton interlocuteur réagir, poser des questions, demander la suite.
@@ -287,6 +294,8 @@ Planifie un maximum de gestes naturels : utilise généralement 4 à 6 balises [
 Privilégie les gestes visibles quand ils conviennent : hochements et refus de la tête, gestes de la main, émotions marquées. \
 Fais correspondre l'animation au sens du segment : affirmation, refus, doute, fierté, colère, joie, soulagement, regard détourné. \
 Varie les animations autant que possible et évite de répéter mécaniquement le même mouvement. \
+Les poses (pose_…) sont tenues trois secondes : une seule par réponse au plus, au moment qu'elle incarne ; \
+choisis chaque geste d'après sa description (quand le jouer, quand l'éviter). \
 N'utilise [anim:waiting] que si aucune animation ne convient vraiment au segment. \
 Exemple : [anim:emotion_angry_gesture] La situation était critique. [anim:head_nod_hard_emphatic] Mais j'ai cru en mes soldats. [anim:emotion_cocky_confident] Nous avons tenu.
 - Mise en scène : tu peux aussi choisir le plan de la caméra avec une balise [cam:plan], placée comme les \
@@ -297,10 +306,13 @@ et la carte derrière toi : un récit de campagne, une lettre que tu évoques), 
 le bureau, avec la fenêtre et l'échiquier : la vie à Longwood, tes compagnons, la mer), [cam:plongee] (vue haute, \
 l'homme seul dans la pièce : l'exil, la captivité, la défaite), [cam:travelling] (lente avancée vers toi pendant \
 une dizaine de secondes : un récit qui monte en tension, une révélation), [cam:tableau] (le tableau mural de \
-face, quand tu montres la carte ou l'œuvre qui y est épinglée, puis reviens vers toi). Une à trois balises [cam:] par réponse \
-au plus, jamais deux de suite au même plan ; varie les angles d'une réponse à l'autre ; le gros plan reste rare \
-et bref, reviens ensuite à un plan plus large.
+face, quand tu montres la carte ou l'œuvre qui y est épinglée, puis reviens vers toi). Le plan large est le plan \
+par défaut : le visiteur doit voir la pièce, la carte et l'œuvre épinglée pour pouvoir les regarder. Une à deux \
+balises [cam:] par réponse au plus, jamais deux de suite au même plan ; [cam:rapproche] et [cam:visage] au plus une \
+fois par réponse, pour un seul moment fort, et termine toujours sur [cam:large] ou un trois-quarts.
 - Prose continue, style oral — pas de listes ni de tirets.
+- Longueur : 220 à 350 mots ; une réponse se termine toujours par une phrase complète. Une citation longue se \
+coupe : fais entendre la phrase qui compte, pas tout le paragraphe.
 """
 
 # ---------------------------------------------------------------------------
@@ -1057,7 +1069,7 @@ def build_continuation_prompt(plan: NarrativePlan, turn: int, conn) -> str:
 # Exécution d'un tour
 # ---------------------------------------------------------------------------
 
-def execute_turn(client, messages: list, model: str, max_tokens: int = 600) -> str:
+def execute_turn(client, messages: list, model: str, max_tokens: int = 1100) -> str:
     resp = client.chat.completions.create(
         model=model,
         messages=messages,

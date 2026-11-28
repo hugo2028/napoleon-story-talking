@@ -95,6 +95,10 @@ L'agent choisit lui-même six éléments de mise en scène.
     (`turn_left`, `turn_right`) ; la rotation du bassin y est retirée, et seules les jambes sont jouées pendant
     que l'application fait pivoter le corps. Le narrateur ne peut pas les choisir comme gestes.
   - Le geste `gesture_pointing` (Mixamo « Pointing ») lui sert à désigner un lieu ou une direction.
+  - Cinq poses mythiques, construites dans Blender (bras placés par cinématique inverse vers une cible, orientation
+    de la main imposée, entrée, tenue de trois secondes, sortie) : `pose_main_dans_le_gilet` (le portrait de David,
+    1812), `pose_mains_dans_le_dos`, `pose_bras_croises`, `pose_main_au_menton`, `pose_main_sur_le_coeur`. Le
+    narrateur les choisit comme les autres gestes, d'après leur description (`ANIMATION_DESCRIPTIONS`).
 - **Le temps derrière la fenêtre.** L'archiviste le choisit selon le ton du tour (champ `meteo`).
   - Clair pour un récit serein.
   - Brume pour l'exil et les regrets.

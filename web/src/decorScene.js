@@ -1,7 +1,7 @@
 // Mise en scène du décor de Longwood choisie par l'archiviste : le temps derrière la fenêtre et le tableau mural
 // (la carte d'Hérisson de 1815, ses lieux, les lettres racontées). Le reste est dessiné dans le navigateur.
 import * as THREE from 'three'
-import { MAP_PLACES } from './mapPlaces.js'
+import { MAP_PLACES, MAP_FIT } from './mapPlaces.js'
 
 // ── Temps qu'il fait ─────────────────────────────────────────────────────────
 // brouillard (0-1), pluie (0-1), orage (0/1)
@@ -122,6 +122,33 @@ export function findPlaceMentions(text) {
     }
   }
   return out
+}
+
+/** Position (u, v de 0 à 1) d'un point (longitude, latitude) sur la carte gravée : même calage que
+ * scripts/build_map_places.py (polynôme, puis écart des repères réparti en inverse du carré de la distance). */
+export function lonLatToUV(lon, lat) {
+  const f = [1, lon, lat, lon * lon, lat * lat, lon * lat]
+  let x = f.reduce((s, v, i) => s + v * MAP_FIT.cx[i], 0)
+  let y = f.reduce((s, v, i) => s + v * MAP_FIT.cy[i], 0)
+  let wsum = 0, dx = 0, dy = 0
+  for (const [clon, clat, rx, ry] of MAP_FIT.control) {
+    const d2 = (clon - lon) ** 2 + (clat - lat) ** 2
+    if (d2 < 1e-9) { wsum = 1; dx = rx; dy = ry; break }
+    wsum += 1 / d2; dx += rx / d2; dy += ry / d2
+  }
+  x += dx / wsum; y += dy / wsum
+  const [x0, y0, x1, y1] = MAP_FIT.crop
+  return { u: (x - x0) / (x1 - x0), v: (y - y0) / (y1 - y0) }
+}
+
+/** Ajoute à la carte un lieu nommé dans un récit (mémoire du visiteur) ; null s'il tombe hors de la gravure. */
+export function addMapPlace(name, lon, lat) {
+  if (!name || lon == null || lat == null) return null
+  if (MAP_PLACES.some((p) => p.name === name)) return name
+  const { u, v } = lonLatToUV(lon, lat)
+  if (!(u > 0.01 && u < 0.99 && v > 0.01 && v < 0.99)) return null
+  MAP_PLACES.push({ name, u: Math.round(u * 1e4) / 1e4, v: Math.round(v * 1e4) / 1e4, region: 'visite' })
+  return name
 }
 
 const REGIONS = new Set([...MAP_PLACES.map((p) => p.region).filter(Boolean), 'sainte_helene'])
@@ -272,7 +299,17 @@ function wrapLines(ctx, text, maxWidth, maxLines) {
 /** Une lettre épinglée : date, destinataire, premiers mots à la plume, cachet de cire. */
 /** Cartel sous l'œuvre : titre, peintre et date, crédit. */
 function captionTexture(info) {
-  const w = 640, h = 120
+  // Le titre entier, sur deux lignes au besoin (la police se réduit avant de couper)
+  const w = 1000
+  const measure = document.createElement('canvas').getContext('2d')
+  let size = 40, lines
+  for (; size >= 26; size -= 2) {
+    measure.font = `italic ${size}px Georgia, serif`
+    lines = wrapLines(measure, info.titre || '', w - 60, 3)
+    if (lines.length <= 2) break
+  }
+  const lh = size * 1.2
+  const h = Math.round(28 + lines.length * lh + 46)
   const c = document.createElement('canvas')
   c.width = w
   c.height = h
@@ -280,21 +317,19 @@ function captionTexture(info) {
   ctx.fillStyle = '#efe4c8'
   ctx.fillRect(0, 0, w, h)
   ctx.strokeStyle = '#7a5a2a'
-  ctx.lineWidth = 4
+  ctx.lineWidth = 5
   ctx.strokeRect(4, 4, w - 8, h - 8)
   ctx.textAlign = 'center'
   ctx.fillStyle = '#2e2010'
-  ctx.font = 'italic 34px Georgia, serif'
-  let title = info.titre || ''
-  while (ctx.measureText(title).width > w - 40 && title.length > 8) title = title.slice(0, -2)
-  if (title !== (info.titre || '')) title += '…'
-  ctx.fillText(title, w / 2, 50)
-  ctx.font = '24px Georgia, serif'
+  ctx.font = `italic ${size}px Georgia, serif`
+  lines.forEach((l, k) => ctx.fillText(l, w / 2, 22 + size + k * lh))
+  ctx.font = '28px Georgia, serif'
   ctx.fillStyle = '#5a4020'
-  ctx.fillText([info.peintre, info.date].filter(Boolean).join(', '), w / 2, 88)
+  ctx.fillText([info.peintre, info.date].filter(Boolean).join(', '), w / 2, h - 22)
   const tex = new THREE.CanvasTexture(c)
   tex.colorSpace = THREE.SRGBColorSpace
-  return tex
+  tex.anisotropy = 4
+  return { tex, aspect: h / w }
 }
 
 const PAINTING_URLS = import.meta.glob('../decor/tableaux/*.jpg', { eager: true, query: '?url', import: 'default' })
@@ -317,14 +352,18 @@ function letterTexture(source) {
   ctx.fillStyle = '#2e1f0c'
   ctx.textAlign = 'center'
   ctx.font = 'bold italic 34px Georgia, serif'
-  ctx.fillText(dateFr(source.date), w / 2, 62)
+  ctx.fillText({ oeuvres: 'Ses écrits', fiche: 'Souvenir' }[source.kind] || dateFr(source.date), w / 2, 62)
   ctx.font = 'italic 24px Georgia, serif'
   const title = (source.title || '').replace(/\.$/, '').toLowerCase().replace(/^./, (ch) => ch.toUpperCase())
   wrapLines(ctx, title, w - 50, 3).forEach((l, k) => ctx.fillText(l, w / 2, 104 + k * 30))
   ctx.textAlign = 'left'
   ctx.font = 'italic 21px Georgia, serif'
   ctx.fillStyle = 'rgba(46,31,12,0.85)'
-  wrapLines(ctx, source.snippet, w - 56, 7).forEach((l, k) => ctx.fillText(l, 28, 222 + k * 28))
+  // Le texte de la lettre, autant qu'en contient la feuille (la lettre entière s'ouvre d'un clic)
+  const body = (source.text || source.snippet || '').replace(/\s+/g, ' ')
+  const lines = wrapLines(ctx, body, w - 56, 7)   // au-dessus du cachet
+  const more = lines.join(' ').length < body.length - 5           // la lettre continue au-delà de la feuille
+  lines.forEach((l, k) => ctx.fillText(more && k === lines.length - 1 ? `${l.replace(/\s*\S*$/, '')} …` : l, 28, 222 + k * 28))
   ctx.beginPath()                                             // cachet de cire
   ctx.arc(w - 62, h - 62, 30, 0, Math.PI * 2)
   ctx.fillStyle = '#7d1712'
@@ -515,18 +554,22 @@ export class WallBoard {
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat)
     mesh.userData.painting = { ...info, url }     // repéré au clic (avatar.js) pour l'afficher en grand
     group.add(mesh)
-    const capMat = this.basic({ map: captionTexture(info), transparent: true, opacity: 0 })
-    const cap = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.079), capMat)
+    const caption = captionTexture(info)
+    const capW = Math.min(0.66, x1 - x0 - 0.04)     // aussi large que la place le permet
+    const capH = capW * caption.aspect
+    const capMat = this.basic({ map: caption.tex, transparent: true, opacity: 0 })
+    const cap = new THREE.Mesh(new THREE.PlaneGeometry(capW, capH), capMat)
     group.add(cap)
     new THREE.TextureLoader().load(url, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace
       tex.anisotropy = 4
       const aspect = tex.image.width / tex.image.height
-      const maxW = x1 - x0 - 0.04, maxH = h - 0.14
+      const maxW = x1 - x0 - 0.04, maxH = h - 0.06 - capH
       const pw = Math.min(maxW, maxH * aspect), ph = pw / aspect
       mesh.scale.set(pw, ph, 1)
       mesh.position.y = 0.05
-      cap.position.y = 0.05 - ph / 2 - 0.05
+      mesh.position.y = capH / 2
+      cap.position.y = mesh.position.y - ph / 2 - 0.012 - capH / 2
       mat.map = tex
       mat.needsUpdate = true
       const pin = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), this.pinMat)
@@ -577,6 +620,7 @@ export class WallBoard {
     list.forEach((source, k) => {
       const mat = this.basic({ map: letterTexture(source), transparent: true, opacity: 0 })
       const mesh = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh), mat)
+      mesh.userData.source = source                 // la lettre entière s'ouvre au clic (avatar.js)
       const x = n > 1 ? x0 + lw / 2 + k * step : (x0 + x1) / 2
       mesh.position.set(x, (k % 2 ? -0.08 : 0.06) + (Math.random() - 0.5) * 0.04, 0.008 + k * 0.002)
       mesh.rotation.z = (Math.random() - 0.5) * 0.12

@@ -381,6 +381,7 @@ def build():
         "miroir": material("miroir", (0.10, 0.10, 0.09), rough=0.08),
         "papier": material("papier", (0.80, 0.74, 0.60), rough=0.9, noise=0.15, noise_scale=20),
         "cuir": material("cuir", (0.06, 0.10, 0.05), rough=0.6),
+        "ruban": material("ruban", (0.42, 0.06, 0.05), rough=0.55),
         "livre_rouge": material("livre_rouge", (0.25, 0.05, 0.04), rough=0.6),
         "livre_brun": material("livre_brun", (0.20, 0.12, 0.06), rough=0.6),
         "cire": material("cire", (0.85, 0.80, 0.65), rough=0.5),
@@ -449,8 +450,9 @@ def build():
     sky.scale = (6.0, 4.2, 1)
     sky.data.materials.append(M["ciel"])
     drape("lambrequin", (WIN_X, Y_BACK - 0.14, wt + 0.12), WIN_W + 0.7, 0.55, M["velours"], folds=22, swag=0.18)
-    drape("tenture_g", (wl - 0.22, Y_BACK - 0.12, (wt + 0.3) / 2), 0.42, wt + 0.3, M["velours"])
-    drape("tenture_d", (wr + 0.22, Y_BACK - 0.12, (wt + 0.3) / 2), 0.42, wt + 0.3, M["velours"])
+    # Tentures resserrées près de la fenêtre : la gauche ne doit pas traverser la commode, dans le coin
+    drape("tenture_g", (wl - 0.18, Y_BACK - 0.12, (wt + 0.3) / 2), 0.34, wt + 0.3, M["velours"])
+    drape("tenture_d", (wr + 0.18, Y_BACK - 0.12, (wt + 0.3) / 2), 0.34, wt + 0.3, M["velours"])
     box("tringle", (WIN_X, Y_BACK - 0.16, wt + 0.38), (WIN_W + 0.9, 0.04, 0.04), M["dore"])
 
 
@@ -474,7 +476,7 @@ def build():
         cyl(f"chem_bougeoir_{dy}", (fx + 0.04, FIRE_Y + dy, 1.26), 0.02, 0.2, M["dore"], verts=10)
 
     # Commode d'acajou dans le coin gauche du mur du fond, buste et chandeliers dessus
-    kx, ky = (X0 + WIN_X - WIN_W / 2) / 2 - 0.05, Y_BACK - 0.3
+    kx, ky = (X0 + WIN_X - WIN_W / 2) / 2 - 0.16, Y_BACK - 0.3     # dans le coin, à l'écart de la tenture
     kw = (WIN_X - WIN_W / 2) - X0 - 0.45
     box("commode", (kx, ky, 0.45), (kw, 0.5, 0.86), M["acajou"], bevel=0.01)
     box("commode_plateau", (kx, ky - 0.01, 0.9), (kw + 0.06, 0.54, 0.04), M["marbre_noir"])
@@ -509,6 +511,18 @@ def build():
         box(f"livre_{k}", (dx + 0.36, dy + 0.1, 0.785 + 0.065 * k + h / 2 - 0.02), (0.26, 0.19, h), M[mat],
             rot_z=0.08 * (k - 1))
     cyl("encrier", (dx + 0.18, dy + 0.17, 0.82), 0.035, 0.06, M["dore"])
+    # Liasse des Mémoires dictés à Longwood : cahiers noués d'un ruban rouge, cachetés (cliquable dans l'app :
+    # elle ouvre la mémoire du visiteur ; web/src/avatar.js, _makeLiasse)
+    lx, ly, lrz = dx - 0.4, dy - 0.11, -0.22
+    z = 0.787
+    for k, (teinte, h) in enumerate((("papier", 0.011), ("papier", 0.015), ("papier", 0.011), ("papier", 0.015),
+                                     ("papier", 0.011))):
+        box(f"liasse_memoires_{k}" if k else "liasse_memoires", (lx + (k % 3 - 1) * 0.006, ly, z + h / 2),
+            (0.2, 0.27, h), M[teinte], rot_z=lrz + (0.03 * k if k % 2 else -0.03 * k))
+        z += h
+    box("liasse_ruban_a", (lx, ly, 0.787 + (z - 0.787) / 2), (0.212, 0.018, z - 0.787 + 0.004), M["ruban"], rot_z=lrz)
+    box("liasse_ruban_b", (lx, ly, 0.787 + (z - 0.787) / 2), (0.018, 0.282, z - 0.787 + 0.004), M["ruban"], rot_z=lrz)
+    cyl("liasse_cachet", (lx, ly, z + 0.003), 0.02, 0.006, M["ruban"], verts=20)
     cx, cy = CANDLE[0], CANDLE[1]
     cyl("bougeoir_pied", (cx, cy, 0.795), 0.06, 0.02, M["dore"])
     cyl("bougeoir_tige", (cx, cy, 0.86), 0.012, 0.12, M["dore"])

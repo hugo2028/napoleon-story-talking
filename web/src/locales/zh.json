@@ -90,5 +90,15 @@
   "started": "对话已开始。请您向Napoléon提出第一个问题。",
   "speaking": "Napoléon正在讲话…",
   "placeholderActive": "请您向Napoléon提问…",
-  "welcome": "Napoléon正在等您。您可以向他提问他的生平、战役，或者只是打个招呼，他就会开始讲述。每次回答下方的📜会列出他引用的信件。"
+  "welcome": "Napoléon正在等您。您可以向他提问他的生平、战役，或者只是打个招呼，他就会开始讲述。每次回答下方的📜会列出他引用的信件。",
+  "inspectBack": "⤺ 返回Napoléon",
+  "poi_carte": "欧洲地图",
+  "poi_lettres": "信件",
+  "poi_cheminee": "壁炉",
+  "poi_miroir": "镜子",
+  "poi_echiquier": "棋盘",
+  "poi_commode": "抽屉柜和半身像",
+  "poi_fenetre": "面朝大海的窗户",
+  "poi_bureau": "书桌",
+  "poi_lustre": "吊灯"
 }

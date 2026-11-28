@@ -94,5 +94,15 @@
   "started": "Het gesprek is begonnen. Stel Napoléon uw eerste vraag.",
   "speaking": "Napoléon spreekt…",
   "placeholderActive": "Stel uw vraag aan Napoléon…",
-  "welcome": "Napoleon wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn bewind, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden toont de brieven waaruit zijn woorden afkomstig zijn."
+  "welcome": "Napoleon wacht op u. Stel hem een vraag over zijn leven, zijn veldtochten of zijn bewind, of groet hem gewoon: hij zal het verhaal beginnen. Het 📜 onder zijn antwoorden toont de brieven waaruit zijn woorden afkomstig zijn.",
+  "inspectBack": "⤺ Terug naar Napoléon",
+  "poi_carte": "De kaart van Europa",
+  "poi_lettres": "De vastgepinde brieven",
+  "poi_cheminee": "De open haard",
+  "poi_miroir": "De spiegel",
+  "poi_echiquier": "Het schaakbord",
+  "poi_commode": "De commode en het borstbeeld",
+  "poi_fenetre": "Het raam met uitzicht op zee",
+  "poi_bureau": "Het bureau",
+  "poi_lustre": "De kroonluchter"
 }

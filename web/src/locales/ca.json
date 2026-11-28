@@ -94,5 +94,15 @@
   "chatIntro": "Pregunti a Napoleó sobre la seva vida, les seves campanyes i el seu exili.",
   "started": "Conversació iniciada. Formuli la seva primera pregunta a Napoleó.",
   "speaking": "Napoleó està parlant…",
-  "placeholderActive": "Formuli la seva pregunta a Napoleó…"
+  "placeholderActive": "Formuli la seva pregunta a Napoleó…",
+  "inspectBack": "⤺ Tornar a Napoleó",
+  "poi_carte": "El mapa d’Europa",
+  "poi_lettres": "Les cartes",
+  "poi_cheminee": "La xemeneia",
+  "poi_miroir": "El mirall",
+  "poi_echiquier": "El tauler d’escacs",
+  "poi_commode": "La còmoda i el bust",
+  "poi_fenetre": "La finestra al mar",
+  "poi_bureau": "L’escriptori",
+  "poi_lustre": "El llum de sostre"
 }

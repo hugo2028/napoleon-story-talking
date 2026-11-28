@@ -94,5 +94,15 @@
   "chatIntro": "Fråga Napoléon om hans liv, hans fälttåg och hans exil.",
   "started": "Samtalet har börjat. Ställ er första fråga till Napoléon.",
   "speaking": "Napoléon talar…",
-  "placeholderActive": "Ställ er fråga till Napoléon…"
+  "placeholderActive": "Ställ er fråga till Napoléon…",
+  "inspectBack": "⤺ Tillbaka till Napoléon",
+  "poi_carte": "Europakartan",
+  "poi_lettres": "De fastnålade breven",
+  "poi_cheminee": "Spiselhällen",
+  "poi_miroir": "Spegeln",
+  "poi_echiquier": "Schackbrädet",
+  "poi_commode": "Byrån och bysten",
+  "poi_fenetre": "Fönstret mot havet",
+  "poi_bureau": "Skrivbordet",
+  "poi_lustre": "Ljuskronan"
 }

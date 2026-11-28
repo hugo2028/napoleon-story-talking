@@ -90,5 +90,15 @@
   "chatIntro": "Napoléon'a hayatı, seferleri ve sürgünü hakkında sorular sorabilirsiniz.",
   "started": "Sohbet başladı. Napoléon'a ilk sorunuzu sorabilirsiniz.",
   "speaking": "Napoléon konuşuyor…",
-  "placeholderActive": "Napoléon'a sorunuzu sorabilirsiniz…"
+  "placeholderActive": "Napoléon'a sorunuzu sorabilirsiniz…",
+  "inspectBack": "⤺ Napoléon'a geri dönün",
+  "poi_carte": "Avrupa haritası",
+  "poi_lettres": "Mektuplar",
+  "poi_cheminee": "Şömine",
+  "poi_miroir": "Ayna",
+  "poi_echiquier": "Satranç tahtası",
+  "poi_commode": "Şifonyer ve büst",
+  "poi_fenetre": "Denize bakan pencere",
+  "poi_bureau": "Yazı masası",
+  "poi_lustre": "Avize"
 }

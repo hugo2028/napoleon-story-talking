@@ -90,5 +90,15 @@
   "chatIntro": "ナポレオンの人生や戦役、流刑についてご質問ください。",
   "started": "対話を開始しました。まずナポレオンにご質問ください。",
   "speaking": "ナポレオンが話しています…",
-  "placeholderActive": "ナポレオンにご質問をどうぞ…"
+  "placeholderActive": "ナポレオンにご質問をどうぞ…",
+  "inspectBack": "⤺ ナポレオンのもとへ戻る",
+  "poi_carte": "ヨーロッパの地図",
+  "poi_lettres": "手紙",
+  "poi_cheminee": "暖炉",
+  "poi_miroir": "鏡",
+  "poi_echiquier": "チェス盤",
+  "poi_commode": "チェストと胸像",
+  "poi_fenetre": "海に面した窓",
+  "poi_bureau": "机",
+  "poi_lustre": "シャンデリア"
 }

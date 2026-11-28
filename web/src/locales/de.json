@@ -94,5 +94,15 @@
   "started": "Das Gespräch hat begonnen. Stellen Sie Napoléon Ihre erste Frage.",
   "speaking": "Napoléon spricht …",
   "placeholderActive": "Stellen Sie Napoléon Ihre Frage …",
-  "welcome": "Napoléon wartet auf Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Zeit an der Macht, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen."
+  "welcome": "Napoléon wartet auf Sie. Stellen Sie ihm eine Frage zu seinem Leben, seinen Feldzügen oder seiner Zeit an der Macht, oder grüßen Sie ihn einfach: Er wird mit seiner Erzählung beginnen. Das 📜 unter seinen Antworten zeigt die Briefe, aus denen seine Worte stammen.",
+  "inspectBack": "⤺ Zurück zu Napoléon",
+  "poi_carte": "Die Europakarte",
+  "poi_lettres": "Die Briefe",
+  "poi_cheminee": "Der Kamin",
+  "poi_miroir": "Der Spiegel",
+  "poi_echiquier": "Das Schachbrett",
+  "poi_commode": "Die Kommode und die Büste",
+  "poi_fenetre": "Das Fenster zum Meer",
+  "poi_bureau": "Der Schreibtisch",
+  "poi_lustre": "Der Kronleuchter"
 }

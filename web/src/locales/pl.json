@@ -102,5 +102,15 @@
   "chatIntro": "Proszę zapytać Napoleona o jego życie, kampanie i wygnanie.",
   "started": "Rozmowa rozpoczęta. Proszę zadać Napoleonowi pierwsze pytanie.",
   "speaking": "Napoleon mówi…",
-  "placeholderActive": "Proszę zadać pytanie Napoleonowi…"
+  "placeholderActive": "Proszę zadać pytanie Napoleonowi…",
+  "inspectBack": "⤺ Powrót do Napoleona",
+  "poi_carte": "Mapa Europy",
+  "poi_lettres": "Listy",
+  "poi_cheminee": "Kominek",
+  "poi_miroir": "Lustro",
+  "poi_echiquier": "Szachownica",
+  "poi_commode": "Komoda i popiersie",
+  "poi_fenetre": "Okno na morze",
+  "poi_bureau": "Biurko",
+  "poi_lustre": "Żyrandol"
 }

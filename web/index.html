@@ -749,6 +749,95 @@
     }
     #painting-overlay[hidden] { display: none; }
 
+    /* Lettre entière (clic sur une lettre épinglée) : feuille de papier, défilante ; un clic hors de la feuille
+       ou Échap referme */
+    #letter-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(8, 6, 4, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+    #letter-overlay[hidden] { display: none; }
+    /* Ligne d'une source dans la conversation : bouton qui ouvre la lettre entière */
+    .source-open { all: unset; cursor: pointer; display: contents; }
+    .source-open:hover .source-title { text-decoration: underline; }
+    /* Feuille de lettre ancienne : papier vergé jauni, bords brunis, taches, encre brune, typographie ancienne */
+    #letter-sheet {
+      width: min(680px, 100%);
+      max-height: calc(100dvh - 48px);
+      overflow-y: auto;
+      padding: 44px 52px 40px;
+      border-radius: 2px;
+      color: #3a2412;
+      background:
+        radial-gradient(ellipse 18% 12% at 82% 14%, rgba(150, 105, 50, 0.13), transparent 70%),
+        radial-gradient(ellipse 14% 10% at 12% 78%, rgba(140, 95, 45, 0.11), transparent 70%),
+        radial-gradient(ellipse 120% 90% at 50% 45%, transparent 55%, rgba(120, 80, 35, 0.35) 100%),
+        repeating-linear-gradient(90deg, rgba(90, 60, 25, 0.025) 0 1px, transparent 1px 7px),
+        linear-gradient(170deg, #f1e3bd, #e6d2a2 60%, #dcc48e);
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.65), inset 0 0 60px rgba(110, 70, 25, 0.25);
+      font: 17.5px/1.7 "IM Fell English", "Palatino Linotype", Palatino, "Book Antiqua", Garamond, Georgia, serif;
+      text-align: justify;
+      hyphens: auto;
+    }
+    #letter-sheet h3 {
+      margin: 0 0 22px;
+      text-align: right;
+      font-size: 19px;
+      font-style: italic;
+      font-weight: normal;
+      color: #4a2e14;
+    }
+    #letter-sheet .letter-to {
+      margin: 0 0 22px;
+      font-size: 15px;
+      font-variant: small-caps;
+      letter-spacing: 0.08em;
+      color: #5a3818;
+    }
+    #letter-sheet .letter-body { white-space: pre-line; }
+    #letter-sheet .letter-foot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 22px;
+      font-style: italic;
+      color: #5a3818;
+    }
+    #letter-sheet .letter-foot .letter-link { margin: 0 0 0 auto; }
+    #letter-sheet .letter-nav {
+      border: 1px solid rgba(90, 56, 24, 0.5);
+      background: rgba(255, 248, 225, 0.5);
+      color: #4a2e14;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      font: 20px/1 Georgia, serif;
+      cursor: pointer;
+    }
+    #letter-sheet .letter-nav:disabled { opacity: 0.3; cursor: default; }
+    #letter-sheet .letter-body.continued::first-letter { float: none; font-size: inherit; padding: 0; color: inherit; }
+    #letter-sheet .letter-body::first-letter {
+      float: left;
+      font-size: 3.4em;
+      line-height: 0.85;
+      padding: 6px 8px 0 0;
+      color: #6b2410;
+    }
+    #letter-sheet .letter-link {
+      display: inline-block;
+      margin-top: 26px;
+      color: #7a3b10;
+      font-size: 14px;
+      font-style: italic;
+    }
+    @media (max-width: 680px) { #letter-sheet { padding: 28px 22px; font-size: 16px; } }
+
     /* Objet regardé de près : le titre et les notes s'effacent, le bouton de retour prend la place du titre */
     #title-overlay, #context-bubble, #status-bar { transition: opacity 0.4s; }
     #avatar-panel.inspecting #title-overlay,
@@ -771,6 +860,159 @@
       cursor: pointer;
     }
     #inspect-back[hidden] { display: none; }
+
+    /* ── Mémoire du visiteur : noms mis en évidence, fiche, carte mentale ── */
+    /* Avec le décor, la mémoire s'ouvre par la liasse des Mémoires posée sur le bureau : plus de bouton */
+    .with-decor #memory-btn, body:has(.with-decor) #memory-btn { display: none; }
+    .entite {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      border-bottom: 2px solid var(--gold);
+      font-weight: 600;
+    }
+    .entite:hover, .entite:focus-visible { color: var(--gold); outline: none; }
+    .entite-lieu { border-bottom-color: #6fa77d; }
+    .entite-personne { border-bottom-color: #d0705c; }
+    .entite-evenement { border-bottom-color: var(--gold); }
+    .entite-institution { border-bottom-color: #7d9bd0; }
+    #subtitles .entite-mot { border-bottom: 2px solid var(--gold); cursor: pointer; }
+    #entites-fond {
+      position: absolute;
+      left: 16px;
+      bottom: 64px;
+      display: flex;
+      flex-direction: column-reverse;
+      align-items: flex-start;
+      gap: 6px;
+      max-height: 45%;
+      overflow: hidden;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .entite-chip {
+      pointer-events: auto;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      max-width: min(320px, 70vw);
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(201, 168, 76, 0.45);
+      background: rgba(12, 10, 8, 0.8);
+      color: var(--text);
+      font: 13px/1.3 Georgia, serif;
+      cursor: pointer;
+      text-align: left;
+      animation: chip-in 0.35s ease-out;
+    }
+    .entite-chip small { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entite-chip:hover { border-color: var(--gold); }
+    @keyframes chip-in { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+    #entite-card {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+      width: min(420px, calc(100vw - 32px));
+      max-height: calc(100vh - 64px);
+      overflow: auto;
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--gold-dim);
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+      font: 15px/1.5 Georgia, serif;
+    }
+    #entite-card[hidden] { display: none; }
+    .entite-card-head { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+    .entite-card-head h4 { margin: 0 0 8px; font-size: 18px; }
+    .entite-card-close { background: none; border: none; color: var(--text-dim); font-size: 22px; cursor: pointer; line-height: 1; }
+    .entite-card-meta { color: var(--text-dim); font-size: 13px; }
+    .entite-card-liens { padding-left: 18px; margin: 8px 0; font-size: 14px; }
+    .entite-card-liens li { margin: 3px 0; }
+    .entite-card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .entite-card-note { color: var(--text-dim); font-size: 11px; margin: 10px 0 0; font-style: italic; }
+    #memoire-dialog {
+      width: min(1320px, calc(100vw - 24px));
+      height: min(880px, calc(100vh - 24px));
+      max-width: none;
+      max-height: none;
+      padding: 0;
+      border: 1px solid var(--gold-dim);
+      border-radius: 14px;
+      background: radial-gradient(ellipse at 50% 40%, #1d1810 0%, #0c0a08 75%);
+      color: var(--text);
+      overflow: hidden;
+    }
+    #memoire-dialog[open] { display: flex; flex-direction: column; }
+    #memoire-dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+    .memoire-head { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .memoire-head h3 { margin: 0; margin-right: auto; font: 19px Georgia, serif; color: var(--gold); }
+    .memoire-recherche { position: relative; flex: 0 1 360px; min-width: 0; }
+    .memoire-recherche input { width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--gold-dim); background: var(--surface2); color: var(--text); font: 14px Georgia, serif; }
+    .memoire-resultats { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; right: 0; max-height: 60vh; overflow: auto; margin: 0; padding: 6px; list-style: none; border-radius: 10px; border: 1px solid var(--gold-dim); background: var(--surface); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); }
+    .memoire-resultats[hidden] { display: none; }
+    .memoire-resultats button { display: flex; gap: 8px; width: 100%; align-items: baseline; padding: 6px 8px; border: none; border-radius: 6px; background: none; color: var(--text); font: 14px Georgia, serif; text-align: left; cursor: pointer; }
+    .memoire-resultats button:hover { background: var(--surface2); }
+    .memoire-res-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .memoire-res-meta { color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+    .memoire-legende { display: flex; gap: 14px; flex-wrap: wrap; padding: 6px 14px; font-size: 12px; color: var(--text-dim); }
+    .memoire-legende i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+    .memoire-corps { flex: 1; min-height: 0; display: flex; }
+    .memoire-zone { flex: 1; min-width: 0; position: relative; }
+    .memoire-zone svg { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    .memoire-panneau { position: relative; width: min(380px, 42%); overflow: auto; padding: 16px 18px; border-left: 1px solid var(--border); background: rgba(21, 18, 13, 0.92); font: 14px/1.55 Georgia, serif; }
+    .memoire-panneau[hidden] { display: none; }
+    .memoire-panneau .entite-card-close { position: absolute; top: 8px; right: 10px; }
+    .memoire-panneau h4 { margin: 0 24px 6px 0; font-size: 18px; }
+    .memoire-panneau h5 { margin: 14px 0 4px; color: var(--gold); font: 13px Georgia, serif; text-transform: uppercase; letter-spacing: 0.06em; }
+    .memoire-image { width: 100%; max-height: 260px; object-fit: contain; border-radius: 8px; margin: 6px 0; background: #000; }
+    .memoire-resume { color: var(--text-dim); font-style: italic; }
+    .memoire-texte { white-space: pre-wrap; max-height: 40vh; overflow: auto; padding: 10px 12px; border-radius: 8px; background: #efe5cc; color: #2b2116; font-size: 14px; }
+    .memoire-voisins { list-style: none; padding: 0; margin: 0; }
+    .memoire-voisins li { margin: 4px 0; }
+    .memoire-voisins .entite.vu::after { content: ' ✓'; color: var(--gold); }
+    .memoire-relation { color: var(--text-dim); font-size: 12px; }
+    .memoire-vide, .memoire-attente { padding: 40px; text-align: center; color: var(--text-dim); }
+    .memoire-lien { stroke: rgba(201, 168, 76, 0.32); }
+    .memoire-bulle { cursor: pointer; transition: opacity 0.25s; }
+    .memoire-bulle .memoire-anneau { fill: none; stroke: rgba(232, 223, 200, 0.55); stroke-width: 1.5; }
+    .memoire-bulle:hover .memoire-anneau, .memoire-bulle.choisie .memoire-anneau { stroke: var(--gold); stroke-width: 3; }
+    .memoire-bulle.decouvrir { opacity: 0.42; }
+    .memoire-bulle.decouvrir .memoire-anneau { stroke-dasharray: 4 3; }
+    .memoire-icone { text-anchor: middle; fill: #f3ead6; pointer-events: none; }
+    .memoire-nom { fill: var(--text); font: 12px Georgia, serif; text-anchor: middle; paint-order: stroke; stroke: #0c0a08; stroke-width: 4px; pointer-events: none; }
+    .memoire-episode .memoire-nom { fill: var(--gold); font-style: italic; font-size: 13px; }
+    .memoire-bulle.estompe, .memoire-lien.estompe { opacity: 0.12; }
+    .memoire-cadenas { font-size: 12px; pointer-events: none; }
+    .memoire-progression { display: flex; gap: 16px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+    .memoire-anneau-total { width: 64px; height: 64px; flex: none; }
+    .memoire-anneau-total .fond { fill: none; stroke: var(--border); stroke-width: 5; }
+    .memoire-anneau-total .plein { fill: none; stroke: var(--gold); stroke-width: 5; stroke-linecap: round; }
+    .memoire-anneau-total text { fill: var(--gold); font: bold 10px Georgia, serif; }
+    .memoire-barres { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 4px 18px; }
+    .memoire-barre { display: grid; grid-template-columns: 112px 1fr auto; gap: 8px; align-items: center; font-size: 12px; color: var(--text-dim); }
+    .memoire-barre i { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+    .memoire-barre b { display: block; height: 100%; background: var(--gold); border-radius: 3px; }
+    .memoire-barre small { font-size: 11px; white-space: nowrap; }
+    #memoire-toast {
+      position: fixed; left: 50%; bottom: 96px; transform: translate(-50%, 20px); z-index: 40;
+      padding: 10px 18px; border-radius: 999px; border: 1px solid var(--gold-dim);
+      background: rgba(12, 10, 8, 0.92); color: var(--text); font: 14px Georgia, serif;
+      opacity: 0; pointer-events: none; transition: opacity 0.4s, transform 0.4s; max-width: calc(100vw - 32px);
+    }
+    #memoire-toast.visible { opacity: 1; transform: translate(-50%, 0); }
+    #memoire-toast strong { color: var(--gold); font-weight: normal; }
+    @media (max-width: 760px) {
+      .memoire-corps { flex-direction: column; }
+      .memoire-panneau { width: auto; max-height: 50%; border-left: none; border-top: 1px solid var(--border); }
+    }
     /* Nom de l'objet survolé, près du curseur */
     #poi-label {
       position: absolute;
@@ -790,7 +1032,8 @@
     #painting-caption strong { display: block; font-style: italic; font-weight: normal; font-size: 20px; color: var(--gold); }
     #painting-caption small { display: block; margin-top: 4px; font-family: system-ui, sans-serif; font-size: 12px; color: var(--text-dim); }
     #context-bubble:not(.open) #context-count, #context-bubble:not(.open) #context-text { display: none; }
-    #context-bubble::after {
+    #context-bubble:not(.has-more) { cursor: default; }
+    #context-bubble.has-more::after {
       content: '▾';
       position: absolute;
       right: 10px;
@@ -798,7 +1041,7 @@
       font-size: 11px;
       color: var(--gold-dim);
     }
-    #context-bubble.open::after { content: '▴'; }
+    #context-bubble.has-more.open::after { content: '▴'; }
 
     #context-count {
       font-family: system-ui, sans-serif;
@@ -1010,8 +1253,11 @@
       <span id="status-text">Initialisation…</span>
     </div>
 
-    <button type="button" id="inspect-back" hidden>⤺ Revenir à Napoléon</button>
+    <button type="button" id="inspect-back" data-i18n="inspectBack" hidden>⤺ Revenir à Napoléon</button>
     <div id="poi-label" hidden></div>
+    <div id="letter-overlay" hidden>
+      <div id="letter-sheet" role="document"></div>
+    </div>
     <div id="painting-overlay" hidden>
       <img id="painting-image" alt="">
       <p id="painting-caption"></p>
@@ -1025,6 +1271,8 @@
       <div id="context-count"></div>
       <div id="context-text"></div>
     </div>
+    <!-- Noms nouveaux de la réponse en cours : ils apparaissent quand la voix les prononce, un clic ouvre leur fiche -->
+    <div id="entites-fond" aria-live="polite"></div>
   </div>
 
   <!-- Chat panel -->
@@ -1037,6 +1285,7 @@
         </div>
         <div id="chat-actions">
           <button type="button" id="settings-btn" class="chat-action" data-i18n="settings">⚙ Paramètres</button>
+          <button type="button" id="memory-btn" class="chat-action" data-i18n="memButton">🕮 Mémoire</button>
           <button type="button" id="new-conversation-btn" class="chat-action" data-i18n="newConversation" hidden>↺ Nouvelle conversation</button>
           <button type="button" id="record-btn" class="chat-action" data-i18n="record" hidden>● Enregistrer</button>
         </div>

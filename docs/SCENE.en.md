@@ -94,6 +94,10 @@ The agent itself chooses six elements of staging.
     `turn_right`); the hip rotation is removed there, and only the legs are played while the app pivots the body.
     The narrator cannot pick them as gestures.
   - The `gesture_pointing` gesture (Mixamo "Pointing") lets him point at a place or a direction.
+  - Five iconic poses, built in Blender (arms placed by inverse kinematics toward a target, hand orientation set,
+    in, a three-second hold, out): `pose_main_dans_le_gilet` (David's 1812 portrait), `pose_mains_dans_le_dos`,
+    `pose_bras_croises`, `pose_main_au_menton`, `pose_main_sur_le_coeur`. The narrator picks them like the other
+    gestures, from their description (`ANIMATION_DESCRIPTIONS`).
 - **The weather behind the window.** The archivist chooses it to match the tone of the turn (`meteo` field).
   - Clear for a calm story.
   - Mist for exile and regrets.

@@ -94,5 +94,15 @@
   "started": "Conversazione iniziata. Ponga la Sua prima domanda a Napoleone.",
   "speaking": "Napoleone sta parlando…",
   "placeholderActive": "Ponga la Sua domanda a Napoleone…",
-  "welcome": "Napoleone La sta aspettando. Gli ponga una domanda sulla sua vita, sulle sue campagne o sul suo periodo di governo, oppure Gli rivolga semplicemente un saluto: inizierà a raccontare. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole."
+  "welcome": "Napoleone La sta aspettando. Gli ponga una domanda sulla sua vita, sulle sue campagne o sul suo periodo di governo, oppure Gli rivolga semplicemente un saluto: inizierà a raccontare. Il 📜 sotto le Sue risposte indica le lettere da cui trae le Sue parole.",
+  "inspectBack": "⤺ Torni da Napoleone",
+  "poi_carte": "La mappa dell’Europa",
+  "poi_lettres": "Le lettere",
+  "poi_cheminee": "Il camino",
+  "poi_miroir": "Lo specchio",
+  "poi_echiquier": "La scacchiera",
+  "poi_commode": "Il comò e il busto",
+  "poi_fenetre": "La finestra sul mare",
+  "poi_bureau": "La scrivania",
+  "poi_lustre": "Il lampadario"
 }

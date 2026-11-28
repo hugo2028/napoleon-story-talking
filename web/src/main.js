@@ -7,7 +7,9 @@ import { BrowserSpeech } from './browserSpeech.js'
 import { PROVIDERS, providerFromUrl } from './providers.js'
 import { Subtitles } from './subtitles.js'
 import { Ambience } from './ambience.js'
-import { findPlaceMentions } from './decorScene.js'
+import { findPlaceMentions, addMapPlace } from './decorScene.js'
+import { Memoire, TYPES as ENTITE_TYPES, decorerTexte, indexDesMentions, ouvrirFiche, ouvrirCarte as ouvrirCarteBrute,
+  annoncer } from './memoire.js'
 import './mobileViewport.js'
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
@@ -20,7 +22,9 @@ const statusDot    = document.getElementById('status-dot')
 const statusText   = document.getElementById('status-text')
 const contextBubble = document.getElementById('context-bubble')
 // Un clic déplie ou replie les notes (nombre de lettres et contexte de l'épisode)
-contextBubble.addEventListener('click', () => contextBubble.classList.toggle('open'))
+contextBubble.addEventListener('click', () => {
+  if (contextBubble.classList.contains('has-more')) contextBubble.classList.toggle('open')
+})
 const contextCount  = document.getElementById('context-count')
 const contextText   = document.getElementById('context-text')
 const contextEpisode  = document.getElementById('context-episode')
@@ -68,6 +72,110 @@ let synth    = null
 let speaking = false
 let placeMentions = []   // lieux de la carte nommés dans la réponse en cours, par mot (findPlaceMentions)
 let quoteSpans = []      // citations « … » de la réponse en cours, par mot : la musique ne joue que pendant elles
+let entityMentions = []  // noms nouveaux de la réponse en cours, par mot (indexDesMentions) : bandeau et carte
+let turnToken = 0        // change à chaque réponse : des noms arrivés trop tard pour une réponse s'ignorent
+const memoire = new Memoire()
+/** La mémoire ; une bulle verrouillée propose de demander à Napoléon (la question est préparée dans le chat). */
+function ouvrirCarte(memoireArg = memoire, focus = null) {
+  return ouvrirCarteBrute(memoireArg, focus, {
+    onDemander: (n) => {
+      chatInput.value = t('memAsk').replace('{0}', n.nom)
+      chatInput.dispatchEvent(new Event('input'))
+      chatInput.focus()
+    },
+  })
+}
+const entitesFond = document.getElementById('entites-fond')
+document.getElementById('memory-btn')?.addEventListener('click', () => ouvrirCarte(memoire))
+
+/** Un nom de la réponse a été cliqué : le récit se met en pause le temps de lire sa fiche. */
+function onEntite(e) {
+  if (e.type === 'lieu' && e.carte) avatar?.focusPlace?.(e.carte)
+  const enPause = speaking && synth?.canPause && !synth.paused
+  if (enPause) { synth.pause(); avatar?.stopTalking?.() }
+  const reprendre = () => {
+    if (enPause && synth?.paused) { synth.resume(); avatar?.startTalking?.() }
+  }
+  ouvrirFiche(memoire, e, {
+    reprendre: enPause,
+    onClose: (versCarte) => { if (!versCarte) reprendre() },
+    onCarte: (id) => {
+      ouvrirCarte(memoire, id)
+      document.getElementById('memoire-dialog')?.addEventListener('close', reprendre, { once: true })
+    },
+  })
+}
+
+/** Le nom est prononcé : il rejoint le bandeau (en fond), et un lieu s'éclaire sur la carte. */
+function montrerEntite(e) {
+  if (e.type === 'lieu' && e.carte) avatar?.focusPlace?.(e.carte)
+  if (!entitesFond || entitesFond.querySelector(`[data-id="${CSS.escape(e.id)}"]`)) return
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'entite-chip'
+  b.dataset.id = e.id
+  const nom = document.createElement('span')
+  nom.textContent = `${ENTITE_TYPES[e.type]?.icone || ''} ${e.nom}`
+  const notice = document.createElement('small')
+  notice.textContent = e.notice || ''
+  b.append(nom, notice)
+  b.addEventListener('click', () => onEntite(e))
+  entitesFond.appendChild(b)
+  while (entitesFond.children.length > 8) entitesFond.firstElementChild.remove()
+}
+
+/**
+ * Noms nouveaux de la réponse (demandés pendant que la voix démarre) : mis en mémoire, mis en évidence à leur
+ * première apparition dans la bulle et les sous-titres, puis montrés au fil de la voix.
+ */
+async function chargerEntites(texte, bubble, item, annotation, avantTour = null, docsTour = []) {
+  const token = turnToken
+  let data
+  try {
+    const res = await fetch('/api/entites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texte, connus: memoire.connus(), lang: getLang(), langName: getLangInfo().promptName,
+        contexte: [annotation?.episode, annotation?.periode_debut, annotation?.periode_fin].filter(Boolean).join(', ') })
+    })
+    data = await res.json()
+  } catch (err) {
+    console.warn('[Mémoire]', err)
+    data = { entites: [], cites: [] }
+  }
+  const entites = (data.entites || []).filter((e) => !memoire.get(e.id))
+  for (const e of entites) if (e.type === 'lieu') e.carte = addMapPlace(e.mention, e.lon, e.lat)
+  memoire.ajouter({ entites }, annotation?.episode || '')
+  // Le jeu : liens du corpus débloqués par cette réponse (noms rencontrés ensemble), épisodes de ses documents
+  try {
+    const tour = [...entites.map((e) => e.id), ...(data.cites || []), ...docsTour]
+    const res = await fetch('/api/graphe/debloquer', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vus: memoire.refsVues(), tour }) })
+    const d = await res.json()
+    memoire.debloquerLiens(d.liens || [])
+    memoire.debloquerEpisodes(d.episodes || [])
+  } catch (err) { console.warn('[Mémoire]', err) }
+  if (avantTour) annoncer(avantTour, memoire.compter())
+  if (!entites.length) return
+  item.entites = entites
+  persistConversation()
+  const body = bubble?.querySelector('.bubble-text')
+  if (body) decorerTexte(body, entites, onEntite)
+  if (token !== turnToken) return
+  // Sous-titres : les mots de chaque nom deviennent cliquables ; la voix les a peut-être déjà dépassés
+  const mentions = indexDesMentions(texte, entites)
+  for (const m of mentions) {
+    for (let k = m.index; k < m.index + m.mots; k++) {
+      const span = subtitles.words[k]
+      if (!span) continue
+      span.classList.add('entite-mot')
+      span.addEventListener('click', (ev) => { ev.stopPropagation(); onEntite(m.entite) })
+    }
+  }
+  const dits = mentions.filter((m) => m.index <= subtitles.index || !synth)
+  for (const m of dits) montrerEntite(m.entite)
+  entityMentions = mentions.filter((m) => !dits.includes(m))
+}
 
 /** Citations de la réponse : [{ start, end }] en index de mots (sous-titres), du « ouvrant au » fermant. */
 function findQuoteSpans(text) {
@@ -102,6 +210,87 @@ function showPaintingLarge(info) {
 }
 paintingOverlay.addEventListener('click', () => { paintingOverlay.hidden = true })
 
+// Lettre entière, dans une liseuse : date, destinataire, texte complet, lien Gallica
+const letterOverlay = document.getElementById('letter-overlay')
+// Une page de lettre tient environ LETTER_PAGE caractères ; on coupe entre deux paragraphes, sinon entre deux phrases
+const LETTER_PAGE = 1300
+function letterPages(text) {
+  const pages = []
+  let rest = (text || '').trim()
+  while (rest.length > LETTER_PAGE * 1.25) {
+    const chunk = rest.slice(0, LETTER_PAGE + 200)
+    let cut = chunk.lastIndexOf('\n')
+    if (cut < LETTER_PAGE * 0.6) {
+      // fin de phrase la plus proche de la taille visée ; à défaut, la taille visée
+      const ends = [...chunk.matchAll(/[.!?;»]\s/g)].map((x) => x.index + 1).filter((i) => i >= LETTER_PAGE * 0.6)
+      cut = ends.length ? ends.reduce((a, b) => (Math.abs(b - LETTER_PAGE) < Math.abs(a - LETTER_PAGE) ? b : a)) : LETTER_PAGE
+    }
+    pages.push(rest.slice(0, cut).trim())
+    rest = rest.slice(cut).trim()
+  }
+  if (rest) pages.push(rest)
+  return pages.length ? pages : ['']
+}
+
+let letterState = null   // { source, pages, page }
+function showLetterFull(source) {
+  letterState = { source, pages: letterPages(source.text || source.snippet || ''), page: 0 }
+  renderLetterPage()
+  letterOverlay.hidden = false
+}
+function renderLetterPage() {
+  const { source, pages, page } = letterState
+  const sheet = document.getElementById('letter-sheet')
+  sheet.replaceChildren()
+  if (page === 0) {
+    const h = document.createElement('h3')
+    h.textContent = SOURCE_KIND[source.kind] || formatDate(source.date) || source.date || ''
+    const to = document.createElement('p')
+    to.className = 'letter-to'
+    to.textContent = source.title || ''
+    sheet.append(h, to)
+  }
+  const body = document.createElement('div')
+  body.className = 'letter-body' + (page === 0 ? '' : ' continued')
+  body.textContent = pages[page]
+  sheet.appendChild(body)
+  const foot = document.createElement('div')
+  foot.className = 'letter-foot'
+  if (pages.length > 1) {
+    const nav = (label, delta, disabled) => {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'letter-nav'
+      b.textContent = label
+      b.disabled = disabled
+      b.addEventListener('click', () => { letterState.page += delta; renderLetterPage() })
+      return b
+    }
+    const count = document.createElement('span')
+    count.className = 'letter-count'
+    count.textContent = `${page + 1} / ${pages.length}`
+    foot.append(nav('‹', -1, page === 0), count, nav('›', 1, page === pages.length - 1))
+  }
+  if (source.url && page === pages.length - 1) {
+    const a = document.createElement('a')
+    a.className = 'letter-link'
+    a.href = source.url
+    a.target = '_blank'
+    a.rel = 'noopener'
+    a.textContent = 'Gallica ↗'
+    foot.appendChild(a)
+  }
+  if (foot.childElementCount) sheet.appendChild(foot)
+  sheet.scrollTop = 0
+}
+document.addEventListener('keydown', (e) => {
+  if (letterOverlay.hidden || !letterState) return
+  const last = letterState.pages.length - 1
+  if (e.key === 'ArrowRight' && letterState.page < last) { letterState.page++; renderLetterPage() }
+  if (e.key === 'ArrowLeft' && letterState.page > 0) { letterState.page--; renderLetterPage() }
+})
+letterOverlay.addEventListener('click', (e) => { if (e.target === letterOverlay) letterOverlay.hidden = true })
+
 // Objet regardé de près : bouton pour revenir au récit ; au survol, le nom de l'objet près du curseur
 const inspectBack = document.getElementById('inspect-back')
 inspectBack.addEventListener('click', () => avatar?.endInspect?.())
@@ -109,7 +298,8 @@ const poiLabel = document.getElementById('poi-label')
 function showPoiLabel(poi, e) {
   if (!poi || !e) { poiLabel.hidden = true; return }
   const panel = poiLabel.parentElement.getBoundingClientRect()
-  poiLabel.textContent = poi.label
+  const key = `poi_${poi.id}`
+  poiLabel.textContent = poi.id !== 'tableau' && t(key) !== key ? t(key) : poi.label
   poiLabel.style.left = `${e.clientX - panel.left + 14}px`
   poiLabel.style.top = `${e.clientY - panel.top + 16}px`
   poiLabel.hidden = false
@@ -117,6 +307,7 @@ function showPoiLabel(poi, e) {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return
   if (!paintingOverlay.hidden) paintingOverlay.hidden = true
+  else if (!letterOverlay.hidden) letterOverlay.hidden = true
   else avatar?.endInspect?.()
 })
 let pending  = false
@@ -156,6 +347,8 @@ async function init() {
   restoreScene()
   if (avatar) avatar.onLightning = () => ambience.thunder()
   if (avatar) avatar.onPaintingClick = showPaintingLarge
+  if (avatar) avatar.onLetterClick = showLetterFull
+  if (avatar) avatar.onMemoryClick = () => ouvrirCarte(memoire)
   if (avatar) avatar.onInspectChange = (on) => {
     inspectBack.hidden = !on
     poiLabel.hidden = true
@@ -201,11 +394,17 @@ async function initSpeech() {
     subtitles.reach(i)
     // La carte suit la voix : chaque lieu nommé s'éclaire au moment où il est prononcé
     while (placeMentions.length && placeMentions[0].index <= i) avatar?.focusPlace?.(placeMentions.shift().name)
+    while (entityMentions.length && entityMentions[0].index <= i) montrerEntite(entityMentions.shift().entite)
     // Musique pendant les citations seulement, et un instant après (quelques mots)
     ambience.setMusicActive(quoteSpans.some((s) => i >= s.start && i <= s.end + 4))
   }
   synth.onStart  = () => { speaking = true;  avatar?.startTalking(); ambience.setSpeaking(true); updateControls() }
-  synth.onEnd    = () => { speaking = false; avatar?.stopTalking(); ambience.setSpeaking(false); ambience.setMusicActive(false); subtitles.finish(); setReady() }
+  synth.onEnd    = () => {
+    speaking = false; avatar?.stopTalking(); ambience.setSpeaking(false); ambience.setMusicActive(false)
+    subtitles.finish(); setReady()
+    // Fin de la réponse : retour au plan large, pour que le visiteur voie la pièce et puisse cliquer les objets
+    avatar?.setCameraMode?.('default')
+  }
   return true
 }
 
@@ -631,10 +830,23 @@ async function respond(userText, showUser = true) {
   avatar?.stopThinking?.()
   history.push({ role: 'assistant', content: speech, sources: apiSources, annotation: apiAnnotation, scene: apiScene })
   updateNightfall()
+  // Au tableau mural, toutes les sources de la réponse : lettres, passages des Œuvres, faits de la fiche
   applyScene({ ...apiScene, lettres: apiSources || [] })
   trimHistory()
   persistConversation()
   addBubble(speech, 'napoleon', apiSources)
+  // La mémoire garde aussi les documents de la réponse : lettres, passages des Œuvres, tableau épinglé
+  const avantTour = memoire.compter()
+  memoire.ajouterDocuments([
+    ...(apiSources || []).filter((src) => src.ref).map((src) => ({
+      ref: src.ref, genre: src.kind === 'oeuvres' ? 'oeuvre' : 'lettre', nom: src.title, date: src.date })),
+    ...(apiScene?.tableau?.ref ? [{ ref: apiScene.tableau.ref, genre: 'tableau', nom: apiScene.tableau.titre,
+      date: apiScene.tableau.date, image: `/decor/tableaux/${apiScene.tableau.id}.jpg` }] : []),
+  ], apiAnnotation?.episode || '')
+  const reponseBulle = chatLog.lastElementChild
+  const reponseItem = history[history.length - 1]
+  const docsTour = [...(apiSources || []).filter((src) => src.ref).map((src) => src.ref),
+    ...(apiScene?.tableau?.ref ? [apiScene.tableau.ref] : [])]
   // Les notes suivent chaque réponse : nouvel épisode → nouveau contexte, sinon on garde
   // le contexte de l'épisode en cours mais chapitre et lettres sont ceux de CETTE réponse.
   if (apiAnnotation) {
@@ -656,6 +868,10 @@ async function respond(userText, showUser = true) {
     avatar?.endInspect?.()          // nouvelle réponse : la caméra reprend le récit
     placeMentions = findPlaceMentions(stripPauses(speech))
     quoteSpans = findQuoteSpans(stripPauses(speech))
+    turnToken++
+    entityMentions = []
+    entitesFond?.replaceChildren()
+    chargerEntites(stripPauses(speech), reponseBulle, reponseItem, apiAnnotation, avantTour, docsTour)
     try {
       await synth.speak(speech, apiActions)
     } catch (err) {
@@ -667,6 +883,7 @@ async function respond(userText, showUser = true) {
       setReady()
     }
   } else {
+    if (speech) chargerEntites(stripPauses(speech), reponseBulle, reponseItem, apiAnnotation, avantTour, docsTour)
     setReady()
   }
 }
@@ -687,32 +904,36 @@ function addBubble(text, role, sources = null) {
     div.classList.add('latest-sources')
     const btn = document.createElement('button')
     btn.className = 'source-toggle'
-    btn.textContent = `📜 ${t('letters', sources.length)} · ${t('sources')}`
+    const nLettres = sources.filter((s) => !s.kind).length   // les écrits et les souvenirs ne sont pas des lettres
+    btn.textContent = nLettres ? `📜 ${t('letters', nLettres)} · ${t('sources')}` : `📜 ${t('sources')}`
     btn.type = 'button'
 
     const panel = document.createElement('div')
     panel.className = 'source-panel'
     panel.hidden = true
 
-    // Un clic déplie la liste ; chaque ligne (date, destinataire) est le lien vers Gallica.
+    // Un clic déplie la liste ; chaque ligne (date, destinataire) ouvre la lettre entière, « Gallica ↗ » l'original.
     for (const s of sources) {
-      const item = document.createElement(s.url ? 'a' : 'div')
+      const item = document.createElement('div')
       item.className = 'source-item'
-      if (s.url) {
-        item.href = s.url
-        item.target = '_blank'
-        item.rel = 'noopener'
-      }
+      const open = document.createElement('button')
+      open.type = 'button'
+      open.className = 'source-open'
       const dateSpan = document.createElement('span')
       dateSpan.className = 'source-date'
-      dateSpan.textContent = formatDate(s.date) || s.date || '?'
+      dateSpan.textContent = SOURCE_KIND[s.kind] || formatDate(s.date) || s.date || '?'
       const titleSpan = document.createElement('span')
       titleSpan.className = 'source-title'
       titleSpan.textContent = s.title || s.snippet || ''
-      item.append(dateSpan, titleSpan)
+      open.append(dateSpan, titleSpan)
+      open.addEventListener('click', () => showLetterFull(s))
+      item.appendChild(open)
       if (s.url) {
-        const arrow = document.createElement('span')
+        const arrow = document.createElement('a')
         arrow.className = 'source-link'
+        arrow.href = s.url
+        arrow.target = '_blank'
+        arrow.rel = 'noopener'
         arrow.textContent = 'Gallica ↗'
         item.appendChild(arrow)
       }
@@ -761,10 +982,17 @@ function clearNotes() {
   contextBubble.hidden = true
 }
 
+/** Étiquette des sources qui ne sont pas des lettres datées. */
+const SOURCE_KIND = { oeuvres: 'Ses écrits', fiche: 'Souvenir' }
+
 function refreshNotesVisibility() {
   const empty = [contextEpisode, contextPeriode, contextChapitre, contextCount, contextText]
     .every(el => !el.textContent) && contextLettres.childElementCount === 0
   contextBubble.hidden = empty
+  // La flèche ne s'affiche que s'il y a de quoi déplier (nombre de lettres, contexte de l'épisode)
+  const hasMore = Boolean(contextCount.textContent || contextText.textContent)
+  contextBubble.classList.toggle('has-more', hasMore)
+  if (!hasMore) contextBubble.classList.remove('open')
 }
 
 /** « 1805-10-08 » → « 8 octobre 1805 » (ou « 8 October 1805 »…), « 1805-10 » → « octobre 1805 » */
@@ -872,6 +1100,8 @@ function renderHistory() {
 
   for (const message of history) {
     addBubble(message.content, message.role === 'assistant' ? 'napoleon' : 'user', message.sources)
+    const body = chatLog.lastElementChild?.querySelector('.bubble-text')
+    if (message.entites?.length && body) decorerTexte(body, message.entites, onEntite)
   }
   // Repères en haut à gauche : ceux de la dernière réponse qui en avait
   const lastAnn = [...history].reverse().find(m => m.annotation)?.annotation

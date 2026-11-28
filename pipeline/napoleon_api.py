@@ -52,7 +52,7 @@ from napoleon_agent import (
 llm_base_url = os.getenv("LLM_BASE_URL") or OPENAI_BASE_URL
 llm_key      = os.getenv("LLM_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("OPEN_AI_KEY")
 model        = os.getenv("LLM_MODEL", "gpt-4.1-mini")         # narrateur
-agent_model  = os.getenv("AGENT_MODEL", "gpt-4.1")            # archiviste
+agent_model  = os.getenv("AGENT_MODEL", "gpt-4.1-mini")            # archiviste
 # Embeddings OpenAI (recherche sémantique), optionnels : même clé si le fournisseur est OpenAI.
 embed_key    = os.getenv("EMBEDDING_API_KEY") or (llm_key if is_openai(llm_base_url) else None)
 
@@ -83,7 +83,11 @@ events_data = json.loads(EVENTS_FILE.read_text(encoding="utf-8"))
 
 # Mode de pilotage du récit : "autonome" (archiviste à outils) ou "classique" (pipeline historique)
 AGENT_MODE = os.getenv("AGENT_MODE", "autonome").strip().lower()
-from napoleon_archivist import Archivist  # noqa: E402
+from napoleon_archivist import Archivist, passage_oeuvres, section_oeuvres
+from napoleon_entites import extraire as extraire_entites, _en_mot_entier as en_mot_entier  # noqa: E402
+from napoleon_graphe import Graphe  # noqa: E402
+
+graphe = Graphe()   # mémoire du visiteur : recherche et voisinage (graphe/scripts/build_graphe.py)  # noqa: E402
 archivist = Archivist(chat_client, conn, emb_matrix, chunk_ids, m_conn, m_matrix, m_ids, events_data,
                       model=agent_model, embed_client=embed_client)
 print(f"Mode de récit : {AGENT_MODE} — {llm_base_url} (archiviste : {agent_model}, narrateur : {model})")
@@ -212,14 +216,41 @@ def _get_sources(letter_ids: list[int]) -> list[dict]:
             # « 21582. AU GÉNÉRAL COMTE BERTRAND, … » → « AU GÉNÉRAL COMTE BERTRAND, … »
             if ". " in title[:8]:
                 title = title.split(". ", 1)[1]
+            # Lettre entière : tous ses passages réunis (une longue lettre est découpée en plusieurs passages)
+            entiere = archivist.textes([lid], limite=12000) if archivist else []
             sources.append({
+                "ref":     f"lettre:{archivist.lettre(lid) if archivist else lid}",
                 "date":    row[0] or "?",
                 "title":   title[:90],
                 "snippet": (row[1] or "").strip()[:100],
+                "text":    (entiere[0]["text"] if entiere else (row[1] or "")).strip(),
                 "url":     _gallica_url(row[2] or "", raw_title),   # numéro de lettre utile à la recherche
             })
     sources.sort(key=lambda s: s["date"])   # même ordre que les lettres des notes
     return sources
+
+
+def _get_oeuvres(ids: list[int]) -> list[dict]:
+    """Passages des Œuvres de Napoléon joints à la réponse : lisibles en entier dans la liseuse, comme les lettres."""
+    out = []
+    for mid in ids:
+        row = m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (mid,)).fetchone() if m_conn else None
+        if row:
+            text = (row[1] or "").strip()
+            sec = passage_oeuvres(mid, row[0]) or section_oeuvres(row[0])
+            out.append({"ref": f"oeuvre:{mid}", "date": "", "title": f"{sec['ouvrage']}" + (f" ({sec['periode']})" if sec.get("periode") else ""),
+                        "snippet": text[:100], "text": text, "url": None, "kind": "oeuvres"})
+    return out
+
+
+def _get_fiche(faits: list[str]) -> list[dict]:
+    """Faits de la fiche utilisés par la réponse : montrés comme une source à part entière, pour que le visiteur
+    sache que ce passage ne vient d'aucun document d'archive."""
+    if not faits:
+        return []
+    text = "\n".join(faits)
+    return [{"date": "", "title": "Ce que Napoléon sait de lui-même — aucun document d'archive",
+             "snippet": text[:100], "text": text, "url": None, "kind": "fiche"}]
 
 
 _ALLOWED_ANIMATIONS = set(AVATAR_GESTURE_ANIMATIONS)
@@ -641,6 +672,77 @@ def chat():
             return _continue(frontend_conv_id, message)
 
 
+@app.post("/entites")
+def entites():
+    """Personnes, lieux et événements nommés dans une réponse (napoleon_entites.py), hors ceux que le visiteur
+    connaît déjà : appelé par l'interface pendant que la voix commence, sans bloquer la conversation."""
+    data = request.json or {}
+    if chat_client is None:
+        return jsonify({"error": "missing_llm"}), 503
+    try:
+        out = extraire_entites(chat_client, agent_model, (data.get("texte") or "")[:6000], data.get("connus") or [],
+                               (data.get("contexte") or "")[:300],
+                               LANGUES.get(_langue(data.get("lang"), data.get("lang_name")), "français"))
+    except Exception as e:      # la réponse reste lisible sans les noms : on le signale sans échouer
+        print(f"[ENTITÉS] {e}")
+        out = {"entites": [], "liens": [], "erreur": str(e)[:200]}
+    # Un nom déjà dans le graphe y prend son identifiant : la mémoire du visiteur rejoint celle du corpus
+    connus = {c.get("id") for c in data.get("connus") or [] if isinstance(c, dict)}
+    renomme = {}
+    for e in out["entites"]:
+        trouve = graphe.resoudre([e["nom"], e["mention"]])
+        ref = trouve.get(e["nom"]) or trouve.get(e["mention"])
+        if ref and ref != e["id"]:
+            renomme[e["id"]] = ref
+            e["id"] = ref
+    out["entites"] = [e for e in out["entites"] if e["id"] not in connus]
+    # Noms déjà connus que la réponse cite à nouveau : ensemble, ils peuvent débloquer un lien
+    texte = data.get("texte") or ""
+    noms_connus = {c["id"]: c.get("nom", "") for c in data.get("connus") or [] if isinstance(c, dict) and c.get("id")}
+    formes = graphe.formes_de(list(noms_connus))
+    out["cites"] = [i for i, nom in noms_connus.items()
+                    if any(len(f) >= 3 and en_mot_entier(f, texte) for f in formes.get(i, set()) | {nom})]
+    for l in out["liens"]:
+        l["de"], l["vers"] = renomme.get(l["de"], l["de"]), renomme.get(l["vers"], l["vers"])
+    return jsonify(out)
+
+
+@app.get("/graphe/recherche")
+def graphe_recherche():
+    q = (request.args.get("q") or "").strip()[:200]
+    genres = [g for g in (request.args.get("genres") or "").split(",") if g]
+    return jsonify({"resultats": graphe.rechercher(q, int(request.args.get("limite") or 30), genres or None)})
+
+
+@app.get("/graphe/noeud")
+def graphe_noeud():
+    ref = (request.args.get("ref") or "").strip()[:120]
+    n = graphe.noeuds([ref])
+    if not n:
+        return jsonify({"error": "inconnu"}), 404
+    longueur = 20000 if request.args.get("texte") else 600     # texte entier pour la liseuse de la mémoire
+    return jsonify({"noeud": n[0], "voisins": graphe.voisins(ref), "extrait": graphe.extrait(ref, longueur)})
+
+
+@app.get("/graphe/totaux")
+def graphe_totaux():
+    return jsonify(graphe.totaux())
+
+
+@app.post("/graphe/debloquer")
+def graphe_debloquer():
+    data = request.json or {}
+    vus = [str(v)[:120] for v in data.get("vus") or []][:1500]
+    tour = [str(v)[:120] for v in data.get("tour") or []][:200]
+    return jsonify({"liens": graphe.debloquer(vus, tour), "episodes": graphe.episodes_de(tour)})
+
+
+@app.post("/graphe/sous-graphe")
+def graphe_sous_graphe():
+    vus = [str(v)[:120] for v in (request.json or {}).get("vus") or []][:400]
+    return jsonify(graphe.sous_graphe(vus))
+
+
 @app.delete("/chat")
 def delete_chat():
     data = request.json or {}
@@ -1038,7 +1140,8 @@ def _chat_autonome(frontend_conv_id: str | None, user_message: str, lang: str = 
         # Lettres de la base sur toute la période de l'épisode, quel qu'en soit le sujet
         "period_count":    archivist.period_count(state) if subject != previous_subject else None,
         "context":         context_text,
-        "sources":         _get_sources(served),
+        "sources":         _get_sources(served) + _get_oeuvres(decision.get("memoires") or [])
+                           + _get_fiche(decision.get("faits") or []),
         "actions":         anim_actions,
         "chapitre":        decision["chapitre"]["titre"] if decision["type"] == "tour" else None,
         "pistes":          [p["titre"] for p in decision.get("pistes", [])] if decision["type"] == "tour" else [],

@@ -30,13 +30,52 @@ import unicodedata
 
 from napoleon_agent import NAPOLEON_FICHE, cosine_sim, embed_question, fetch_chunks
 
+# Sections des Œuvres : titre lisible et période, pour situer chaque passage dans le temps
+_SECTIONS_FILE = Path(__file__).resolve().parent.parent / "napoleon-corpus" / "metadata" / "oeuvres_sections.json"
+OEUVRES_SECTIONS = {k: v for k, v in json.loads(_SECTIONS_FILE.read_text(encoding="utf-8")).items()
+                    if not k.startswith("_")} if _SECTIONS_FILE.exists() else {}
+
+
+# Passages des Œuvres gardés pour la recherche, datés un par un (scripts/build_oeuvres_passages.py) : seuls ceux
+# dont la date est sûre y figurent ; les autres ne sont plus proposés.
+_PASSAGES_FILE = _SECTIONS_FILE.parent / "oeuvres_passages.json"
+PASSAGES_OEUVRES = (json.loads(_PASSAGES_FILE.read_text(encoding="utf-8"))["passages"]
+                    if _PASSAGES_FILE.exists() else None)
+_EPISODES_FILE = _SECTIONS_FILE.parent / "episodes.json"
+EPISODES = ({e["id"]: e for e in json.loads(_EPISODES_FILE.read_text(encoding="utf-8"))["episodes"]}
+            if _EPISODES_FILE.exists() else {})
+
+
+def passage_oeuvres(cid: int, title: str) -> dict | None:
+    """{ouvrage, periode, episode, importance, ecrit_apres_coup?} d'un passage des Œuvres, ou None s'il est écarté
+    (date incertaine, texte de l'éditeur ou d'un tiers)."""
+    sec = section_oeuvres(title)
+    if PASSAGES_OEUVRES is None:            # pas encore de datation par passage : la section seule
+        return None if sec.get("editeur") else sec
+    p = PASSAGES_OEUVRES.get(str(cid))
+    if not p:
+        return None
+    ep = EPISODES.get(p["episode"], {})
+    return {"ouvrage": sec["ouvrage"], "periode": p["date"] or sec.get("periode", ""),
+            "episode": ep.get("titre", p["episode"]), "importance": p.get("importance", 2),
+            **({"ecrit_apres_coup": True} if p.get("nature") == "retrospectif" else {})}
+
+
+def section_oeuvres(title: str) -> dict:
+    """{ouvrage, periode, editeur} d'une section des Œuvres (titre brut de la base)."""
+    sec = OEUVRES_SECTIONS.get((title or "").strip(), {})
+    deb, fin = sec.get("debut") or "", sec.get("fin") or ""
+    periode = deb if deb == fin else " → ".join(x for x in (deb, fin) if x)
+    return {"ouvrage": sec.get("titre") or (title or "Œuvres").strip().rstrip("."),
+            **({"periode": periode} if periode else {}), **({"editeur": True} if sec.get("editeur") else {})}
+
 
 def _sans_accents(texte: str) -> str:
     texte = unicodedata.normalize("NFKD", (texte or "").lower())
     return "".join(c for c in texte if not unicodedata.combining(c))
 from llm_connector import parse_json_object
 
-AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1")
+AGENT_MODEL = os.getenv("AGENT_MODEL", "gpt-4.1-mini")
 MAX_AGENT_STEPS = int(os.getenv("AGENT_MAX_STEPS", "14"))
 
 _MOT_RE = re.compile(r"\w+", re.UNICODE)
@@ -54,6 +93,9 @@ VARIANTE_MAX_JOURS = 3
 VARIANTES_MIN_LETTRES = 8
 # Au-delà, un plan mélange probablement plusieurs épisodes (avertissement renvoyé à l'archiviste).
 EPISODE_MAX_MOIS = 24
+
+
+PLAN_MAX_JOURS = 3 * 366   # un épisode : trois ans au plus
 
 
 def _ecart_jours(a: str, b: str) -> int | None:
@@ -163,8 +205,13 @@ en cours et ses pistes restent en attente : le visiteur pourra y revenir quand i
 Tes responsabilités :
 1. Comprendre ce que veut le visiteur (nouveau sujet, choix d'une piste proposée, suite du récit, \
 détail précis, conversation libre, simple échange).
+   Une question sur une longue période (« la Révolution », « l'Empire ») ne se raconte pas d'un bloc : un plan \
+couvre UN épisode (quelques mois, trois ans au plus). Prends le premier épisode de la période qui a des sources \
+(lettres ou Œuvres) ; si ce qui le précède n'en a pas, le narrateur le dit en une phrase. Les épisodes suivants \
+se proposent ensuite, en transition.
 2. Enquêter quand c'est nécessaire : situer la période (chronologie), mesurer la matière \
 disponible (explorer_periode), chercher (rechercher / rechercher_mots), lire les lettres prometteuses.
+   - Formule ta première requête avec les mots du visiteur, sans y ajouter ce que tu crois savoir du sujet : c'est la recherche qui doit te dire où sont les sources, pas ta mémoire.
    - C'est TOI qui choisis le seuil et le nombre de résultats : regarde la distribution des scores \
 et le contenu, n'applique pas de seuil aveuglément. Une requête courte donne des scores bas : \
 complète par une recherche par période, par mots exacts (lieux, personnes) ou par une requête plus riche.
@@ -198,12 +245,10 @@ couvrent l'épisode dans l'ordre chronologique (préparatifs, tournants, apogée
 avec deux variantes pour les moments où deux lettres racontent le même passage (même jour ou jours voisins : \
 des lettres éloignées de plus de 3 jours forment des moments successifs, jamais des variantes). \
 Un plan d'un seul moment n'est acceptable que si les lettres manquent vraiment.
-   - Commence le récit au début de l'épisode, sauf si le visiteur demande un moment précis.
-   - Une question sur une période large (« pendant la Révolution », « votre jeunesse », « sous le Consulat ») porte
-sur toute la période, pas sur son épisode le plus riche en lettres. Vérifie d'abord avec chronologie et
-explorer_periode où commencent les lettres : la Correspondance ne commence qu'au siège de Toulon (septembre 1793).
-Pour ce qui précède, réponds d'abord par un survol tiré de la fiche (repondre_librement avec « faits »), puis
-propose d'entrer dans l'épisode où les lettres commencent.
+   - Commence le récit au début de l'épisode, sauf si le visiteur demande un moment précis. Un moment sans
+lettre a sa place dans le plan s'il a des passages des Œuvres (memoires) : donne-lui ces passages et une date, et
+sers-le à son tour (servir_tour avec lettres vides). Un moment sans lettre ni passage des Œuvres n'a pas de source :
+il n'entre pas dans le plan.
    - Une demande de récit (« parle-moi de… », « raconte… », « et le sacre ? ») appelle l'enquête, le plan et servir_tour DÈS CE TOUR. Ne réponds jamais par repondre_librement en annonçant un épisode que tu n'as pas préparé, et ne fais pas choisir au visiteur entre des moments sans lettres pour les raconter.
    - Contrôle la cohérence de chaque lettre avant de la retenir : une lettre qui évoque \
 « l'anniversaire » d'une bataille ne peut pas dater du jour de cette bataille ; une lettre qui \
@@ -249,22 +294,19 @@ en y intégrant la lettre amorce.
    - Pour toute question sur sa vie, cherche dans cet ordre et dis au narrateur, dans la consigne, d'où vient \
 ce qu'il raconte :
      1. les lettres (rechercher, rechercher_mots) : le récit ou la réponse s'appuie sur elles ;
-     2. sinon ses Œuvres (memoires) : repondre_librement avec « memoires » ; Napoléon dit qu'il n'a pas trouvé \
-de lettre sur ce sujet, mais qu'il revient sur ce passage dans ses écrits ;
-     3. sinon sa fiche (fiche_personnelle, par mots ou par rubrique) : repondre_librement avec « faits » ; il dit \
-qu'il n'en a pas de trace écrite sous la main, mais qu'il s'en souvient ;
-     4. sinon : il dit qu'il ne trouve aucune trace écrite de ce passage et propose un sujet voisin dont tu as \
-vérifié les lettres. Il ne raconte rien « de mémoire » au-delà de ce que tu lui transmets.
+     2. ses Œuvres (memoires) : cherche-y aussi, en UNE ou DEUX recherches au plus, et joins 1 à 2 passages qui
+éclairent le sujet (servir_tour.memoires ou repondre_librement.memoires). Sans lettre, Napoléon dit qu'il n'a pas
+de lettre sur ce sujet, et nomme l'écrit dont vient le passage ;
+     3. sinon, PAS DE SOURCE : repondre_librement, sans lettre ni passage, avec pour consigne de dire simplement
+que Napoléon n'a aucune source écrite sur ce sujet, sans le raconter, et de proposer un autre sujet dont tu as
+vérifié les lettres. La fiche personnelle n'est pas une source : elle t'oriente (dates, épisodes, quel sujet
+proposer), mais rien de ce qu'elle dit n'est transmis au narrateur.
    - La consigne ne contient aucun fait que tes sources ne donnent pas : ni nom, ni date, ni lieu tirés de ta \
 propre connaissance. Ce que tu sais par toi-même mais n'as trouvé nulle part n'existe pas pour Napoléon.
-   - Une question sur un fait de sa propre vie que les lettres ne couvrent pas (sa naissance, ses parents, \
-ses frères et sœurs, ses études, ses mariages, son fils, son exil et ses compagnons) : consulte \
-fiche_personnelle, puis repondre_librement avec dans « faits » les identifiants des faits qui répondent. \
-Les lettres restent la source à privilégier : pour un événement de sa vie publique (le sacre, un traité, une bataille…), cherche D'ABORD les lettres qui en parlent (rechercher, rechercher_mots) et sers-les avec les faits ; la fiche complète, elle ne remplace pas.
    - Une question sur ce qui est postérieur à 1821 ou étranger à son temps : repondre_librement, sans lettre \
-ni fait, avec pour consigne que Napoléon ne sait pas de quoi parle le visiteur et le dit en homme de son temps, \
+ni passage, avec pour consigne que Napoléon ne sait pas de quoi parle le visiteur et le dit en homme de son temps, \
 sans faire semblant de savoir, puis ramène la conversation vers sa vie.
-   - Une question à laquelle ni les lettres ni la fiche ne répondent : repondre_librement, sans lettre ni fait, \
+   - Une question à laquelle ni les lettres ni les Œuvres ne répondent : repondre_librement, sans lettre ni passage, \
 avec pour consigne de ne pas la traiter sur le fond et de proposer un sujet dont tu as vérifié les lettres. \
 Ne demande jamais au narrateur de répondre de mémoire.
 
@@ -287,6 +329,10 @@ républicaine, le départ pour l'Italie en 1796) ; jamais pour une campagne de l
 visiteur ou une lettre tirée au hasard pour ouvrir la conversation : elle ne commence qu'avec un récit.
    - tableau : une œuvre de ton catalogue (cherche-la avec l'outil tableaux) épinglée au tableau mural, seulement quand elle montre vraiment le
 moment raconté (le sacre, Arcole, Jaffa, Austerlitz…) ; « aucun » pour l'enlever quand le récit passe à autre chose.
+Choisis l'œuvre d'après le SUJET du récit (la personne, l'événement, le moment), jamais d'après le lieu d'où la
+lettre est écrite : une lettre d'amour à Joséphine envoyée de Milan appelle un portrait de Joséphine, pas un
+tableau de la campagne d'Italie. Lis la description de l'œuvre (outil tableaux) : elle dit ce qu'elle montre,
+quand l'épingler et quand s'en abstenir. Si aucune ne montre le sujet, mets « aucun ».
 Le tableau sert au visiteur, pas à Napoléon : beaucoup d'œuvres ont été peintes après 1821 et il ne peut pas les
 connaître. Ne demande jamais au narrateur d'en parler ; son cartel donne sa date.
 Dès que le sujet change (nouvel épisode, ou réponse libre sur autre chose), renseigne-le toujours, avec
@@ -303,7 +349,7 @@ figure que dans un seul chapitre : deux variantes ne sont jamais deux morceaux d
 en coupant la matière : mieux vaut un récit court et complet qu'un choix qui fait perdre la moitié des lettres.
 
 Règles :
-- Tout ce que Napoléon racontera doit venir des lettres servies ou des faits de la fiche transmis : choisis-les avec soin.
+- Tout ce que Napoléon racontera doit venir des lettres et des passages des Œuvres servis : choisis-les avec soin.
 - Ne sers jamais une lettre déjà racontée, sauf si le visiteur le demande expressément.
 - Sois efficace : une enquête complète tient en 3 à 8 appels d'outils ; un tour de suite en 0 à 2.
 - Termine TOUJOURS par servir_tour ou repondre_librement.
@@ -371,8 +417,10 @@ TOOLS = [
         {"date_debut": _PERIODE["date_debut"], "date_fin": _PERIODE["date_fin"]},
         ["date_debut", "date_fin"]),
     _fn("rechercher",
-        "Recherche sémantique dans les lettres. Renvoie les résultats triés par score (cosinus) avec "
-        "un extrait, plus la distribution des scores pour t'aider à choisir un seuil.",
+        "Recherche sémantique dans tout ce que Napoléon a écrit ou sait : ses lettres (resultats, triés par score "
+        "cosinus, avec un extrait et la distribution des scores), les passages de ses Œuvres (oeuvres : ids à "
+        "donner dans « memoires ») et les faits de sa fiche (fiche : pour t'orienter seulement, jamais transmis au narrateur). Compare les "
+        "listes : la meilleure réponse peut venir de ses Œuvres ou de sa fiche quand les lettres ne parlent pas du sujet.",
         {"requete": {"type": "string", "description": "Requête riche en contenu (lieux, personnes, faits)."},
          **_PERIODE,
          "seuil_min": {"type": "number", "description": "Score minimal (0 à 1). Défaut 0."},
@@ -394,7 +442,9 @@ TOOLS = [
     _fn("memoires", "Recherche dans les Œuvres de Napoléon Bonaparte (éd. Panckoucke) : écrits des campagnes "
         "et du règne réunis après coup. Ce ne sont pas des souvenirs de Sainte-Hélène.",
         {"requete": {"type": "string"},
-         "limite": {"type": "integer", "description": "1-8, défaut 4."}},
+         "limite": {"type": "integer", "description": "1-8, défaut 4."},
+         "date_debut": {"type": "string", "description": "Facultatif : YYYY, YYYY-MM ou YYYY-MM-DD."},
+         "date_fin": {"type": "string", "description": "Facultatif : YYYY, YYYY-MM ou YYYY-MM-DD."}},
         ["requete"]),
     _fn("tableaux",
         "Cherche dans le catalogue des œuvres (tableaux, gravures, portraits) que tu peux épingler au tableau mural "
@@ -406,7 +456,7 @@ TOOLS = [
     _fn("fiche_personnelle",
         "Le savoir de Napoléon sur sa propre vie, sans ses lettres, tel qu'il le connaît au printemps 1821 : "
         "famille, jeunesse, chaque campagne et chaque période, ses proches et ses maréchaux, l'exil, et ce qu'il "
-        "ne sait pas. Chaque fait a un identifiant (f1, f2…) à transmettre dans repondre_librement.faits. "
+        "ne sait pas. Elle t'oriente (dates, épisodes, sujets à proposer) ; ses faits ne sont jamais transmis au narrateur. "
         "Sans argument : la liste des rubriques. Avec « rubrique » : les faits d'une rubrique. Avec « mots » : "
         "les faits qui contiennent ces mots (noms, lieux, années).",
         {"rubrique": {"type": "string", "description": "Optionnel : une rubrique (ex. « Jeunesse », « Empire », « exil »)."},
@@ -421,15 +471,19 @@ TOOLS = [
              "moment": {"type": "integer", "description": "Numéro du moment dans l'ordre du récit (1, 2, 3…). "
                         "Deux chapitres du même moment sont deux variantes du même passage."},
              "titre": {"type": "string"},
-             "resume": {"type": "string", "description": "1-2 phrases factuelles tirées des lettres."},
-             "lettres": {"type": "array", "items": {"type": "integer"}},
+             "resume": {"type": "string", "description": "1-2 phrases factuelles tirées des sources du chapitre."},
+             "lettres": {"type": "array", "items": {"type": "integer"},
+                         "description": "Lettres du chapitre ; vide si le moment n'a pas de lettre."},
+             "memoires": {"type": "array", "items": {"type": "integer"},
+                          "description": "Passages des Œuvres (ids de l'outil memoires ou de rechercher) sur ce moment."},
+             "date": {"type": "string", "description": "YYYY-MM : date du moment, obligatoire s'il n'a pas de lettre."},
          }, "required": ["titre", "resume", "lettres"]}}},
         ["sujet", "chapitres"]),
     _fn("servir_tour",
         "Termine le tour : transmet au narrateur le chapitre à raconter, les lettres, les passages des "
         "Œuvres éventuels et les pistes à proposer au visiteur.",
         {"chapitre": {"type": "string", "description": "Identifiant du chapitre (ex. c2)."},
-         "lettres": {"type": "array", "items": {"type": "integer"}, "description": "1 à 3 lettres à raconter."},
+         "lettres": {"type": "array", "items": {"type": "integer"}, "description": "1 à 3 lettres à raconter ; vide pour un chapitre sans lettre."},
          "memoires": {"type": "array", "items": {"type": "integer"}, "description": "0 à 2 passages des Œuvres de Napoléon (outil memoires)."},
          "pistes": {"type": "array", "items": {"type": "string"}, "description": "0 à 2 identifiants de chapitres non racontés : les variantes du moment suivant."},
          "transition": {"type": "string", "description": "Si aucune piste : moment de la vie vers lequel proposer d'enchaîner."},
@@ -443,9 +497,6 @@ TOOLS = [
                       "et s'il relance ou non, en une ou deux phrases."},
          "lettres": {"type": "array", "items": {"type": "integer"},
                      "description": "Optionnel : 1 à 3 lettres sur lesquelles Napoléon fonde sa réponse (conversation libre)."},
-         "faits": {"type": "array", "items": {"type": "string"},
-                   "description": "Optionnel : 1 à 6 identifiants de faits de la fiche personnelle (f1, f2…) "
-                                  "sur lesquels Napoléon fonde sa réponse."},
          "memoires": {"type": "array", "items": {"type": "integer"},
                       "description": "Optionnel : 1 à 2 passages de ses Œuvres (outil memoires) quand aucune lettre ne répond."},
          "lettre_amorce": {"type": "integer", "description": "Optionnel : une lettre dont citer un détail pour proposer un sujet."},
@@ -472,6 +523,9 @@ class Archivist:
                  model: str = AGENT_MODEL, embed_client=None):
         self.client = client              # modèle de l'agent (connecteur universel, compatible OpenAI)
         self.embed_client = embed_client  # embeddings OpenAI, optionnels (recherche sémantique)
+        self._fiche_emb = None            # vecteurs des faits de la fiche, calculés à la première recherche
+        # Textes écartés des recherches (recueil jugé apocryphe : docs/LETTRES_INEDITES.md)
+        self.ecartes = {r[0] for r in conn.execute("SELECT id FROM chunks WHERE source_kind LIKE 'apocryphe%'")}
         self.conn = conn
         self.emb = emb_matrix
         self.ids = np.array(chunk_ids)
@@ -631,6 +685,8 @@ class Archivist:
             idx = np.where(mask)[0]
         else:
             idx = np.arange(len(self.ids))
+        if self.ecartes:
+            idx = idx[~np.isin(self.ids[idx], list(self.ecartes))]
         scores = sims[idx]
         dist = {}
         if len(scores):
@@ -656,13 +712,40 @@ class Archivist:
                         **({"passages": n} if n > 1 else {}),
                         **({"date_incertaine": True} if m[5] == 0 else {}),
                         **({"deja_racontee": True} if lid in racontees else {})})
-        return {"distribution_scores": dist, "resultats": res}
+        return {"distribution_scores": dist, "resultats": res, **self._autres_sources(q)}
+
+    def _autres_sources(self, q) -> dict:
+        """Avec les lettres, les meilleurs passages des Œuvres et les faits de la fiche les plus proches de la
+        requête : la même recherche montre tout ce que Napoléon a écrit ou sait sur le sujet."""
+        out = {}
+        if self.m_emb is not None:
+            sims = cosine_sim(q, self.m_emb)
+            oeuvres = []
+            for i in np.argsort(-sims)[:40]:
+                if len(oeuvres) >= 4:
+                    break
+                row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (int(self.m_ids[i]),)).fetchone()
+                sec = passage_oeuvres(int(self.m_ids[i]), row[0]) if row else None
+                if sec:
+                    oeuvres.append({"id": int(self.m_ids[i]), "score": round(float(sims[i]), 3), **sec,
+                                    "extrait": (row[1] or "").replace("\n", " ")[:200]})
+            out["oeuvres"] = oeuvres
+        if NAPOLEON_FICHE:
+            if self._fiche_emb is None:
+                resp = self.embed_client.embeddings.create(input=[f["texte"] for f in NAPOLEON_FICHE],
+                                                           model="text-embedding-3-small")
+                self._fiche_emb = np.array([d.embedding for d in resp.data], dtype=np.float32)
+            sims = cosine_sim(q, self._fiche_emb)
+            out["fiche"] = [{"id": NAPOLEON_FICHE[i]["id"], "score": round(float(sims[i]), 3),
+                             "texte": NAPOLEON_FICHE[i]["texte"]} for i in np.argsort(-sims)[:5]]
+        return out
 
     def t_rechercher_mots(self, state, mots, date_debut=None, date_fin=None, limite=25):
         limite = max(1, min(50, int(limite or 25)))
         conds = " OR ".join("lower(text) LIKE ?" for _ in mots)
         params = [f"%{m.lower()}%" for m in mots]
-        sql = f"SELECT id, date_iso, title, source_kind, text, date_reliable FROM chunks WHERE ({conds})"
+        sql = (f"SELECT id, date_iso, title, source_kind, text, date_reliable FROM chunks WHERE ({conds}) "
+               "AND source_kind NOT LIKE 'apocryphe%'")
         if date_debut or date_fin:
             sql += " AND date_iso >= ? AND date_iso <= ? AND date_reliable != 0"
             params += [_norm_start(date_debut) or "0000", _norm_end(date_fin) or "9999\xff"]
@@ -731,22 +814,48 @@ class Archivist:
         return {"rubriques": rubriques,
                 "faits": [{"id": f["id"], "rubrique": f["rubrique"], "texte": f["texte"]} for f in faits]}
 
-    def t_memoires(self, state, requete, limite=4):
+    def t_memoires(self, state, requete, limite=4, date_debut=None, date_fin=None):
         if self.m_emb is None:
             return {"erreur": "mémoires indisponibles"}
         limite = max(1, min(8, int(limite or 4)))
         if self.embed_client is None:
             return self._memoires_par_mots(requete, limite)
+        lo = (date_debut or "")[:10]
+        hi = (date_fin or "")[:10]
         sims = cosine_sim(embed_question(self.embed_client, requete), self.m_emb)
-        order = np.argsort(-sims)[:limite]
         out = []
-        for i in order:
+        for i in np.argsort(-sims)[:300]:
+            if len(out) >= limite:
+                break
             cid = int(self.m_ids[i])
             row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (cid,)).fetchone()
-            if row:
-                out.append({"id": cid, "score": round(float(sims[i]), 3), "titre": (row[0] or "")[:80],
-                            "texte": (row[1] or "")[:400]})
+            sec = passage_oeuvres(cid, row[0]) if row else None
+            if not sec:
+                continue          # date incertaine, ou texte d'un éditeur : écarté de la recherche
+            per = sec.get("periode") or ""
+            if (lo or hi) and (not per[:4].isdigit() or (lo and per[:len(lo)] < lo[:len(per)])
+                               or (hi and per[:len(hi)] > hi[:len(per)])):
+                continue
+            out.append({"id": cid, "score": round(float(sims[i]), 3), **sec, "texte": (row[1] or "")[:400]})
         return out
+
+    def _periodes_oeuvres(self, ids: list[int]) -> dict:
+        """Date (des faits racontés) de chaque passage des Œuvres."""
+        out = {}
+        for i in ids:
+            row = self.m_conn.execute("SELECT title FROM chunks WHERE id=?", (i,)).fetchone() if self.m_conn else None
+            sec = passage_oeuvres(i, row[0]) if row else None
+            if sec:
+                out[i] = sec.get("periode") or ""
+        return out
+
+    def _oeuvres_ecartees(self, ids: list[int]) -> list[int]:
+        """Passages des Œuvres inconnus ou écartés de la recherche (date incertaine, texte d'un éditeur)."""
+        if not ids or self.m_conn is None:
+            return list(ids)
+        rows = dict(self.m_conn.execute(
+            f"SELECT id, title FROM chunks WHERE id IN ({','.join('?' * len(ids))})", ids).fetchall())
+        return [i for i in ids if i not in rows or passage_oeuvres(i, rows[i]) is None]
 
     def _memoires_par_mots(self, requete: str, limite: int) -> list[dict]:
         """Repli sans embeddings : passages des mémoires contenant le plus de mots de la requête."""
@@ -763,7 +872,15 @@ class Archivist:
         for ch in chapitres:
             ch["lettres"] = self.lettres(ch.get("lettres", []))
         meta = self._meta([i for ch in chapitres for i in ch["lettres"]])
-        # Garde-fou « un plan = un épisode » : refuser les lettres datées hors de la période annoncée
+        # Garde-fou « un plan = un épisode » : une période de plus de trois ans n'est pas un épisode
+        if periode_debut and periode_fin:
+            ecart = _ecart_jours((periode_debut + "-01-01")[:10] if len(periode_debut) == 4 else (periode_debut + "-01")[:10],
+                                 (periode_fin + "-01-01")[:10] if len(periode_fin) == 4 else (periode_fin + "-01")[:10])
+            if ecart is not None and ecart > PLAN_MAX_JOURS:
+                return {"_erreur": (f"période de {ecart // 365} ans : un plan couvre UN épisode (trois ans au plus). "
+                                    "Choisis le premier épisode de cette période qui a des sources et fais-en le plan ; "
+                                    "les épisodes suivants se proposeront en transition.")}
+        # Refuser les lettres datées hors de la période annoncée
         hors_periode = []
         if periode_debut and periode_fin:
             lo, hi = periode_debut[:7], periode_fin[:7] + "\xff"
@@ -792,16 +909,27 @@ class Archivist:
                 else:
                     prises.add(lid)
                     lettres.append(lid)
-            if not lettres:
+            fiche_ids = {f["id"] for f in NAPOLEON_FICHE}
+            memoires = [int(i) for i in (ch.get("memoires") or []) if str(i).isdigit()][:2]
+            ecartes = set(self._oeuvres_ecartees(memoires))
+            memoires = [m for m in memoires if m not in ecartes]
+            if periode_debut and periode_fin:   # même règle que pour les lettres : la date du passage
+                for m, per in self._periodes_oeuvres(memoires).items():
+                    if per[:4].isdigit() and not (lo <= per[:7] <= hi):
+                        hors_periode.append({"id": m, "oeuvres": True, "date": per})
+                        memoires.remove(m)
+            faits = []   # la fiche n'est pas une source : un chapitre repose sur des lettres ou des Œuvres
+            if not (lettres or memoires or faits):
                 continue
             nouveaux.append({"id": f"c{n0 + k}", "moment": int(ch.get("moment") or k),
                              "titre": ch["titre"], "resume": ch.get("resume", ""),
-                             "lettres": lettres, "statut": "a_raconter"})
+                             "lettres": lettres, "memoires": memoires, "faits": faits,
+                             "date": str(ch.get("date") or ""), "statut": "a_raconter"})
         # Des chapitres d'un même moment mais éloignés dans le temps ne sont pas des variantes : ce sont
         # des moments successifs (sinon le choix du visiteur ferait perdre l'un d'eux sans le raconter).
         def debut(c):
             dates = sorted(meta[l][1] for l in c["lettres"] if meta.get(l) and meta[l][1])
-            return dates[0] if dates else ""
+            return dates[0] if dates else c.get("date", "")
         separes, prec = [], None          # prec = (moment d'origine, date de référence, nouveau numéro)
         numero = max([c.get("moment") or 0 for c in gardes], default=0)
         for c in sorted(nouveaux, key=lambda c: (c["moment"], debut(c))):
@@ -840,6 +968,21 @@ class Archivist:
                 "cherche pour chaque moment une seconde lettre sur le même passage (autre destinataire, autre angle, "
                 f"même jour ou jours voisins, {VARIANTE_MAX_JOURS} jours d'écart au plus) et révise le plan ; "
                 "sinon, garde-le tel quel.")
+        # Un chapitre sans lettre alors que la Correspondance en a à cette date : l'archiviste vérifie lui-même.
+        sans_lettre = []
+        for c in nouveaux:
+            if c["lettres"] or len(c.get("date") or "") < 7:
+                continue
+            ym = c["date"][:7]
+            n = self.conn.execute("SELECT COUNT(DISTINCT title) FROM chunks WHERE substr(date_iso, 1, 7) = ? "
+                                  "AND date_reliable != 0", (ym,)).fetchone()[0]
+            if n:
+                sans_lettre.append(f"{c['id']} « {c['titre']} » ({ym} : {n} textes datés de ce mois)")
+        if sans_lettre:
+            result["chapitres_sans_lettre_a_verifier"] = (
+                "Ces chapitres n'ont pas de lettre, mais la Correspondance a des textes à leur date : "
+                + " ; ".join(sans_lettre) + ". Regarde-les (explorer_periode ou rechercher avec ces dates) et "
+                "ajoute au plan ceux qui racontent ce moment ; la fiche ne sert que quand les lettres se taisent.")
         if deja_racontees:
             result["lettres_deja_racontees"] = (
                 f"Lettres déjà racontées dans la conversation, retirées du plan : {sorted(set(deja_racontees))}.")
@@ -886,7 +1029,7 @@ class Archivist:
                     "l'épisode suivant se proposera en transition, une fois celui-ci raconté.")
         if hors_periode:
             result["avertissement"] = (
-                "Lettres refusées car hors de la période de l'épisode (un plan = un seul épisode) : "
+                "Lettres ou passages des Œuvres refusés car hors de la période de l'épisode (un plan = un seul épisode) : "
                 f"{hors_periode}. Si elles appartiennent à un autre épisode, garde-les pour une transition.")
         return result
 
@@ -924,12 +1067,26 @@ class Archivist:
                 f"Dernière réponse de Napoléon : {state['derniere_reponse'][:400] or '(aucune)'}")
 
     # ── Boucle agent ────────────────────────────────────────────────────────
+    def _recherche_initiale(self, state, user_message: str) -> str:
+        """Recherche faite avec les mots mêmes du visiteur, dans les lettres, les Œuvres et la fiche, jointe à son
+        message : l'archiviste part de ce que les sources disent du sujet, et non de sa propre idée du sujet."""
+        if self.embed_client is None or len(user_message.split()) < 3:
+            return ""
+        try:
+            r = self.t_rechercher(state, user_message, limite=8)
+        except Exception as e:  # la recherche initiale est une aide : l'archiviste peut toujours chercher lui-même
+            print(f"[ARCHIVISTE] recherche initiale indisponible : {e}")
+            return ""
+        return ("\n\nRecherche faite avec ces mots dans tes trois sources (lettres, Œuvres, fiche) — pars de ce "
+                "qu'elle trouve, puis cherche davantage si besoin :\n" + json.dumps(r, ensure_ascii=False))
+
     def decide(self, state: dict, user_message: str) -> dict:
         """Fait enquêter l'archiviste et renvoie sa décision terminale (servir_tour / repondre_librement)."""
         t0 = time.time()
         messages = [
             {"role": "system", "content": ARCHIVIST_PROMPT},
-            {"role": "user", "content": f"{self._state_summary(state)}\n\nMessage du visiteur : {user_message}"},
+            {"role": "user", "content": f"{self._state_summary(state)}\n\nMessage du visiteur : {user_message}"
+                                        + self._recherche_initiale(state, user_message)},
         ]
         for step in range(MAX_AGENT_STEPS):
             force = step == MAX_AGENT_STEPS - 1
@@ -983,7 +1140,8 @@ class Archivist:
             decision["scene"] = {k: args.get(k) for k in allowed if args.get(k) in allowed[k]}
             t = TABLEAUX.get(decision["scene"].get("tableau"))
             if t:   # l'interface affiche l'œuvre avec son cartel
-                decision["scene"]["tableau"] = {k: t[k] for k in ("id", "titre", "peintre", "date")}
+                decision["scene"]["tableau"] = {**{k: t[k] for k in ("id", "titre", "peintre", "date")},
+                                                "ref": f"tableau:{t['id']}"}
         return decision
 
     def _finalize_core(self, state, name, args) -> dict | None:
@@ -1009,16 +1167,14 @@ class Archivist:
             if inconnues:
                 return {"_erreur": f"lettres inconnues {inconnues} : sers des identifiants trouvés par tes recherches."}
             fiche = {f["id"]: f["texte"] for f in NAPOLEON_FICHE}
-            faits_demandes = [str(i).strip() for i in (args.get("faits") or [])][:6]
+            faits_demandes = []   # la fiche oriente l'archiviste, elle n'est jamais racontée
             faits_inconnus = [i for i in faits_demandes if i not in fiche]
             if faits_inconnus:
                 return {"_erreur": f"faits inconnus {faits_inconnus} : utilise les identifiants de fiche_personnelle."}
             memoires = [int(i) for i in (args.get("memoires") or []) if str(i).isdigit()][:2]
-            if memoires and self.m_conn is not None:
-                connus = {r[0] for r in self.m_conn.execute(
-                    f"SELECT id FROM chunks WHERE id IN ({','.join('?' * len(memoires))})", memoires)}
-                if [m for m in memoires if m not in connus]:
-                    return {"_erreur": "passages des Œuvres inconnus : utilise les identifiants de l'outil memoires."}
+            if self._oeuvres_ecartees(memoires):
+                return {"_erreur": f"passages des Œuvres inconnus ou écartés {self._oeuvres_ecartees(memoires)} : "
+                                   "utilise les identifiants renvoyés par memoires ou rechercher."}
             return {"type": "libre", "consigne": args.get("consigne", ""),
                     "lettres": demandees, "memoires": memoires,
                     "faits": [fiche[i] for i in faits_demandes],
@@ -1054,17 +1210,28 @@ class Archivist:
                 "fixe un nouveau plan avec fixer_plan avant de servir ces lettres ; s'il s'agit du même "
                 "épisode, ajoute-les au plan (fixer_plan, même intitulé) ; sinon sers les lettres du chapitre.")}
         lettres = demandees[:3]
-        if not lettres:
-            return {"_erreur": f"aucune lettre indiquée pour le chapitre {cid}."}
+        memoires = [int(i) for i in (args.get("memoires") or ch[cid].get("memoires") or []) if str(i).isdigit()][:2]
+        if self._oeuvres_ecartees(memoires):
+            return {"_erreur": f"passages des Œuvres inconnus ou écartés {self._oeuvres_ecartees(memoires)} : "
+                               "utilise les identifiants renvoyés par memoires ou rechercher."}
+        fiche = {f["id"]: f["texte"] for f in NAPOLEON_FICHE}
+        faits = []   # la fiche oriente l'archiviste, elle n'est jamais racontée
+        if [i for i in faits if i not in fiche]:
+            return {"_erreur": "faits inconnus : utilise les identifiants de la fiche."}
+        if not lettres and ch[cid]["lettres"]:
+            return {"_erreur": f"aucune lettre indiquée pour le chapitre {cid} (lettres du chapitre : {ch[cid]['lettres']})."}
+        if not (lettres or memoires or faits):
+            return {"_erreur": f"le chapitre {cid} n'a ni lettre, ni passage des Œuvres, ni fait de la fiche à raconter."}
         pistes = [p for p in (args.get("pistes") or []) if p in ch and p != cid
                   and ch[p]["statut"] not in ("raconte", "ecarte")
                   # l'autre variante du moment servi est abandonnée : elle ne peut pas être proposée
                   and not (ch[cid].get("moment") is not None and ch[p].get("moment") == ch[cid]["moment"])][:2]
         return {"type": "tour", "chapitre": ch[cid], "lettres": lettres,
-                "memoires": [int(i) for i in (args.get("memoires") or [])][:2],
+                "memoires": memoires, "faits": [fiche[i] for i in faits],
                 "pistes": [ch[p] for p in pistes], "transition": args.get("transition"),
                 "citations": self._choisir_citations(
-                    state, lettres, f"Ce que Napoléon raconte : {ch[cid]['titre']} — {ch[cid]['resume']}"),
+                    state, lettres, f"Ce que Napoléon raconte : {ch[cid]['titre']} — {ch[cid]['resume']}")
+                if lettres else [],
                 "note": args.get("note")}
 
     # ── Après narration ─────────────────────────────────────────────────────
@@ -1112,8 +1279,10 @@ class Archivist:
         out = []
         for mid in ids:
             row = self.m_conn.execute("SELECT title, text FROM chunks WHERE id=?", (mid,)).fetchone()
-            if row:
-                out.append(f"[{(row[0] or 'Œuvres')[:60]}]\n{(row[1] or '')[:400]}")
+            sec = passage_oeuvres(mid, row[0]) if row else None
+            if sec:
+                per = f", {sec['periode']}" if sec.get("periode") else ""
+                out.append(f"[{sec['ouvrage']}{per}]\n{(row[1] or '')[:900]}")
         return out
 
     def narrator_prompt(self, state: dict, decision: dict, user_message: str,
@@ -1154,31 +1323,52 @@ class Archivist:
                                  + "\n".join(f"- « {c['texte']} »" for c in decision["citations"]))
             mem = self._passages_oeuvres(decision.get("memoires") or [])
             if mem:
-                parts.append("Passages de tes Œuvres (tes écrits des campagnes et du règne, réunis après coup) : tu "
-                             "peux t'y appuyer en disant que tu reviens sur ce passage dans tes écrits, sans rien y "
-                             "ajouter :\n" + "\n\n".join(mem))
+                parts.append("Passages de tes Œuvres (tes écrits des campagnes, du règne et de ta jeunesse, réunis "
+                             "après coup ; chacun est précédé de son titre) : appuie-toi dessus en NOMMANT l'écrit "
+                             "dont il vient, par le titre entre crochets qui le précède, "
+                             "sans rien y ajouter. Fais entendre UNE phrase marquante de ces passages, telle quelle "
+                             "entre « », en l'amenant pour que son sens soit clair :\n" + "\n\n".join(mem))
             if decision.get("faits"):
                 parts.append("Faits de ta fiche personnelle — ce que tu sais de ta propre vie sans tes lettres. "
                              "Tu peux t'appuyer dessus, sans rien y ajouter :\n"
                              + "\n".join(f"- {f}" for f in decision["faits"]))
+            if decision.get("faits") or mem:
+                parts.append("Raconte, ne récite pas : même sans lettre, fais revivre ce moment comme une histoire, "
+                             "au présent, ancrée dans un lieu et une date, en une ou deux scènes qui s'enchaînent "
+                             "(où tu es, ce que tu vois, ce que tu fais, ce que tu ressens), plutôt qu'une suite de "
+                             "dates et de faits. Ne garde que ce que disent les faits et les passages ci-dessus.")
             parts.append(f"Consigne de l'archiviste : {decision['consigne']}")
             if not decision.get("lettres"):
-                parts.append("Aucune autre lettre n'est fournie : n'avance aucun fait historique précis "
-                             "qui ne figure pas ci-dessus. Dis franchement d'où vient ce que tu racontes, comme "
-                             "l'indique la consigne : pas de lettre sur ce sujet, mais tes écrits ou ta mémoire ; "
-                             "et si rien ci-dessus ne répond, que tu ne trouves pas de trace écrite de ce passage, "
-                             "puis propose ce dont tu peux parler.")
+                parts.append("Aucune lettre n'est fournie : n'avance aucun fait historique qui ne figure pas "
+                             "ci-dessus. Si un passage de tes écrits est fourni, nomme-le. Sinon, tu n'as AUCUNE "
+                             "source : dis-le simplement, en une ou deux phrases, sans raconter le sujet de mémoire, "
+                             "puis propose l'autre sujet indiqué par la consigne.")
             parts.append(f"Message du visiteur : {user_message}")
             return "\n\n---\n\n".join(parts)
 
         ch = decision["chapitre"]
+        sans_lettre = not decision["lettres"]
         if decision["memoires"]:
             mem = self._passages_oeuvres(decision["memoires"])
             if mem:
-                parts.append("Passages de tes Œuvres (écrits des campagnes et du règne, réunis après coup ; ce ne sont pas "
-                             "des souvenirs de l'exil) : sers-t'en seulement s'ils éclairent le moment raconté, sans "
-                             "les présenter comme des souvenirs de Sainte-Hélène :\n"
-                             + "\n\n".join(mem))
+                usage = ("c'est ta source principale pour ce moment : nomme l'écrit dont il vient, par son titre"
+                         if sans_lettre else "sers-t'en seulement s'ils éclairent le moment raconté")
+                parts.append("Passages de tes Œuvres (écrits des campagnes, du règne et de ta jeunesse, réunis après "
+                             f"coup ; ce ne sont pas des souvenirs de l'exil) : {usage}, sans les présenter comme des "
+                             "souvenirs de Sainte-Hélène. Fais entendre au plus UNE phrase marquante, telle quelle "
+                             "entre « », amenée pour que son sens soit clair :\n" + "\n\n".join(mem))
+        if decision.get("faits"):
+            if not decision["memoires"]:
+                parts.append("Aucun passage de tes écrits n'est fourni pour ce moment : ne dis pas que tu en parles "
+                             "dans tes écrits et n'en nomme aucun ; dis que tu le racontes de mémoire.")
+            parts.append("Faits de ta fiche personnelle — ce que tu sais de ta propre vie sans lettre. "
+                         "Appuie-toi dessus, sans rien y ajouter :\n" + "\n".join(f"- {f}" for f in decision["faits"]))
+        if sans_lettre:
+            parts.append("Ce moment n'a pas de lettre : dis-le simplement, et dis clairement d'où vient ce que tu "
+                         "racontes — tel écrit, nommé par son titre, ou ta seule mémoire —, puis raconte-le comme une histoire, au "
+                         "présent, ancrée dans un lieu et une date, en une ou deux scènes qui s'enchaînent (où tu es, "
+                         "ce que tu vois, ce que tu fais, ce que tu ressens), sans rien ajouter aux passages et aux "
+                         "faits ci-dessus.")
         if state["plan"]:
             p = state["plan"]
             periode = f" ({p.get('debut') or '?'} → {p.get('fin') or '?'})" if p.get("debut") else ""
@@ -1187,8 +1377,8 @@ class Archivist:
                 parts.append("C'est un NOUVEL épisode : nomme-le clairement "
                              "(campagne ou période, année, adversaire ou enjeu) avant de plonger dans les lettres.")
         parts.append(f"Chapitre de ce tour : « {ch['titre']} » — {ch['resume']}")
-        letters = self.textes(decision["lettres"], limite=2400)
-        parts.append("Lettres de ce tour (revis-les au présent, chacune ancrée par sa date). Tiens-t'en STRICTEMENT "
+        letters = self.textes(decision["lettres"], limite=2400) if decision["lettres"] else []
+        if letters: parts.append("Lettres de ce tour (revis-les au présent, chacune ancrée par sa date). Tiens-t'en STRICTEMENT "
                      "à ce qu'elles disent : ne développe pas, ne commente pas, n'interprète pas, n'ajoute ni idée, "
                      "ni jugement, ni conclusion, ni état d'âme (« je médite », « il est évident pour moi »…) qui n'y "
                      "figure pas. Une lettre courte donne une réponse courte :\n" +"\n\n".join(
@@ -1198,11 +1388,11 @@ class Archivist:
             parts.append("Citations choisies — tes propres mots, à faire entendre TELLES QUELLES entre « », chacune "
                          "une fois, amenées pour que le visiteur en saisisse le sens. Ne cite rien d'autre entre guillemets :\n"
                          + "\n".join(f"- « {c['texte']} »" for c in decision["citations"]))
-        else:
+        elif not sans_lettre:
             parts.append("Aucune citation n'est retenue pour ce tour : raconte sans guillemets.")
         if decision.get("note"):
             parts.append(f"Note de l'archiviste (une orientation, pas une source : ne raconte aucun fait "
-                         f"qui ne figure pas dans les lettres ci-dessus) : {decision['note']}")
+                         f"qui ne figure pas dans les sources ci-dessus) : {decision['note']}")
         parts.append("Ne répète aucun fait ni aucun chiffre que tu as déjà dit dans tes réponses précédentes : "
                      "si une lettre reprend un détail déjà évoqué, passe dessus et avance dans le récit.")
 

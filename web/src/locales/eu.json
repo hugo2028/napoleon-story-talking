@@ -90,5 +90,15 @@
   "started": "Elkarrizketa hasi da. Egin Napoleoni lehen galdera, mesedez.",
   "speaking": "Napoleon hizketan ari da…",
   "placeholderActive": "Egin Napoleoni galdera bat…",
-  "welcome": "Napoleon zain duzue. Galdetu iezaiozue bere bizitzaz, kanpainez edo bere garaiaz, edo agurtu besterik ez: hark kontakizuna hasiko du. Bere erantzunen azpiko 📜 ikurrak haren hitzak jasotzen dituzten gutunak erakusten dizkizue."
+  "welcome": "Napoleon zain duzue. Galdetu iezaiozue bere bizitzaz, kanpainez edo bere garaiaz, edo agurtu besterik ez: hark kontakizuna hasiko du. Bere erantzunen azpiko 📜 ikurrak haren hitzak jasotzen dituzten gutunak erakusten dizkizue.",
+  "inspectBack": "⤺ Itzuli Napoleonen ondoan",
+  "poi_carte": "Europako mapa",
+  "poi_lettres": "Gutunak",
+  "poi_cheminee": "Tximinia",
+  "poi_miroir": "Ispilua",
+  "poi_echiquier": "Xake-taula",
+  "poi_commode": "Kaxoi-mahaia eta bustoa",
+  "poi_fenetre": "Itsasorako leihoa",
+  "poi_bureau": "Idazmahaia",
+  "poi_lustre": "Aparaila"
 }

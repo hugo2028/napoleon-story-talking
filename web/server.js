@@ -254,6 +254,42 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
+// Noms de la réponse (personnes, lieux, événements) : proxy vers napoleon_api.py /entites
+app.post('/api/entites', async (req, res) => {
+  const { texte, connus, contexte, lang, langName } = req.body || {}
+  if (!texte) return res.json({ entites: [], liens: [] })
+  try {
+    await waitForApi()
+    const pyRes = await fetch(`${NAPOLEON_API}/entites`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texte: String(texte).slice(0, 6000), connus: Array.isArray(connus) ? connus.slice(0, 400) : [],
+        contexte: String(contexte || '').slice(0, 300), lang: lang || 'fr', lang_name: langName || '' })
+    })
+    res.status(pyRes.status).json(await pyRes.json())
+  } catch (err) {
+    console.error('[Entités]', err.message)
+    res.status(500).json({ error: err.message, entites: [], liens: [] })
+  }
+})
+
+// Graphe de la mémoire (recherche, nœud, sous-graphe) : relais vers napoleon_api.py /graphe/*
+app.all(/^\/api\/graphe\/(recherche|noeud|sous-graphe|totaux|debloquer)$/, async (req, res) => {
+  try {
+    await waitForApi()
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''
+    const pyRes = await fetch(`${NAPOLEON_API}/graphe/${req.params[0]}${qs}`, {
+      method: req.method,
+      headers: { 'Content-Type': 'application/json' },
+      body: req.method === 'POST' ? JSON.stringify(req.body || {}) : undefined,
+    })
+    res.status(pyRes.status).json(await pyRes.json())
+  } catch (err) {
+    console.error('[Graphe]', err.message)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Interface compilée (npm run build) : servie par ce serveur quand web/dist existe (mise en ligne).
 const DIST = path.join(__dirname, 'dist')
 if (fs.existsSync(DIST)) {

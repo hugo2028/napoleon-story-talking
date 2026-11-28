@@ -100,5 +100,15 @@
   "chatIntro": "Ptejte se Napoleona na jeho život, tažení a vyhnanství.",
   "started": "Rozhovor byl zahájen. Položte Napoleonovi svou první otázku.",
   "speaking": "Napoleon mluví…",
-  "placeholderActive": "Zeptejte se Napoleona na cokoliv…"
+  "placeholderActive": "Zeptejte se Napoleona na cokoliv…",
+  "inspectBack": "⤺ Zpět k Napoleonu",
+  "poi_carte": "Mapa Evropy",
+  "poi_lettres": "Dopisy",
+  "poi_cheminee": "Krb",
+  "poi_miroir": "Zrcadlo",
+  "poi_echiquier": "Šachovnice",
+  "poi_commode": "Komoda a busta",
+  "poi_fenetre": "Okno k moři",
+  "poi_bureau": "Psací stůl",
+  "poi_lustre": "Lustr"
 }

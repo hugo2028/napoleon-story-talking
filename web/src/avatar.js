@@ -228,8 +228,13 @@ export class AvatarPlayer {
     canvas.addEventListener('click', (e) => {
       const poi = this.poiAt(e.clientX, e.clientY)
       if (!poi) return this.endInspect()
+      if (poi.id === 'memoires') return this.onMemoryClick?.()
       if (poi.id === 'tableau' && this.inspecting === 'tableau') {
         return this.onPaintingClick?.(this.wallMap.paintingMesh().userData.painting)
+      }
+      if (poi.id === 'lettres' && this.inspecting === 'lettres') {
+        const source = poi.hitObject.userData.source || poi.hitObject.parent?.userData.source
+        if (source) return this.onLetterClick?.(source)
       }
       this.inspect(poi)
     })
@@ -332,6 +337,13 @@ export class AvatarPlayer {
       obj.material = new THREE.MeshBasicMaterial({ map, toneMapped: false })
       // Murs tapissés : précalculés unis, leurs motifs sont redessinés ici, nets même en gros plan
       if (obj.name === 'longwood_murs' && obj.geometry.attributes.uv1) addWallpaperDots(obj.material)
+      // L'enveloppe de la pièce (murs, plafond, sol) est dessinée un rien en arrière : là où un objet affleure un
+      // mur dans le même plan (embrasure de la fenêtre, moulures), l'objet l'emporte, sans scintillement de rayures.
+      if (obj.name === 'longwood' || obj.name === 'longwood_murs') {
+        obj.material.polygonOffset = true
+        obj.material.polygonOffsetFactor = 1
+        obj.material.polygonOffsetUnits = 2
+      }
       materials.push(obj.material)
     })
     this.decorRoot = gltf.scene
@@ -352,6 +364,7 @@ export class AvatarPlayer {
     this._matchLightsToDecor()
     this._addDramaLights()
     this._makeDecorPois()
+    this._makeLiasse()
     this._addDecorLife()
     // Le titre superposé passe à l'encre brune sur le papier peint clair (index.html, .with-decor)
     this.container.parentElement?.classList.add('with-decor')
@@ -1253,7 +1266,7 @@ export class AvatarPlayer {
       { id: 'miroir', label: 'Le miroir', center: [-3.05, 2.15, 0.4], size: [0.08, 1.75, 1.15], dir: [1, 0, 0.25] },
       { id: 'echiquier', label: "L'échiquier", center: [-1.35, 0.8, -0.9], size: [0.6, 0.2, 0.6], dir: [0.15, 1.2, 1],
         hit: { center: [-1.35, 0.42, -0.9], size: [0.64, 0.84, 0.64] } },
-      { id: 'commode', label: 'La commode et le buste', center: [-2.75, 0.68, -2.3], size: [0.5, 1.4, 0.55], dir: [0.4, 0.15, 1] },
+      { id: 'commode', label: 'La commode et le buste', center: [-2.86, 0.68, -2.3], size: [0.5, 1.4, 0.55], dir: [0.4, 0.15, 1] },
       { id: 'fenetre', label: 'La fenêtre sur la mer', center: [-1.75, 1.8, -2.6], size: [1.25, 2.1, 0.12], dir: [0, 0, 1] },
       { id: 'bureau', label: 'Le bureau', center: [2.0, 0.88, -1.85], size: [1.15, 0.45, 0.65], dir: [-0.25, 0.9, 1],
         hit: { center: [2.0, 0.5, -1.85], size: [1.2, 1.0, 0.7] } },
@@ -1269,6 +1282,54 @@ export class AvatarPlayer {
       mesh.userData.poi = poi
       return poi
     })
+  }
+
+  /**
+   * La liasse des Mémoires dictés à Longwood (à Las Cases, Gourgaud, Montholon, Bertrand), sur le bureau : cahiers
+   * de papier noués d'un ruban rouge et cachetés. Un clic ouvre la mémoire du visiteur (onMemoryClick).
+   * Provisoire : la même liasse est dans scripts/build_longwood_scene.py ; une fois le décor recalculé avec elle
+   * (objet « liasse_memoires » du GLB), seule sa boîte de clic reste.
+   */
+  _makeLiasse() {
+    const centre = new THREE.Vector3(1.6, 0.787, -1.74)          // coin avant gauche du bureau (repère three.js)
+    const groupe = new THREE.Group()
+    groupe.position.copy(centre)
+    groupe.rotation.y = 0.22
+    const dejaCuite = !!this.scene.getObjectByName('liasse_memoires')   // décor recalculé avec la liasse
+    if (!dejaCuite) {
+      const papier = (teinte) => new THREE.MeshStandardMaterial({ color: teinte, roughness: 0.92 })
+      const teintes = [0xd8cba6, 0xcfc099, 0xe0d4b2, 0xd3c49e, 0xdacca8]
+      let y = 0
+      teintes.forEach((c, k) => {
+        const h = 0.011 + (k % 2) * 0.004
+        const cahier = new THREE.Mesh(new THREE.BoxGeometry(0.2, h, 0.27), papier(c))
+        cahier.position.set((k % 3 - 1) * 0.006, y + h / 2, ((k * 7) % 3 - 1) * 0.005)
+        cahier.rotation.y = (k % 2 ? 1 : -1) * 0.03 * k
+        groupe.add(cahier)
+        y += h
+      })
+      const ruban = new THREE.MeshStandardMaterial({ color: 0x8a1f1a, roughness: 0.55 })
+      const r1 = new THREE.Mesh(new THREE.BoxGeometry(0.212, y + 0.004, 0.018), ruban)
+      r1.position.y = y / 2
+      const r2 = new THREE.Mesh(new THREE.BoxGeometry(0.018, y + 0.004, 0.282), ruban)
+      r2.position.y = y / 2
+      const cachet = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.006, 20),
+        new THREE.MeshStandardMaterial({ color: 0x6e1510, roughness: 0.4 }))
+      cachet.position.y = y + 0.004
+      groupe.add(r1, r2, cachet)
+      for (const m of groupe.children) { m.castShadow = true; m.receiveShadow = true }
+      this.scene.add(groupe)
+    }
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.34),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, colorWrite: false }))
+    hit.position.copy(centre).add(new THREE.Vector3(0, 0.05, 0))
+    hit.rotation.y = 0.22
+    this.scene.add(hit)
+    const poi = { id: 'memoires', label: 'Ses Mémoires dictés à Longwood', center: centre.clone().add(new THREE.Vector3(0, 0.03, 0)),
+      size: new THREE.Vector3(0.3, 0.1, 0.34), dir: new THREE.Vector3(-0.2, 1.1, 0.9).normalize(), meshes: [hit],
+      priorite: true }
+    hit.userData.poi = poi
+    this.decorPois = [poi, ...(this.decorPois || [])]
   }
 
   /** Objets d'intérêt du moment : ceux du décor et ceux du tableau mural (carte, œuvre, lettres). */
@@ -1290,9 +1351,12 @@ export class AvatarPlayer {
     const pois = this._pois()
     const meshes = pois.flatMap((p) => p.meshes)
     const hits = this._ray.intersectObjects([...meshes, ...(this.avatarRoot ? [this.avatarRoot] : [])], true)
-    const first = hits.find((h) => h.object.isMesh)
+    const prioritaire = hits.find((h) => h.object.userData.poi?.priorite)
+    const first = prioritaire && !hits.some((h) => h.distance < prioritaire.distance && h.object.isMesh
+      && !h.object.userData.poi) ? prioritaire : hits.find((h) => h.object.isMesh)
     if (!first) return null
-    return pois.find((p) => p.meshes.some((m) => m === first.object || first.object.parent === m)) || null
+    const poi = pois.find((p) => p.meshes.some((m) => m === first.object || first.object.parent === m))
+    return poi ? { ...poi, hitObject: first.object } : null
   }
 
   /**

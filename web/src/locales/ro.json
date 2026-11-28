@@ -100,5 +100,15 @@
   "chatIntro": "Întrebați-l pe Napoléon despre viața sa, campaniile și exilul său.",
   "started": "Conversația a început. Puneți prima dumneavoastră întrebare lui Napoléon.",
   "speaking": "Napoléon vorbește…",
-  "placeholderActive": "Puneți întrebarea dumneavoastră pentru Napoléon…"
+  "placeholderActive": "Puneți întrebarea dumneavoastră pentru Napoléon…",
+  "inspectBack": "⤺ Înapoi la Napoléon",
+  "poi_carte": "Harta Europei",
+  "poi_lettres": "Scrisorile",
+  "poi_cheminee": "Șemineul",
+  "poi_miroir": "Oglinda",
+  "poi_echiquier": "Tabla de șah",
+  "poi_commode": "Comoda și bustul",
+  "poi_fenetre": "Fereastra spre mare",
+  "poi_bureau": "Biroul",
+  "poi_lustre": "Candelabrul"
 }

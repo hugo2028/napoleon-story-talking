@@ -113,6 +113,16 @@ def to_uv(cx, cy, lon, lat):
     return (x - x0) / (x1 - x0), (y - y0) / (y1 - y0)
 
 
+def map_fit_js(cx, cy) -> str:
+    """Le calage, pour placer dans le navigateur un lieu absent de la liste (lonLatToUV, decorScene.js)."""
+    ll, res = residuals(cx, cy)
+    fit = {"cx": [float(v) for v in cx], "cy": [float(v) for v in cy], "crop": list(CROP),
+           "control": [[float(a), float(b), float(dx), float(dy)] for (a, b), (dx, dy) in zip(ll, res)]}
+    return ("// Calage de la carte (même calcul que to_uv) : polynôme du second degré en (longitude, latitude),\n"
+            "// puis écart des repères réparti en inverse du carré de la distance.\n"
+            f"export const MAP_FIT = {json.dumps(fit)}\n")
+
+
 def write_js(cx, cy):
     places = []
     for name, (lon, lat, region) in PLACES.items():
@@ -121,7 +131,8 @@ def write_js(cx, cy):
     OUT_JS.write_text(
         "// Généré par scripts/build_map_places.py : position (u, v de 0 à 1, v vers le bas) des lieux sur\n"
         "// web/decor/carte_herisson_1815.jpg. region : null = toujours affiché, sinon région de l'archiviste.\n"
-        f"export const MAP_PLACES = {json.dumps(places, ensure_ascii=False, indent=2)}\n", encoding="utf-8")
+        f"export const MAP_PLACES = {json.dumps(places, ensure_ascii=False, indent=2)}\n\n" + map_fit_js(cx, cy),
+        encoding="utf-8")
     print(f"{len(places)} lieux → {OUT_JS.relative_to(ROOT)}")
 
 
